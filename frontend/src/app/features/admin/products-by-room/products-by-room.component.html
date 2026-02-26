@@ -1,0 +1,61 @@
+<div class="pbr-container">
+  <!-- Header -->
+  <div class="pbr-header">
+    <button class="btn-back" (click)="goBack()">← Retour aux dépôts</button>
+    <div class="pbr-title" *ngIf="room">
+      <h2>Produits de la salle : <strong>{{ room.name }}</strong></h2>
+      <span class="pbr-subtitle" *ngIf="warehouse">Dépôt : {{ warehouse.name }}<span *ngIf="warehouse.city"> · {{ warehouse.city }}</span></span>
+    </div>
+    <div class="pbr-title" *ngIf="!room && !isLoading">
+      <h2>Produits par salle</h2>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="error-msg" *ngIf="errorMessage">{{ errorMessage }}</div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Chargement...</span>
+  </div>
+
+  <!-- Products Table -->
+  <div class="table-card" *ngIf="!isLoading">
+    <div class="empty-state" *ngIf="products.length === 0">
+      <p>Aucun produit dans cette salle.</p>
+    </div>
+    <div class="table-wrap" *ngIf="products.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Référence</th>
+            <th>Catégorie</th>
+            <th>Emplacement</th>
+            <th>Stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of products">
+            <td>
+              <span class="product-link" (click)="manageProductStocks(p)">{{ p.title }}</span>
+            </td>
+            <td><span class="ref-code">{{ p.reference }}</span></td>
+            <td>{{ p.category?.title || '-' }}</td>
+            <td>
+              <span class="loc-badge">
+                {{ warehouse?.name || '' }}, {{ room?.name || '' }}, {{ p.location_code || '-' }}
+              </span>
+            </td>
+            <td><span class="stock-badge" [ngClass]="p.stock_quantity <= 0 ? 'rupture' : (p.seuil_min && p.stock_quantity <= p.seuil_min ? 'faible' : 'ok')">{{ p.stock_quantity }}</span></td>
+            <td>
+              <button class="btn-stocks" (click)="manageProductStocks(p)" title="Voir les stocks">📊 Stocks</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

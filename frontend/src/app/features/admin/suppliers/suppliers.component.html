@@ -1,0 +1,612 @@
+<div class="suppliers-container">
+    <div class="header">
+        <h1>Gestion des Fournisseurs</h1>
+        <div class="header-actions">
+            <div class="view-toggle-main">
+                <button class="view-btn-main" [class.active]="viewMode === 'grid'" (click)="setViewMode('grid')"
+                    title="Vue grille">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7" />
+                        <rect x="14" y="3" width="7" height="7" />
+                        <rect x="3" y="14" width="7" height="7" />
+                        <rect x="14" y="14" width="7" height="7" />
+                    </svg>
+                </button>
+                <button class="view-btn-main" [class.active]="viewMode === 'list'" (click)="setViewMode('list')"
+                    title="Vue liste">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <circle cx="4" cy="6" r="1" />
+                        <circle cx="4" cy="12" r="1" />
+                        <circle cx="4" cy="18" r="1" />
+                    </svg>
+                </button>
+            </div>
+            <button class="btn primary" (click)="openAddModal()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19" />
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Nouveau Fournisseur
+            </button>
+        </div>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="search-bar">
+        <div class="search-row">
+            <div class="search-wrapper">
+                <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input type="text" [(ngModel)]="searchQuery" (input)="onSearch()"
+                    placeholder="Rechercher un fournisseur par nom, téléphone ou email..." class="search-input" />
+                <button class="search-clear" *ngIf="searchQuery" (click)="clearSearch()">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="search-results-count" *ngIf="searchQuery">
+                {{ filteredSuppliers.length }} résultat(s) trouvé(s)
+            </div>
+        </div>
+
+        <div class="messages">
+            <div class="success-msg" *ngIf="successMessage">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12" />
+                </svg>
+                {{ successMessage }}
+            </div>
+            <div class="error-msg" *ngIf="errorMessage">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                {{ errorMessage }}
+            </div>
+        </div>
+
+        <div class="loading-state" *ngIf="isLoading">
+            <div class="spinner"></div>
+            <p>Chargement des fournisseurs...</p>
+        </div>
+
+        <div class="suppliers-grid" *ngIf="!isLoading && viewMode === 'grid'">
+            <div class="supplier-card" *ngFor="let supplier of filteredSuppliers">
+                <div class="product-count" *ngIf="supplier.products_count">
+                    {{ supplier.products_count }} produit{{ supplier.products_count > 1 ? 's' : '' }}
+                </div>
+                <div class="supplier-image">
+                    <img [src]="supplier.image_path ? 'http://localhost:8000/storage/' + supplier.image_path : 'assets/images/placeholder-supplier.png'"
+                        [alt]="supplier.name">
+                </div>
+                <div class="supplier-info">
+                    <h3>{{ supplier.name }}</h3>
+                    <p class="supplier-contact" *ngIf="supplier.phone">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                        </svg>
+                        {{ supplier.phone }}
+                    </p>
+                    <p class="supplier-contact" *ngIf="supplier.email">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                        </svg>
+                        {{ supplier.email }}
+                    </p>
+                    <div class="supplier-notes" *ngIf="supplier.notes">
+                        <p>{{ supplier.notes }}</p>
+                    </div>
+                </div>
+                <div class="card-actions">
+                    <button class="btn secondary sm" (click)="viewProducts(supplier)" title="Voir les produits">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path
+                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                        </svg>
+                        Produits
+                    </button>
+                    <button class="btn secondary sm" (click)="openContacts(supplier)" title="Gérer les contacts">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        Contacts
+                    </button>
+                    <button class="btn-icon circle edit" (click)="openEditModal(supplier)" title="Modifier">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                    </button>
+                    <button class="btn-icon circle danger" (click)="deleteSupplier(supplier.id)" title="Supprimer">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                            <line x1="10" y1="11" x2="10" y2="17" />
+                            <line x1="14" y1="11" x2="14" y2="17" />
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <div class="empty-state" *ngIf="filteredSuppliers.length === 0">
+                <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+                <p>{{ searchQuery ? 'Aucun fournisseur trouvé pour cette recherche' : 'Aucun fournisseur trouvé' }}</p>
+            </div>
+        </div>
+
+        <!-- Vue Liste (Tableau) -->
+        <div class="suppliers-list-container" *ngIf="!isLoading && viewMode === 'list'">
+            <div class="list-empty-state" *ngIf="filteredSuppliers.length === 0">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="1" y="3" width="15" height="13" />
+                    <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                    <circle cx="5.5" cy="18.5" r="2.5" />
+                    <circle cx="18.5" cy="18.5" r="2.5" />
+                </svg>
+                <p>{{ searchQuery ? 'Aucun fournisseur trouvé pour cette recherche' : 'Aucun fournisseur trouvé' }}</p>
+            </div>
+
+            <div class="table-responsive" *ngIf="filteredSuppliers.length > 0">
+                <table class="suppliers-table">
+                    <thead>
+                        <tr>
+                            <th class="col-avatar"></th>
+                            <th class="col-name">Fournisseur</th>
+                            <th class="col-contact">Contact</th>
+                            <th class="col-notes">Notes</th>
+                            <th class="col-products">Stock</th>
+                            <th class="col-actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let supplier of filteredSuppliers">
+                            <td class="col-avatar">
+                                <div class="table-avatar">
+                                    <img [src]="supplier.image_path ? 'http://localhost:8000/storage/' + supplier.image_path : 'assets/images/placeholder-supplier.png'"
+                                        [alt]="supplier.name">
+                                </div>
+                            </td>
+                            <td class="col-name">
+                                <div class="supplier-main-info">
+                                    <span class="supplier-table-name">{{ supplier.name }}</span>
+                                </div>
+                            </td>
+                            <td class="col-contact">
+                                <div class="contact-chips">
+                                    <span class="contact-chip" *ngIf="supplier.phone">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                        </svg>
+                                        {{ supplier.phone }}
+                                    </span>
+                                    <span class="contact-chip" *ngIf="supplier.email">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                            <polyline points="22,6 12,13 2,6" />
+                                        </svg>
+                                        {{ supplier.email }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td class="col-notes">
+                                <span class="table-notes-text" [title]="supplier.notes" *ngIf="supplier.notes">{{
+                                    supplier.notes }}</span>
+                                <span class="no-notes" *ngIf="!supplier.notes">—</span>
+                            </td>
+                            <td class="col-products">
+                                <span class="table-product-badge" *ngIf="supplier.products_count">
+                                    {{ supplier.products_count }} produit{{ supplier.products_count > 1 ? 's' : '' }}
+                                </span>
+                                <span class="no-products" *ngIf="!supplier.products_count">0</span>
+                            </td>
+                            <td class="col-actions">
+                                <div class="table-actions">
+                                    <button class="btn secondary sm" (click)="viewProducts(supplier)"
+                                        title="Voir les produits">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path
+                                                d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                                            <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                                            <line x1="12" y1="22.08" x2="12" y2="12" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn secondary sm" (click)="openContacts(supplier)"
+                                        title="Gérer les contacts">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                            <circle cx="12" cy="7" r="4" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-icon circle edit sm" (click)="openEditModal(supplier)"
+                                        title="Modifier">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                                        </svg>
+                                    </button>
+                                    <button class="btn-icon circle danger sm" (click)="deleteSupplier(supplier.id)"
+                                        title="Supprimer">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                            stroke="currentColor" stroke-width="2">
+                                            <polyline points="3 6 5 6 21 6" />
+                                            <path
+                                                d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                                            <line x1="10" y1="11" x2="10" y2="17" />
+                                            <line x1="14" y1="11" x2="14" y2="17" />
+                                        </svg>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Associated Products & Reviews -->
+<div class="modal-backdrop" *ngIf="showProductsModal" (click)="closeProductsModal()">
+    <div class="modal-box details-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Détails: {{ selectedSupplier?.name }}</h2>
+            <button class="modal-close" (click)="closeProductsModal()">✕</button>
+        </div>
+        <div class="modal-content scrollable-content">
+            <!-- Tabs or Sections -->
+            <div class="detail-section">
+                <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path
+                            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                    </svg>
+                    Produits proposés (Catalogue)
+                </h3>
+                <div class="products-list-detailed" *ngIf="selectedSupplier?.products?.length; else noProducts">
+                    <div class="product-item-mini" *ngFor="let p of selectedSupplier?.products">
+                        <div class="p-info">
+                            <strong>{{ p.title }}</strong>
+                            <span>Réf: {{ p.reference }}</span>
+                        </div>
+                    </div>
+                </div>
+                <ng-template #noProducts>
+                    <div class="empty-mini">Aucun produit associé.</div>
+                </ng-template>
+            </div>
+
+            <div class="detail-section">
+                <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
+                    Produits effectivement fournis (Stock)
+                </h3>
+                <div class="supply-history-list" *ngIf="selectedSupplier?.supply_history?.length; else noSupplyHistory">
+                    <div class="supply-history-item" *ngFor="let item of selectedSupplier?.supply_history">
+                        <div class="p-info">
+                            <strong>{{ item.product?.title || 'Produit inconnu' }}</strong>
+                            <span>Réf: {{ item.product?.reference || '—' }}</span>
+                        </div>
+                        <div class="p-quantity">
+                            <span class="qty-label">Total fourni:</span>
+                            <strong>{{ item.total_quantity }}</strong>
+                        </div>
+                    </div>
+                </div>
+                <ng-template #noSupplyHistory>
+                    <div class="empty-mini">Aucune fourniture enregistrée pour le moment.</div>
+                </ng-template>
+            </div>
+
+            <div class="detail-section reviews-section">
+                <h3>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                    </svg>
+                    Avis et Notes
+                </h3>
+
+                <!-- Add Review Form -->
+                <div class="add-review-form">
+                    <textarea [(ngModel)]="newReviewContent" placeholder="Écrire un avis..." class="form-control"
+                        rows="2"></textarea>
+                    <div class="review-controls">
+                        <select [(ngModel)]="newReviewRating" class="form-control rating-select">
+                            <option [ngValue]="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
+                            <option [ngValue]="3">⭐⭐⭐ (3)</option>
+                            <option [ngValue]="2">⭐⭐ (2)</option>
+                            <option [ngValue]="1">⭐ (1)</option>
+                        </select>
+                        <button class="btn primary sm" (click)="submitReview()"
+                            [disabled]="isLoading || !newReviewContent.trim()">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2">
+                                <line x1="22" y1="2" x2="11" y2="13" />
+                                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+                            </svg>
+                            Publier
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reviews List -->
+                <div class="reviews-list" *ngIf="selectedSupplier?.reviews?.length; else noReviews">
+                    <div class="review-item" *ngFor="let rev of selectedSupplier?.reviews">
+                        <div class="review-header">
+                            <span class="user-name">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                                    <circle cx="12" cy="7" r="4" />
+                                </svg>
+                                {{ rev.user?.name || 'Utilisateur' }}
+                            </span>
+                            <span class="review-date">{{ rev.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                        </div>
+                        <div class="review-rating" *ngIf="rev.rating">
+                            <span class="stars">{{ '⭐'.repeat(rev.rating) }}</span>
+                        </div>
+                        <p class="review-content">{{ rev.content }}</p>
+                    </div>
+                </div>
+                <ng-template #noReviews>
+                    <div class="empty-mini">Aucun avis pour le moment.</div>
+                </ng-template>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn primary" (click)="closeProductsModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Contacts List -->
+<div class="modal-backdrop" *ngIf="showContactsModal" (click)="closeContactsModal()">
+    <div class="modal-box details-modal" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>Contacts: {{ contactsSupplierName }}</h2>
+            <button class="modal-close" (click)="closeContactsModal()">✖</button>
+        </div>
+        <div class="modal-content scrollable-content">
+            <div class="detail-section contacts-section">
+                <div class="section-header-row">
+                    <h3>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                            <circle cx="12" cy="7" r="4" />
+                        </svg>
+                        Liste des contacts
+                    </h3>
+                    <button class="btn primary sm" (click)="openAddContactModal()">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Ajouter contact
+                    </button>
+                </div>
+
+                <div class="mini-loading" *ngIf="isContactsLoading">
+                    <div class="mini-spinner"></div>
+                    <span>Chargement des contacts...</span>
+                </div>
+
+                <div class="contacts-grid" *ngIf="!isContactsLoading && supplierContacts.length; else noContactsList">
+                    <div class="contact-card" *ngFor="let c of supplierContacts">
+                        <div class="contact-main">
+                            <div class="contact-title">
+                                <strong>{{ c.name }}</strong>
+                                <span class="contact-role" *ngIf="c.role">• {{ c.role }}</span>
+                            </div>
+                            <div class="contact-lines">
+                                <span class="contact-line" *ngIf="c.phone">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                                    </svg>
+                                    {{ c.phone }}
+                                </span>
+                                <span class="contact-line" *ngIf="c.email">
+                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2">
+                                        <path
+                                            d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                        <polyline points="22,6 12,13 2,6" />
+                                    </svg>
+                                    {{ c.email }}
+                                </span>
+                            </div>
+                            <div class="contact-notes" *ngIf="c.notes">
+                                {{ c.notes }}
+                            </div>
+                        </div>
+                        <div class="contact-actions">
+                            <button class="btn secondary sm" (click)="openEditContactModal(c)">Modifier</button>
+                            <button class="btn danger sm" (click)="deleteContact(c.id)">Supprimer</button>
+                        </div>
+                    </div>
+                </div>
+                <ng-template #noContactsList>
+                    <div class="empty-mini">Aucun contact enregistré.</div>
+                </ng-template>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn primary" (click)="closeContactsModal()">Fermer</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Contact Add/Edit -->
+<div class="modal-backdrop" *ngIf="showContactModal" (click)="closeContactModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>{{ editingContactId ? 'Modifier' : 'Ajouter' }} un contact</h2>
+            <button class="modal-close" (click)="closeContactModal()">✖</button>
+        </div>
+        <div class="modal-content">
+            <form (ngSubmit)="saveContact()">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nom du contact *</label>
+                        <input type="text" [(ngModel)]="contactForm.name" name="contact_name" class="form-control"
+                            placeholder="Ex: Ahmed Ben Salah" required />
+                    </div>
+                    <div class="form-group">
+                        <label>Poste / Rôle</label>
+                        <input type="text" [(ngModel)]="contactForm.role" name="contact_role" class="form-control"
+                            placeholder="Ex: Responsable achats" />
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="tel" [(ngModel)]="contactForm.phone" name="contact_phone" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" [(ngModel)]="contactForm.email" name="contact_email" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea [(ngModel)]="contactForm.notes" name="contact_notes" class="form-control"
+                        rows="3"></textarea>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" (click)="closeContactModal()">Annuler</button>
+                    <button type="submit" class="btn primary" [disabled]="isLoading">
+                        <span class="btn-spinner" *ngIf="isLoading"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Add/Edit -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h2>{{ editingSupplierId ? 'Modifier' : 'Ajouter' }} un Fournisseur</h2>
+            <button class="modal-close" (click)="closeModal()">✕</button>
+        </div>
+
+        <div class="modal-content">
+            <form (ngSubmit)="saveSupplier()">
+                <div class="form-group">
+                    <label>Nom du fournisseur *</label>
+                    <input type="text" [(ngModel)]="supplierForm.name" name="name" class="form-control"
+                        placeholder="Ex: ABC Logistique" required />
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="tel" [(ngModel)]="supplierForm.phone" name="phone" class="form-control" />
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" [(ngModel)]="supplierForm.email" name="email" class="form-control" />
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Notes / Informations supplémentaires</label>
+                    <textarea [(ngModel)]="supplierForm.notes" name="notes" class="form-control" rows="3"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Produits fournis</label>
+                    <div class="products-selection">
+                        <div class="product-checkbox" *ngFor="let product of availableProducts">
+                            <input type="checkbox" [id]="'product-' + product.id" [(ngModel)]="product.selected"
+                                (change)="onProductToggle(product)" name="products" class="form-check-input" />
+                            <label [for]="'product-' + product.id" class="form-check-label">
+                                {{ product.title }} (Réf: {{ product.reference }})
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Image du fournisseur</label>
+                    <div class="image-upload-wrapper">
+                        <div class="image-preview" *ngIf="photoPreview">
+                            <img [src]="photoPreview" alt="Preview">
+                        </div>
+                        <div class="upload-controls">
+                            <input type="file" (change)="onFileChange($event)" accept="image/*" id="supplier-photo"
+                                class="hidden-input" />
+                            <label for="supplier-photo" class="btn secondary small">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                    stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="17 8 12 3 7 8" />
+                                    <line x1="12" y1="3" x2="12" y2="15" />
+                                </svg>
+                                {{ photoPreview ? 'Changer l\'image' : 'Choisir une image' }}
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" (click)="closeModal()">Annuler</button>
+                    <button type="submit" class="btn primary" [disabled]="isLoading">
+                        <span class="btn-spinner" *ngIf="isLoading"></span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" *ngIf="!isLoading">
+                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+                            <polyline points="17 21 17 13 7 13 7 21" />
+                            <polyline points="7 3 7 8 15 8" />
+                        </svg>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,444 @@
+<div class="warehouses-container">
+  <!-- Error and Success Messages -->
+  <div class="error-msg" *ngIf="errorMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+    {{ errorMessage }}
+  </div>
+
+  <div class="success-msg" *ngIf="successMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    {{ successMessage }}
+  </div>
+
+  <!-- Main 3-Column Layout -->
+  <div class="layout-3columns">
+
+    <!-- Column 1: Warehouses -->
+    <div class="column warehouses-column">
+      <div class="column-header">
+        <h2>Dépôts</h2>
+        <button class="btn primary small" (click)="openAddWarehouseModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Ajouter
+        </button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" [(ngModel)]="q" (keyup.enter)="search()" placeholder="Rechercher..." class="search-input" />
+        <button class="btn mini" (click)="search()">Chercher</button>
+      </div>
+
+      <div class="loading-state" *ngIf="isLoading">
+        <div class="spinner"></div>
+      </div>
+
+      <div class="items-list" *ngIf="!isLoading">
+        <div *ngFor="let warehouse of warehouses" class="list-item"
+          [class.active]="selectedWarehouse?.id === warehouse.id" (click)="selectWarehouse(warehouse)">
+          <div class="item-title">{{ warehouse.name }}</div>
+          <div class="warehouse-info">
+            <div class="warehouse-location-info">
+              <span class="warehouse-city"><i class="fas fa-map-marker-alt"></i> {{ warehouse.governorate || 'N/A' }},
+                {{ warehouse.city || 'N/A' }}</span>
+              <span class="warehouse-phone"><i class="fas fa-phone"></i> {{ warehouse.phone || 'N/A' }}</span>
+            </div>
+            <button class="btn-map-consult" (click)="openConsultMap(warehouse); $event.stopPropagation()"
+              title="Voir sur la carte">
+              <i class="fas fa-map-marked-alt"></i> Localisation
+            </button>
+          </div>
+          <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini" title="Voir les produits" (click)="viewWarehouseProducts(warehouse)">📦</button>
+            <button class="btn mini" (click)="openEditWarehouseModal(warehouse)">✎</button>
+            <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)">✕</button>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="warehouses.length === 0">
+          <p>Aucun dépôt</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Column 2: Rooms -->
+    <div class="column rooms-column">
+      <div class="column-header">
+        <h2 *ngIf="selectedWarehouse">
+          Salles
+          <span class="sub-title">{{ selectedWarehouse.name }}</span>
+        </h2>
+        <h2 *ngIf="!selectedWarehouse" class="disabled">Salles</h2>
+        <button class="btn primary small" (click)="openAddRoomModal()" [disabled]="!selectedWarehouse">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Ajouter
+        </button>
+      </div>
+
+      <div class="search-box">
+        <input type="text" [(ngModel)]="roomSearch" (keyup.enter)="loadRooms()" placeholder="Rechercher..."
+          class="search-input" [disabled]="!selectedWarehouse" />
+        <button class="btn mini" (click)="loadRooms()" [disabled]="!selectedWarehouse">Chercher</button>
+      </div>
+
+      <div class="items-list" *ngIf="selectedWarehouse">
+        <div *ngFor="let room of rooms" class="list-item" [class.active]="selectedRoom?.id === room.id"
+          (click)="selectRoom(room)">
+          <div class="item-title">{{ room.name }}</div>
+          <div class="item-meta">{{ room.type || 'Standard' }}</div>
+          <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini" title="Voir les produits" (click)="viewRoomProducts(room)">📦</button>
+            <button class="btn mini" (click)="openEditRoomModal(room)">✎</button>
+            <button class="btn mini danger" (click)="deleteRoom(room.id)">✕</button>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="rooms.length === 0">
+          <p>Aucune salle</p>
+        </div>
+      </div>
+
+      <div class="empty-col" *ngIf="!selectedWarehouse">
+        <p>Sélectionnez un dépôt</p>
+      </div>
+    </div>
+
+    <!-- Column 3: Locations / Armoires -->
+    <div class="column locations-column">
+      <div class="column-header">
+        <div>
+          <h2 *ngIf="selectedRoom">
+            {{ roomContentTab === 'locations' ? 'Emplacements' : 'Armoires' }}
+            <span class="sub-title">{{ selectedRoom.name }}</span>
+          </h2>
+          <h2 *ngIf="!selectedRoom" class="disabled">Emplacements / Armoires</h2>
+          <div class="tabs" *ngIf="selectedRoom">
+            <button class="tab" [class.active]="roomContentTab === 'locations'" (click)="roomContentTab = 'locations'">Emplacements</button>
+            <button class="tab" [class.active]="roomContentTab === 'cabinets'" (click)="roomContentTab = 'cabinets'">Armoires</button>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <button class="btn primary small" (click)="openAddLocationModal()" [disabled]="!selectedRoom || roomContentTab !== 'locations'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Ajouter emplacement
+          </button>
+          <button class="btn primary small" (click)="openAddCabinetModal()" [disabled]="!selectedRoom || roomContentTab !== 'cabinets'">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Ajouter armoire
+          </button>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <input *ngIf="roomContentTab === 'locations'" type="text" [(ngModel)]="locationSearch" (keyup.enter)="loadLocations()"
+          placeholder="Rechercher..." class="search-input" [disabled]="!selectedRoom" />
+        <input *ngIf="roomContentTab === 'cabinets'" type="text" [(ngModel)]="cabinetsSearch" (keyup.enter)="loadCabinets()"
+          placeholder="Rechercher..." class="search-input" [disabled]="!selectedRoom" />
+        <button class="btn mini" (click)="roomContentTab === 'locations' ? loadLocations() : loadCabinets()" [disabled]="!selectedRoom">Chercher</button>
+      </div>
+
+      <div class="items-list" *ngIf="selectedRoom">
+        <ng-container *ngIf="roomContentTab === 'locations'">
+        <div class="list-item" *ngFor="let location of locations">
+          <div class="item-title">{{ location.code }}</div>
+          <div class="item-meta">{{ location.name }}</div>
+          <div class="item-small">Capacité: {{ location.capacity_units || '—' }}</div>
+          <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini" (click)="openEditLocationModal(location)">✎</button>
+            <button class="btn mini danger" (click)="deleteLocation(location.id)">✕</button>
+          </div>
+        </div>
+
+        <div class="empty-state" *ngIf="locations.length === 0">
+          <p>Aucun emplacement</p>
+        </div>
+        </ng-container>
+
+        <ng-container *ngIf="roomContentTab === 'cabinets'">
+          <div class="list-item" *ngFor="let cabinet of cabinets">
+            <div class="item-title">{{ cabinet.name }}</div>
+            <div class="item-meta" *ngIf="cabinet.code">{{ cabinet.code }}</div>
+            <div class="item-actions" (click)="$event.stopPropagation()">
+              <button class="btn mini" (click)="openEditCabinetModal(cabinet)">âœŽ</button>
+              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">âœ•</button>
+            </div>
+          </div>
+
+          <div class="empty-state" *ngIf="cabinets.length === 0">
+            <p>Aucune armoire</p>
+          </div>
+        </ng-container>
+      </div>
+
+      <div class="empty-col" *ngIf="!selectedRoom">
+        <p>Sélectionnez une salle</p>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ═══ Warehouse Modal ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showWarehouseModal" (click)="closeWarehouseModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ editingWarehouseId ? 'Modifier dépôt' : 'Ajouter dépôt' }}</h2>
+      <button class="modal-close" (click)="closeWarehouseModal()">✕</button>
+    </div>
+
+    <div class="modal-content">
+      <form (ngSubmit)="saveWarehouse()">
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" [(ngModel)]="warehouseForm.name" name="name" class="form-control" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Gouvernorat</label>
+            <select [(ngModel)]="warehouseForm.governorate" name="governorate" class="form-control"
+              (change)="onGovernorateChange()">
+              <option value="">Sélectionner un gouvernorat</option>
+              <option *ngFor="let gov of governorates" [value]="gov">{{ gov }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Ville</label>
+            <select [(ngModel)]="warehouseForm.city" name="city" class="form-control"
+              [disabled]="!warehouseForm.governorate">
+              <option value="">Sélectionner une ville</option>
+              <option *ngFor="let city of filteredCities" [value]="city">{{ city }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Emplacement sur la carte (Glissez le marqueur)</label>
+          <div id="warehouseMap"
+            style="height: 300px; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 10px;"></div>
+          <div class="geo-inputs" style="display: flex; gap: 10px;">
+            <div style="flex: 1;">
+              <label style="font-size: 11px;">Latitude</label>
+              <input type="number" [(ngModel)]="warehouseForm.latitude" name="latitude" class="form-control" readonly>
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px;">Longitude</label>
+              <input type="number" [(ngModel)]="warehouseForm.longitude" name="longitude" class="form-control" readonly>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Adresse détaillée</label>
+          <textarea [(ngModel)]="warehouseForm.address" name="address" class="form-control" rows="2"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input type="tel" [(ngModel)]="warehouseForm.phone" name="phone" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="warehouseForm.description" name="description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Statut</label>
+          <select [(ngModel)]="warehouseForm.status" name="status" class="form-control">
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" (click)="closeWarehouseModal()">Annuler</button>
+          <button type="submit" class="btn primary">{{ editingWarehouseId ? 'Mettre à jour' : 'Créer' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Room Modal ════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showRoomModal" (click)="closeRoomModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ editingRoomId ? 'Modifier salle' : 'Ajouter salle' }}</h2>
+      <button class="modal-close" (click)="closeRoomModal()">✕</button>
+    </div>
+
+    <div class="modal-content">
+      <form (ngSubmit)="saveRoom()">
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" [(ngModel)]="roomForm.name" name="name" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Type</label>
+          <input type="text" [(ngModel)]="roomForm.type" name="type" placeholder="Ex: Salle frigorifique"
+            class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Capacité (m³)</label>
+          <input type="number" [(ngModel)]="roomForm.capacity_volume" name="capacity_volume" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="roomForm.description" name="description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Statut</label>
+          <select [(ngModel)]="roomForm.status" name="status" class="form-control">
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" (click)="closeRoomModal()">Annuler</button>
+          <button type="submit" class="btn primary">{{ editingRoomId ? 'Mettre à jour' : 'Créer' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Location Modal ════════════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showLocationModal" (click)="closeLocationModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ editingLocationId ? 'Modifier emplacement' : 'Ajouter emplacement' }}</h2>
+      <button class="modal-close" (click)="closeLocationModal()">✕</button>
+    </div>
+
+    <div class="modal-content">
+      <form (ngSubmit)="saveLocation()">
+        <div class="form-group">
+          <label>Code *</label>
+          <input type="text" [(ngModel)]="locationForm.code" name="code" placeholder="Ex: A1-1" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" [(ngModel)]="locationForm.name" name="name" placeholder="Ex: Etagère 1"
+            class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Type</label>
+          <input type="text" [(ngModel)]="locationForm.type" name="type" placeholder="Ex: Etagère, Bac, Tiroir"
+            class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Capacité (unités)</label>
+          <input type="number" [(ngModel)]="locationForm.capacity_units" name="capacity_units" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="locationForm.description" name="description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Statut</label>
+          <select [(ngModel)]="locationForm.status" name="status" class="form-control">
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" (click)="closeLocationModal()">Annuler</button>
+          <button type="submit" class="btn primary">{{ editingLocationId ? 'Mettre à jour' : 'Créer' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Cabinet (Armoire) Modal ═════════════════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showCabinetModal" (click)="closeCabinetModal()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ editingCabinetId ? 'Modifier armoire' : 'Ajouter armoire' }}</h2>
+      <button class="modal-close" (click)="closeCabinetModal()">âœ•</button>
+    </div>
+
+    <div class="modal-content">
+      <form (ngSubmit)="saveCabinet()">
+        <div class="form-group">
+          <label>Nom *</label>
+          <input type="text" [(ngModel)]="cabinetForm.name" name="cabinet_name" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Code</label>
+          <input type="text" [(ngModel)]="cabinetForm.code" name="cabinet_code" placeholder="Ex: ARM-01" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="cabinetForm.description" name="cabinet_description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Statut</label>
+          <select [(ngModel)]="cabinetForm.status" name="cabinet_status" class="form-control">
+            <option value="active">Actif</option>
+            <option value="inactive">Inactif</option>
+          </select>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" (click)="closeCabinetModal()">Annuler</button>
+          <button type="submit" class="btn primary">{{ editingCabinetId ? 'Mettre Ã  jour' : 'CrÃ©er' }}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Consult Map -->
+<div class="modal-overlay" *ngIf="showMapConsult">
+  <div class="modal-container map-consult-modal">
+    <div class="modal-header">
+      <h3>Carte : {{ viewingMapWarehouse?.name }}</h3>
+      <button class="btn-close" (click)="closeMapConsult()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <p class="map-location-text">
+        <i class="fas fa-map-marker-alt"></i> {{ viewingMapWarehouse?.governorate }}, {{ viewingMapWarehouse?.address
+        }}
+      </p>
+      <div id="consultMap" style="height: 450px; border-radius: 12px; border: 1px solid #ddd;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" (click)="closeMapConsult()">Fermer</button>
+    </div>
+  </div>
+</div>

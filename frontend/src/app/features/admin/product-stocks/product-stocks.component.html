@@ -1,0 +1,259 @@
+<div class="product-stocks-container">
+  <div class="page-header">
+    <h1 class="page-title" *ngIf="product">
+      Produit: {{ product.title }}
+      <span class="product-ref">({{ product.reference }})</span>
+    </h1>
+  </div>
+
+  <!-- Messages -->
+  <div class="error-msg" *ngIf="errorMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="8" x2="12" y2="12" />
+      <line x1="12" y1="16" x2="12.01" y2="16" />
+    </svg>
+    {{ errorMessage }}
+  </div>
+
+  <div class="success-msg" *ngIf="successMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    {{ successMessage }}
+  </div>
+
+  <div class="stocks-layout">
+    <aside class="side-menu">
+      <div class="side-title">Navigation</div>
+      <button class="side-item" [class.active]="activeSection === 'details'" (click)="setSection('details')">
+        Détails
+      </button>
+      <button class="side-item" [class.active]="activeSection === 'stock'" (click)="setSection('stock')">
+        Stock
+      </button>
+      <button class="side-item" [class.active]="activeSection === 'documents'" (click)="setSection('documents')">
+        Documents
+      </button>
+    </aside>
+
+    <section class="content">
+      <!-- DETAILS -->
+      <ng-container *ngIf="activeSection === 'details'">
+        <div class="status-card" [class]="getStockStatusClass()">
+          <div class="status-icon">
+            {{ totalStock.is_in_stock ? '📦' : '⚠️' }}
+          </div>
+          <div class="status-info">
+            <div class="status-label">État du stock</div>
+            <div class="status-value">{{ getStockStatus() }}</div>
+          </div>
+        </div>
+
+        <div class="card detail-hero" *ngIf="product">
+          <div class="hero-left">
+            <div class="photo-panel">
+              <img class="main-photo" [src]="getSelectedPhotoUrl()" alt="Photo produit" />
+              <div class="thumbs" *ngIf="getProductPhotos().length > 1">
+                <button type="button" class="thumb"
+                  *ngFor="let ph of getProductPhotos(); let i = index"
+                  [class.active]="i === selectedPhotoIndex"
+                  (click)="selectPhoto(i)">
+                  <img [src]="getPhotoUrl(ph.path)" alt="thumb" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-right">
+            <div class="hero-top">
+              <div class="title-wrap">
+                <div class="chips">
+                  <span class="chip chip-primary">{{ product.category?.title || 'Sans catégorie' }}</span>
+                  <span class="chip" *ngIf="product.status">{{ product.status }}</span>
+                  <span class="chip ghost" *ngIf="product.reference">Ref. {{ product.reference }}</span>
+                </div>
+                <h2 class="hero-title">{{ product.title || 'Produit sans titre' }}</h2>
+                <p class="hero-sub" *ngIf="product.short_description">{{ product.short_description }}</p>
+              </div>
+              <div class="hero-stats">
+                <div class="stat">
+                  <span class="stat-label">Stock total</span>
+                  <span class="stat-value">{{ totalStock.total_quantity ?? 0 }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Seuil min</span>
+                  <span class="stat-value">{{ product.seuil_min ?? '—' }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Unité</span>
+                  <span class="stat-value">{{ unitLabel() }}</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-label">Prix achat</span>
+                  <span class="stat-value">{{ product.purchase_price ?? '—' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card specs-card" *ngIf="product">
+          <div class="card-header">
+            <h2>Fiche technique</h2>
+          </div>
+          <div class="specs-grid">
+            <div class="spec">
+              <span class="k">Fabricant</span>
+              <span class="v">{{ product.fabricant || '—' }}</span>
+            </div>
+            <div class="spec">
+              <span class="k">Marque</span>
+              <span class="v">{{ product.marque || '—' }}</span>
+            </div>
+            <div class="spec">
+              <span class="k">Modèle</span>
+              <span class="v">{{ product.model || '—' }}</span>
+            </div>
+            <div class="spec">
+              <span class="k">N° Série</span>
+              <span class="v">{{ product.num_serie || '—' }}</span>
+            </div>
+            <div class="spec">
+              <span class="k">N° Inventaire</span>
+              <span class="v">{{ product.num_inventaire || '—' }}</span>
+            </div>
+            <div class="spec">
+              <span class="k">Catégorie</span>
+              <span class="v">{{ product.category?.title || '—' }}</span>
+            </div>
+          </div>
+
+          <div class="detail-block">
+            <div class="block-title">Description courte</div>
+            <div class="block-body">{{ product.short_description || 'â€”' }}</div>
+          </div>
+
+          <div class="detail-block" *ngIf="product.description">
+            <div class="block-title">Description</div>
+            <div class="block-body">{{ product.description }}</div>
+          </div>
+
+          <div class="detail-block" *ngIf="product.commentaire">
+            <div class="block-title">Commentaire</div>
+            <div class="block-body">{{ product.commentaire }}</div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- STOCK -->
+      <ng-container *ngIf="activeSection === 'stock'">
+        <div class="card" *ngIf="!isLoading && warehousesAvailability.length > 0">
+          <div class="card-header">
+            <h2>Disponibilité par Dépôt</h2>
+            <span class="hint">Cliquez sur un dépôt pour voir les détails</span>
+          </div>
+
+          <div class="depot-accordion">
+            <div *ngFor="let wh of warehousesAvailability" class="depot-block">
+              <div class="depot-header" [class.in-stock]="wh.in_stock" [class.out-of-stock]="!wh.in_stock"
+                (click)="toggleDepot(wh)">
+                <div class="depot-left">
+                  <span class="depot-icon">{{ wh.in_stock ? '✅' : '❌' }}</span>
+                  <div class="depot-info">
+                    <div class="depot-name">{{ wh.warehouse_name }}</div>
+                    <div class="depot-city" *ngIf="wh.city">{{ wh.city }}</div>
+                  </div>
+                </div>
+                <div class="depot-right">
+                  <span class="availability-badge" [class.badge-ok]="wh.in_stock" [class.badge-rupture]="!wh.in_stock">
+                    {{ wh.in_stock ? 'En stock' : 'Hors stock' }}
+                  </span>
+                  <span class="depot-qty" *ngIf="wh.in_stock">{{ wh.quantity }} unités</span>
+                  <span class="depot-arrow" [class.open]="selectedWarehouseId === wh.warehouse_id">▼</span>
+                </div>
+              </div>
+
+              <div class="depot-details" *ngIf="selectedWarehouseId === wh.warehouse_id">
+                <div class="depot-actions">
+                  <button class="btn primary small" (click)="openAddStockModal(wh.warehouse_id); $event.stopPropagation()">
+                    + Ajouter stock ici
+                  </button>
+                </div>
+
+                <div *ngIf="getStocksForWarehouse(wh.warehouse_id).length === 0" class="depot-empty">
+                  Aucun stock détaillé pour ce dépôt.
+                </div>
+
+                <table class="stocks-table" *ngIf="getStocksForWarehouse(wh.warehouse_id).length > 0">
+                  <thead>
+                    <tr>
+                      <th>Salle</th>
+                      <th>Emplacement</th>
+                      <th>Fournisseur</th>
+                      <th class="quantity-col">Quantité</th>
+                      <th>Notes</th>
+                      <th class="actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let stock of getStocksForWarehouse(wh.warehouse_id)" class="stock-row">
+                      <td class="room">{{ stock.room }}</td>
+                      <td class="location">
+                        <span class="location-code">{{ stock.location_code }}</span>
+                        <span class="location-name">{{ stock.location_name }}</span>
+                      </td>
+                      <td class="supplier">{{ stock.supplier_name || '—' }}</td>
+                      <td class="quantity-col"><span class="qty-badge">{{ stock.quantity }}</span></td>
+                      <td class="notes">{{ stock.notes || '—' }}</td>
+                      <td class="actions">
+                        <button class="btn small" (click)="editStock(stock); $event.stopPropagation()">Modifier</button>
+                        <button class="btn danger small" (click)="deleteStock(stock.id); $event.stopPropagation()">Supprimer</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" *ngIf="!isLoading">
+          <div class="card-header">
+            <h2>Actions</h2>
+            <button class="btn primary" (click)="openAddStockModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Nouveau mouvement de stock
+            </button>
+          </div>
+
+          <div class="stock-summary" *ngIf="stocks.length > 0">
+            <div class="total-item">
+              <span class="label">Stock total disponible:</span>
+              <span class="value">{{ totalStock.total_quantity }} unités</span>
+            </div>
+            <div class="total-item">
+              <span class="label">Nombre d'emplacements:</span>
+              <span class="value">{{ stocks.length }}</span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- DOCUMENTS -->
+      <ng-container *ngIf="activeSection === 'documents'">
+        <div class="card">
+          <div class="card-header">
+            <h2>Documents</h2>
+          </div>
+          <div class="empty-docs">
+            <p>Section documents (factures, bons, images) à brancher à l’API.</p>
+          </div>
+        </div>
+      </ng-container>
+    </section>
+  </div>
+</div>

@@ -1,0 +1,61 @@
+<div class="workspace-shell">
+  <section class="hero-card">
+    <div class="hero-text">
+      <p class="hero-tag">Interface métier</p>
+      <h1>{{ config.title }}</h1>
+      <p>{{ config.description }}</p>
+    </div>
+    <div class="hero-actions">
+      <button type="button">Exporter</button>
+      <button type="button" class="ghost">Actualiser</button>
+    </div>
+  </section>
+
+  <section class="stats-grid">
+    <article class="stat-card" *ngFor="let stat of config.stats">
+      <p class="stat-label">{{ stat.label }}</p>
+      <h2>{{ stat.value }}</h2>
+      <p class="stat-trend">{{ stat.trend }}</p>
+    </article>
+  </section>
+
+  <section class="content-grid">
+    <article class="panel-card">
+      <h3>Actions recommandées</h3>
+      <ul>
+        <li *ngFor="let action of config.actions">{{ action }}</li>
+      </ul>
+    </article>
+
+    <article class="panel-card">
+      <h3>Derniers événements</h3>
+      <ul class="events">
+        <li *ngFor="let event of config.events">
+          <span class="event-dot" [ngClass]="levelClass(event.level)"></span>
+          <div>
+            <strong>{{ event.title }}</strong>
+            <p>{{ event.meta }}</p>
+          </div>
+        </li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="table-card">
+    <h3>Détails opérationnels</h3>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th *ngFor="let header of config.headers">{{ header }}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of config.rows">
+            <td *ngFor="let col of row">{{ col }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,78 @@
+<div class="units-page">
+  <div class="header">
+    <div>
+      <h1>Gérer les unités</h1>
+      <p>Créez et maintenez la liste des unités (pièce, kg, L...).</p>
+    </div>
+    <button class="btn primary" (click)="openAddModal()">+ Nouvelle unité</button>
+  </div>
+
+  <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+  <div class="alert success" *ngIf="successMessage">{{ successMessage }}</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Unités disponibles</span>
+      <span class="count">{{ units.length }} unité(s)</span>
+    </div>
+
+    <div class="empty" *ngIf="!isLoading && units.length === 0">
+      <p>Aucune unité pour le moment.</p>
+      <button class="btn primary" (click)="openAddModal()">Ajouter une unité</button>
+    </div>
+
+    <div class="table-wrap" *ngIf="!isLoading && units.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Code</th>
+            <th>Description</th>
+            <th class="actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of units">
+            <td>{{ u.name }}</td>
+            <td>{{ u.code || '—' }}</td>
+            <td>{{ u.description || '—' }}</td>
+            <td class="actions">
+              <button class="btn ghost" (click)="openEditModal(u)">Modifier</button>
+              <button class="btn danger" (click)="remove(u.id)">Supprimer</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="loading" *ngIf="isLoading">
+      <div class="spinner"></div><span>Chargement...</span>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>{{ editingId ? 'Modifier une unité' : 'Nouvelle unité' }}</h2>
+      <button class="close" (click)="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <label>Nom *</label>
+      <input [(ngModel)]="form.name" placeholder="Ex: Pièce" />
+
+      <label>Code</label>
+      <input [(ngModel)]="form.code" placeholder="Ex: pc, kg, L" />
+
+      <label>Description</label>
+      <textarea [(ngModel)]="form.description" rows="3" placeholder="Notes facultatives"></textarea>
+
+      <div class="alert error" *ngIf="errorMessage">{{ errorMessage }}</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn ghost" (click)="closeModal()">Annuler</button>
+      <button class="btn primary" (click)="save()">{{ editingId ? 'Mettre à jour' : 'Créer' }}</button>
+    </div>
+  </div>
+</div>

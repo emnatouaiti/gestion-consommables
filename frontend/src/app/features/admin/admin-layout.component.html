@@ -1,0 +1,96 @@
+<div class="layout-root">
+  <aside class="sidebar">
+    <div class="sidebar-orb orb-1"></div>
+    <div class="sidebar-orb orb-2"></div>
+
+    <div class="brand">
+      <div class="brand-top-title">Systeme Decisionnel</div>
+      <div class="brand-logo-wrap">
+        <img src="etap-logo.png" alt="Logo ETAP" class="logo" />
+        <div class="brand-pulse"></div>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">ETAP</span>
+        <span class="brand-sub">Administration</span>
+      </div>
+    </div>
+
+    <div class="sidebar-divider">
+      <span class="divider-label">NAVIGATION</span>
+    </div>
+
+    <nav class="nav" *ngIf="navSections.length; else emptyMenu">
+      <div class="nav-section" *ngFor="let section of navSections">
+        <p class="section-title">{{ section.title }}</p>
+
+        <a
+          *ngFor="let item of section.items"
+          [routerLink]="item.route"
+          routerLinkActive="active"
+          [routerLinkActiveOptions]="{ exact: item.exact ?? false }"
+          class="nav-item"
+        >
+          <span class="nav-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="7" height="7" rx="1" />
+              <rect x="14" y="3" width="7" height="7" rx="1" />
+              <rect x="3" y="14" width="7" height="7" rx="1" />
+              <rect x="14" y="14" width="7" height="7" rx="1" />
+            </svg>
+          </span>
+          <span class="nav-label">{{ item.label }}</span>
+          <span class="item-badge" *ngIf="item.badge">{{ item.badge }}</span>
+          <span class="nav-arrow"></span>
+        </a>
+      </div>
+    </nav>
+
+    <ng-template #emptyMenu>
+      <div class="empty-menu">Aucun menu disponible.</div>
+    </ng-template>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-version">v2.1.0</div>
+      <div class="sidebar-status">
+        <span class="status-dot"></span>
+        <span>Syst�me actif</span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="page-breadcrumb">{{ pageBreadcrumb }}</div>
+        <div class="user-chip">
+          <span class="user-name">{{ userDisplayName }}</span>
+          <span class="user-role">{{ userRoleLabel }}</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="action-btn notif-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+            <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+          </svg>
+          <span class="btn-label">Notifications</span>
+          <span class="notif-badge">3</span>
+        </button>
+
+        <button class="action-btn logout-btn" (click)="logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+          <span class="btn-label">Deconnexion</span>
+        </button>
+      </div>
+    </header>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
+</div>

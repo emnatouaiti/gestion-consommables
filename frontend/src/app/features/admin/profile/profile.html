@@ -1,0 +1,341 @@
+﻿<!-- ── En-tête page ──────────────────────────────────────────────────── -->
+<div class="page-header">
+  <div class="page-badge">Mon compte</div>
+  <h1 class="page-title">Mon Profil</h1>
+</div>
+
+<!-- ── Chargement ────────────────────────────────────────────────────── -->
+<div class="loading-wrap" *ngIf="isLoading">
+  <div class="spinner"></div>
+  Chargement du profil...
+</div>
+
+<div class="profile-layout" *ngIf="!isLoading">
+
+  <!-- ════════════════════════════════════════════════════════════════
+       COLONNE GAUCHE — Photo
+  ═════════════════════════════════════════════════════════════════ -->
+  <div class="profile-sidebar">
+    <div class="avatar-card">
+
+      <!-- Photo cliquable -->
+      <div class="avatar-wrap" (click)="openModal()" [class.clickable]="photoPreviewUrl">
+        <img
+          *ngIf="photoPreviewUrl"
+          [src]="photoPreviewUrl"
+          alt="Photo de profil"
+          class="avatar-large"
+          (error)="onImageError()"
+        />
+        <div class="avatar-placeholder" *ngIf="!photoPreviewUrl">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="1.5">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+
+        <!-- Overlay zoom au hover -->
+        <div class="avatar-overlay" *ngIf="photoPreviewUrl">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+            stroke="white" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/>
+            <line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="avatar-hint" *ngIf="photoPreviewUrl">🔍 Cliquer pour agrandir</div>
+
+      <!-- Upload photo -->
+      <label class="upload-btn" for="photo">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        Changer la photo
+        <input id="photo" type="file" accept="image/*"
+          (change)="onPhotoSelected($event)" class="file-input" />
+      </label>
+
+      <p class="upload-hint">JPG, PNG, WebP — max 5 Mo</p>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════════════
+       COLONNE DROITE — Formulaires
+  ═════════════════════════════════════════════════════════════════ -->
+  <div class="profile-main">
+
+    <!-- ── Section 1 : Informations personnelles ── -->
+    <div class="form-card">
+
+      <div class="card-header">
+        <span class="card-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        <div>
+          <div class="card-title">Informations personnelles</div>
+          <div class="card-sub">Modifiez vos informations de base</div>
+        </div>
+      </div>
+
+      <!-- Alertes -->
+      <div class="alert-error" *ngIf="errorMessage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ errorMessage }}
+      </div>
+      <div class="alert-success" *ngIf="successMessage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ successMessage }}
+      </div>
+
+      <form [formGroup]="profileForm" (ngSubmit)="updateProfile()" autocomplete="off">
+        <div class="form-grid">
+
+          <!-- Nom complet -->
+          <div class="form-group">
+            <label class="form-label" for="nomprenom">
+              Nom complet <span class="required">*</span>
+            </label>
+            <div class="input-wrapper"
+              [class.has-error]="profileForm.get('nomprenom')?.invalid && profileForm.get('nomprenom')?.touched">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                  <circle cx="12" cy="7" r="4"/>
+                </svg>
+              </span>
+              <input id="nomprenom" type="text" formControlName="nomprenom"
+                placeholder="Nom et prénom" class="form-input" />
+            </div>
+            <div class="field-error"
+              *ngIf="profileForm.get('nomprenom')?.invalid && profileForm.get('nomprenom')?.touched">
+              Le nom est obligatoire.
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label class="form-label" for="email">
+              Email <span class="required">*</span>
+            </label>
+            <div class="input-wrapper"
+              [class.has-error]="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                  <polyline points="22,6 12,13 2,6"/>
+                </svg>
+              </span>
+              <input id="email" type="email" formControlName="email"
+                placeholder="votre@email.tn" class="form-input" />
+            </div>
+            <div class="field-error"
+              *ngIf="profileForm.get('email')?.invalid && profileForm.get('email')?.touched">
+              Email invalide.
+            </div>
+          </div>
+
+          <!-- Adresse -->
+          <div class="form-group">
+            <label class="form-label" for="adresse">Adresse</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                  <circle cx="12" cy="10" r="3"/>
+                </svg>
+              </span>
+              <input id="adresse" type="text" formControlName="adresse"
+                placeholder="Adresse complète (optionnel)" class="form-input" />
+            </div>
+          </div>
+
+          <!-- Téléphone -->
+          <div class="form-group">
+            <label class="form-label" for="telephone">Téléphone</label>
+            <div class="input-wrapper">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07
+                    A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.44
+                    2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81
+                    a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l.91-.91
+                    a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                </svg>
+              </span>
+              <input id="telephone" type="text" formControlName="telephone"
+                placeholder="+216 XX XXX XXX (optionnel)" class="form-input" />
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-submit" [disabled]="isSavingProfile">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            {{ isSavingProfile ? 'Enregistrement...' : 'Enregistrer les modifications' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- ── Section 2 : Mot de passe ── -->
+    <div class="form-card">
+
+      <div class="card-header">
+        <span class="card-icon danger-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+        </span>
+        <div>
+          <div class="card-title">Sécurité</div>
+          <div class="card-sub">Modifiez votre mot de passe</div>
+        </div>
+      </div>
+
+      <!-- Alertes mot de passe -->
+      <div class="alert-error" *ngIf="passwordErrorMessage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ passwordErrorMessage }}
+      </div>
+      <div class="alert-success" *ngIf="passwordSuccessMessage">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ passwordSuccessMessage }}
+      </div>
+
+      <form [formGroup]="passwordForm" (ngSubmit)="changePassword()" autocomplete="off">
+        <div class="form-grid cols-1-wide">
+
+          <!-- Mot de passe actuel -->
+          <div class="form-group">
+            <label class="form-label" for="currentPassword">
+              Mot de passe actuel <span class="required">*</span>
+            </label>
+            <div class="input-wrapper"
+              [class.has-error]="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </span>
+              <input id="currentPassword" type="password" formControlName="currentPassword"
+                placeholder="Votre mot de passe actuel" class="form-input" />
+            </div>
+            <div class="field-error"
+              *ngIf="passwordForm.get('currentPassword')?.invalid && passwordForm.get('currentPassword')?.touched">
+              Le mot de passe actuel est obligatoire.
+            </div>
+          </div>
+
+          <!-- Nouveau mot de passe -->
+          <div class="form-group">
+            <label class="form-label" for="newPassword">
+              Nouveau mot de passe <span class="required">*</span>
+            </label>
+            <div class="input-wrapper"
+              [class.has-error]="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+              </span>
+              <input id="newPassword" type="password" formControlName="newPassword"
+                placeholder="Minimum 6 caractères" class="form-input" />
+            </div>
+            <div class="field-error"
+              *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
+              Le mot de passe doit contenir au moins 6 caractères.
+            </div>
+          </div>
+
+          <!-- Confirmer mot de passe -->
+          <div class="form-group">
+            <label class="form-label" for="confirmPassword">
+              Confirmer le mot de passe <span class="required">*</span>
+            </label>
+            <div class="input-wrapper"
+              [class.has-error]="(passwordForm.get('confirmPassword')?.invalid || passwordForm.get('confirmPassword')?.hasError('mismatch')) && passwordForm.get('confirmPassword')?.touched">
+              <span class="input-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                  stroke="currentColor" stroke-width="2">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+              </span>
+              <input id="confirmPassword" type="password" formControlName="confirmPassword"
+                placeholder="Répétez le nouveau mot de passe" class="form-input" />
+            </div>
+            <div class="field-error"
+              *ngIf="passwordForm.get('confirmPassword')?.hasError('required') && passwordForm.get('confirmPassword')?.touched">
+              La confirmation est obligatoire.
+            </div>
+            <div class="field-error"
+              *ngIf="passwordForm.get('confirmPassword')?.hasError('mismatch') && passwordForm.get('confirmPassword')?.touched">
+              Les mots de passe ne correspondent pas.
+            </div>
+          </div>
+
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-submit btn-security" [disabled]="isChangingPassword">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+            </svg>
+            {{ isChangingPassword ? 'Mise à jour...' : 'Mettre à jour le mot de passe' }}
+          </button>
+        </div>
+      </form>
+    </div>
+
+  </div><!-- /profile-main -->
+</div><!-- /profile-layout -->
+
+<!-- ═══ Modal zoom photo ════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="isModalOpen" (click)="closeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <button class="modal-close" (click)="closeModal()">✕</button>
+    <img [src]="photoPreviewUrl" alt="Photo de profil agrandie" class="modal-img" />
+  </div>
+</div>

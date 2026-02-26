@@ -1,0 +1,172 @@
+<div class="dashboard-wrapper" [class.loading]="isLoading">
+  <!-- Top Bar / Welcome -->
+  <header class="dashboard-header">
+    <div class="header-content">
+      <div class="welcome-badge">ConsoTrack Management</div>
+      <h1 class="welcome-title">Bienvenue, {{ user?.nomprenom || 'Administrateur' }}</h1>
+      <p class="welcome-desc">Voici l'état actuel de votre stock et de votre système.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-refresh" (click)="refreshData()" [class.spinning]="isLoading">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+        </svg>
+      </button>
+      <div class="user-pill">
+        <img [src]="photoUrl(user?.photo)" alt="avatar" (error)="onImageError($event)">
+        <span class="user-pill-name">{{ user?.nomprenom }}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="content-container" *ngIf="!isLoading">
+    <!-- Quick Stats Bento Grid -->
+    <div class="stats-bento">
+      <div class="stat-card p-stats">
+        <div class="stat-icon-wrap bg-blue">📦</div>
+        <div class="stat-info">
+          <span class="stat-label">Produits Totaux</span>
+          <h2 class="stat-value">{{ stats.totalProducts }}</h2>
+        </div>
+        <div class="stat-decoration"></div>
+      </div>
+
+      <div class="stat-card p-stats">
+        <div class="stat-icon-wrap bg-purple">🏬</div>
+        <div class="stat-info">
+          <span class="stat-label">Nombre de Dépôts</span>
+          <h2 class="stat-value">{{ stats.totalWarehouses }}</h2>
+        </div>
+        <div class="stat-decoration"></div>
+      </div>
+
+      <div class="stat-card p-stats">
+        <div class="stat-icon-wrap bg-green">👥</div>
+        <div class="stat-info">
+          <span class="stat-label">Clients Actifs</span>
+          <h2 class="stat-value">{{ stats.activeUsers }}</h2>
+        </div>
+        <div class="stat-decoration"></div>
+      </div>
+
+      <div class="stat-card p-stats">
+        <div class="stat-icon-wrap bg-yellow">💰</div>
+        <div class="stat-info">
+          <span class="stat-label">Valeur du Stock</span>
+          <h2 class="stat-value">{{ stats.totalValue | number:'1.0-0' }} TND</h2>
+        </div>
+        <div class="stat-decoration"></div>
+      </div>
+
+      <div class="stat-card critical" *ngIf="stats.lowStockAlerts > 0">
+        <div class="stat-icon-wrap bg-red">⚠️</div>
+        <div class="stat-info">
+          <span class="stat-label">Alertes Stock Bas</span>
+          <h2 class="stat-value">{{ stats.lowStockAlerts }}</h2>
+        </div>
+        <a routerLink="/admin/gerer-produits" class="stat-action">Vérifier →</a>
+      </div>
+    </div>
+
+    <div class="main-layout">
+      <!-- Left Column: Primary Monitoring -->
+      <div class="monitoring-column">
+        <!-- Activities -->
+        <section class="glass-card">
+          <div class="section-header">
+            <h3>Flux d'activités</h3>
+            <span class="badge ghost">Temps réel</span>
+          </div>
+          <div class="activity-feed">
+            <div class="activity-entry" *ngFor="let activity of recentActivities">
+              <div class="entry-marker" [ngClass]="activity.type"></div>
+              <div class="entry-icon">{{ activity.icon }}</div>
+              <div class="entry-content">
+                <p class="entry-text">{{ activity.description }}</p>
+                <span class="entry-time">{{ activity.created_at | date:'HH:mm' }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Trends & Comparison -->
+        <div class="comparison-grid">
+          <!-- Movements Chart -->
+          <div class="glass-card compact trend-card">
+            <div class="section-header">
+              <h3>Mouvements (7 jours)</h3>
+            </div>
+            <div class="trend-chart">
+              <div class="trend-bar-wrapper" *ngFor="let m of movementsTrend">
+                <div class="trend-bar" [style.height.px]="m.count * 10 + 5" [title]="m.count + ' mouvements'">
+                  <span class="bar-val" *ngIf="m.count > 0">{{ m.count }}</span>
+                </div>
+                <span class="trend-label">{{ m.day }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="glass-card compact">
+            <div class="section-header">
+              <h3>Top Catégories</h3>
+            </div>
+            <div class="cat-list">
+              <div class="cat-item" *ngFor="let cat of categoryStock">
+                <span class="cat-name">{{ cat.name }}</span>
+                <span class="cat-pill">{{ cat.count }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Shortcuts and Users -->
+      <div class="side-column">
+        <!-- Quick Actions -->
+        <section class="glass-card actions-section">
+          <h3>Actions Favorites</h3>
+          <div class="action-tiles">
+            <a routerLink="/admin/gerer-produits" class="tile">
+              <div class="tile-icon">🏷️</div>
+              <span>Produits</span>
+            </a>
+            <a routerLink="/admin/gerer-depots" class="tile">
+              <div class="tile-icon">🧱</div>
+              <span>Dépôts</span>
+            </a>
+            <a routerLink="/admin/create" class="tile">
+              <div class="tile-icon">➕</div>
+              <span>User</span>
+            </a>
+            <a routerLink="/admin/users" class="tile">
+              <div class="tile-icon">👥</div>
+              <span>Gestion</span>
+            </a>
+          </div>
+        </section>
+
+        <!-- Recent Users -->
+        <section class="glass-card">
+          <div class="section-header">
+            <h3>Utilisateurs Récents</h3>
+          </div>
+          <div class="mini-users">
+            <div class="mini-user-item" *ngFor="let u of recentUsers">
+              <img [src]="photoUrl(u.photo)" (error)="onImageError($event)">
+              <div class="mu-info">
+                <span class="mu-name">{{ u.nomprenom }}</span>
+                <span class="mu-email">{{ u.email }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-spinner"></div>
+    <p>Synchronisation des données...</p>
+  </div>
+</div>

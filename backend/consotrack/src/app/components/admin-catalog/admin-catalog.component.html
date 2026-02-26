@@ -1,0 +1,120 @@
+﻿<main class="page">
+  <h1>Admin - Categories et Produits</h1>
+
+  <section class="card">
+    <h2>Token API Admin</h2>
+    <div class="row">
+      <input [(ngModel)]="apiToken" placeholder="Token admin (Sanctum)" />
+      <button (click)="saveToken()">Enregistrer token</button>
+      <button (click)="loadData()">Rafraichir</button>
+    </div>
+    <p class="muted">API: http://127.0.0.1:8000/api/admin</p>
+  </section>
+
+  <section class="grid-2">
+    <article class="card">
+      <h2>{{ editingCategoryId ? 'Modifier categorie' : 'Nouvelle categorie' }}</h2>
+      <div class="form-grid">
+        <input [(ngModel)]="categoryForm.title" placeholder="Titre" name="categoryTitle" />
+        <select [(ngModel)]="categoryForm.status" name="categoryStatus">
+          <option value="active">active</option>
+          <option value="inactive">inactive</option>
+        </select>
+        <textarea
+          [(ngModel)]="categoryForm.description"
+          placeholder="Description"
+          name="categoryDescription"
+        ></textarea>
+      </div>
+      <div class="row">
+        <button (click)="saveCategory()">{{ editingCategoryId ? 'Mettre a jour' : 'Ajouter' }}</button>
+        <button class="secondary" (click)="resetCategoryForm()">Annuler</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Titre</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let category of categories">
+            <td>{{ category.id }}</td>
+            <td>{{ category.title }}</td>
+            <td>{{ category.status }}</td>
+            <td class="row">
+              <button class="secondary" (click)="editCategory(category)">Edit</button>
+              <button class="danger" (click)="deleteCategory(category.id)">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </article>
+
+    <article class="card">
+      <h2>{{ editingProductId ? 'Modifier produit' : 'Nouveau produit' }}</h2>
+      <div class="form-grid">
+        <input [(ngModel)]="productForm.title" placeholder="Titre" name="productTitle" />
+        <input [(ngModel)]="productForm.reference" placeholder="Reference" name="productReference" />
+        <select [(ngModel)]="productForm.status" name="productStatus">
+          <option value="active">active</option>
+          <option value="inactive">inactive</option>
+        </select>
+        <select [(ngModel)]="productForm.categorie_id" name="productCategory">
+          <option [ngValue]="0">Selectionner categorie</option>
+          <option *ngFor="let category of categories" [ngValue]="category.id">{{ category.title }}</option>
+        </select>
+        <input type="number" [(ngModel)]="productForm.seuil_min" placeholder="Seuil min" name="productSeuil" />
+        <input type="number" [(ngModel)]="productForm.stock_quantity" placeholder="Stock" name="productStock" />
+        <input type="number" [(ngModel)]="productForm.purchase_price" placeholder="Prix achat" name="productPurchasePrice" />
+        <input type="number" [(ngModel)]="productForm.sale_price" placeholder="Prix vente" name="productSalePrice" />
+        <input [(ngModel)]="productForm.unit" placeholder="Unite" name="productUnit" />
+        <input [(ngModel)]="productForm.location" placeholder="Emplacement" name="productLocation" />
+        <textarea
+          [(ngModel)]="productForm.description"
+          placeholder="Description"
+          name="productDescription"
+        ></textarea>
+      </div>
+
+      <div class="row">
+        <button (click)="saveProduct()">{{ editingProductId ? 'Mettre a jour' : 'Ajouter' }}</button>
+        <button class="secondary" (click)="resetProductForm()">Annuler</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Titre</th>
+            <th>Ref</th>
+            <th>Categorie</th>
+            <th>Stock</th>
+            <th>Code</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let product of products">
+            <td>{{ product.id }}</td>
+            <td>{{ product.title }}</td>
+            <td>{{ product.reference }}</td>
+            <td>{{ product.category?.title || '-' }}</td>
+            <td>{{ product.stock_quantity }}</td>
+            <td>{{ product.barcode_value || '-' }}</td>
+            <td class="row">
+              <button class="secondary" (click)="editProduct(product)">Edit</button>
+              <button class="danger" (click)="deleteProduct(product.id)">Delete</button>
+              <button (click)="downloadBarcode(product)">Barcode</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </article>
+  </section>
+
+  <p *ngIf="loading" class="muted">Chargement...</p>
+</main>

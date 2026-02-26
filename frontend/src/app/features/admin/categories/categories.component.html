@@ -1,0 +1,208 @@
+<div class="categories-page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="page-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <line x1="3" y1="9" x2="21" y2="9" />
+          <line x1="9" y1="21" x2="9" y2="9" />
+        </svg>
+      </div>
+      <div>
+        <h2>Gestion des catégories</h2>
+        <span class="subtitle" *ngIf="!isLoading">{{ totalCount }} catégorie{{ totalCount > 1 ? 's' : '' }} au
+          total</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" (click)="load()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+        Rafraîchir
+      </button>
+      <button class="btn-primary" (click)="openAddModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Ajouter une catégorie
+      </button>
+    </div>
+  </div>
+
+  <!-- Messages -->
+  <div class="toast success" *ngIf="successMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+    {{ successMessage }}
+  </div>
+  <div class="toast error" *ngIf="errorMessage && !showModal">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="15" y1="9" x2="9" y2="15" />
+      <line x1="9" y1="9" x2="15" y2="15" />
+    </svg>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div>
+    <span>Chargement des catégories...</span>
+  </div>
+
+  <!-- Tree -->
+  <div class="tree-card" *ngIf="!isLoading">
+
+    <!-- Toolbar -->
+    <div class="tree-toolbar">
+      <div class="toolbar-left">
+        <span class="tree-title">Arborescence</span>
+        <div class="legend">
+          <span class="legend-item"><span class="dot l1"></span>Niv. 1</span>
+          <span class="legend-item"><span class="dot l2"></span>Niv. 2</span>
+          <span class="legend-item"><span class="dot l3"></span>Niv. 3</span>
+        </div>
+      </div>
+      <div class="toolbar-right">
+        <button class="btn-text" (click)="expandAll()">Tout déplier</button>
+        <button class="btn-text" (click)="collapseAll()">Tout replier</button>
+      </div>
+    </div>
+
+    <!-- Empty -->
+    <div class="empty-state" *ngIf="categories.length === 0">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+        <line x1="3" y1="9" x2="21" y2="9" />
+        <line x1="9" y1="21" x2="9" y2="9" />
+      </svg>
+      <p>Aucune catégorie pour le moment</p>
+      <button class="btn-primary" (click)="openAddModal()">Créer la première catégorie</button>
+    </div>
+
+    <!-- Tree nodes -->
+    <div class="tree-list" *ngIf="categories.length > 0">
+      <ng-container *ngFor="let cat of categories; let last = last">
+        <ng-container *ngTemplateOutlet="treeNode; context: { $implicit: cat, depth: 0, isLast: last }"></ng-container>
+      </ng-container>
+    </div>
+
+    <ng-template #treeNode let-cat let-depth="depth" let-isLast="isLast">
+      <div class="tree-row" [class.depth-1]="cat.level === 1" [class.depth-2]="cat.level === 2"
+        [class.depth-3]="cat.level === 3" [style.padding-left.px]="depth * 32 + 16">
+
+        <!-- Guide lines -->
+        <div class="guide-line" *ngIf="depth > 0" [style.left.px]="depth * 32"></div>
+
+        <!-- Toggle -->
+        <button class="expand-btn" *ngIf="hasChildren(cat)" (click)="toggleExpand(cat.id)"
+          [class.open]="isExpanded(cat.id)">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </button>
+        <span class="expand-spacer" *ngIf="!hasChildren(cat)"></span>
+
+        <!-- Icon & Title -->
+        <span class="row-icon">{{ getLevelIcon(cat.level) }}</span>
+        <div class="row-body">
+          <span class="row-title">{{ cat.title }}</span>
+          <span class="badge" [ngClass]="cat.status">{{ cat.status }}</span>
+          <span class="level-tag">{{ getLevelLabel(cat.level) }}</span>
+          <span class="child-count" *ngIf="hasChildren(cat)">({{ childCount(cat) }})</span>
+        </div>
+
+        <!-- Actions (on hover) -->
+        <div class="row-actions">
+          <button class="icon-btn add" *ngIf="cat.level < 3" title="Ajouter sous-catégorie"
+            (click)="openAddModal(cat.id)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+          <button class="icon-btn edit" title="Éditer" (click)="openEditModal(cat)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
+          <button class="icon-btn danger" title="Supprimer" (click)="remove(cat.id)">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6" />
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Expanded Children -->
+      <ng-container *ngIf="isExpanded(cat.id) && hasChildren(cat)">
+        <ng-container *ngFor="let child of cat.recursive_children; let childLast = last">
+          <ng-container
+            *ngTemplateOutlet="treeNode; context: { $implicit: child, depth: depth + 1, isLast: childLast }"></ng-container>
+        </ng-container>
+      </ng-container>
+    </ng-template>
+  </div>
+
+  <!-- ═══ Modal ═══ -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingId ? 'Modifier la catégorie' : 'Nouvelle catégorie' }}</h3>
+        <button class="modal-close" (click)="closeModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Parent info -->
+        <div class="parent-info" *ngIf="form.parent_id">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="15 10 20 15 15 20" />
+            <path d="M4 4v7a4 4 0 0 0 4 4h12" />
+          </svg>
+          Sous-catégorie de <strong>{{ getParentTitle(form.parent_id) }}</strong>
+        </div>
+
+        <div class="field">
+          <label>Titre *</label>
+          <input [(ngModel)]="form.title" placeholder="Nom de la catégorie" autofocus />
+        </div>
+
+        <div class="field">
+          <label>Description</label>
+          <textarea [(ngModel)]="form.description" placeholder="Description optionnelle" rows="3"></textarea>
+        </div>
+
+        <div class="field">
+          <label>Statut</label>
+          <div class="status-toggle">
+            <button [class.active]="form.status === 'active'" (click)="form.status = 'active'">Active</button>
+            <button [class.active]="form.status === 'inactive'" (click)="form.status = 'inactive'">Inactive</button>
+          </div>
+        </div>
+
+        <!-- Modal error -->
+        <div class="modal-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeModal()">Annuler</button>
+        <button class="btn-save" (click)="save()">
+          {{ editingId ? 'Mettre à jour' : 'Créer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+</div>

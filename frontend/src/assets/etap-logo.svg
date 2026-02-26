@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 120 120">
+  <rect rx="12" width="120" height="120" fill="#0b74b1" />
+  <g transform="translate(18,30)" fill="#fff" font-family="sans-serif" font-weight="700">
+    <text x="0" y="28" font-size="22">ETAP</text>
+    <text x="0" y="52" font-size="10">Tunisie</text>
+  </g>
+</svg>

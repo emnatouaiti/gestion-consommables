@@ -1,0 +1,66 @@
+<div class="products-by-warehouse-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <button class="btn-back" (click)="goBack()">← Retour</button>
+      <div>
+        <h2 *ngIf="warehouse">🏭 {{ warehouse.name || 'Dépôt' }}</h2>
+        <h2 *ngIf="!warehouse">🏭 Produits par dépôt</h2>
+        <p class="warehouse-details" *ngIf="warehouse">
+          {{ warehouse.address || '' }} {{ warehouse.city || '' }}
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Error -->
+  <div class="toast error" *ngIf="errorMessage">✗ {{ errorMessage }}</div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div><span>Chargement...</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card" *ngIf="!isLoading">
+    <div class="empty-state" *ngIf="products.length === 0">
+      <p>Aucun produit dans ce dépôt</p>
+    </div>
+    <div class="table-wrap" *ngIf="products.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Réf</th>
+            <th>Catégorie</th>
+            <th>Salle / Emplacement</th>
+            <th>Quantité</th>
+            <th>Seuil min</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of products">
+            <td>
+              <div class="product-cell">
+                <span class="product-name" (click)="manageProductStocks(p)" style="cursor: pointer; color: #0066cc; text-decoration: underline;">{{ p.title }}</span>
+              </div>
+            </td>
+            <td><span class="ref-code">{{ p.reference }}</span></td>
+            <td>{{ p.category?.title || '-' }}</td>
+            <td>
+              <span class="location-ref">{{ getLocationRef(p) }}</span>
+            </td>
+            <td>{{ p.stock_quantity || 0 }}</td>
+            <td>{{ p.seuil_min || 0 }}</td>
+            <td><span class="status-badge" [ngClass]="p.status">{{ p.status }}</span></td>
+            <td>
+              <button class="icon-btn stocks" title="Gestion des stocks" (click)="manageProductStocks(p)">📊</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

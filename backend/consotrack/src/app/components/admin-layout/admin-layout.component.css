@@ -1,0 +1,50 @@
+﻿.admin-shell {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  min-height: 100vh;
+  background: #f5f7fb;
+}
+
+.sidebar {
+  background: #172033;
+  color: #fff;
+  padding: 20px;
+}
+
+.sidebar h2 {
+  margin: 0 0 16px;
+}
+
+.sidebar nav {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.sidebar a {
+  color: #d8e1f5;
+  text-decoration: none;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.sidebar a.active,
+.sidebar a:hover {
+  background: #24314a;
+  color: #fff;
+}
+
+.content {
+  padding: 16px;
+}
+
+@media (max-width: 900px) {
+  .admin-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar nav {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}

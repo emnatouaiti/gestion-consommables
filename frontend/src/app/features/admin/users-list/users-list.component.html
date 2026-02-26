@@ -1,0 +1,229 @@
+﻿<div class="page-header">
+  <h1 class="page-title">Gestion des utilisateurs</h1>
+  <span class="page-count" *ngIf="!isLoading">{{ users.length }} utilisateur(s)</span>
+</div>
+
+<div class="card">
+
+  <div class="card-top">
+    <div class="search-area">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24"
+          fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input
+          class="search"
+          type="text"
+          placeholder="Rechercher un utilisateur..."
+          [(ngModel)]="q"
+          (keyup.enter)="search()"
+        />
+      </div>
+      <button class="btn" (click)="search()">Rechercher</button>
+    </div>
+
+    <button class="btn primary" (click)="openAddModal()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5">
+        <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      Ajouter
+    </button>
+  </div>
+
+  <!-- Chargement -->
+  <div class="loading-wrap" *ngIf="isLoading">
+    <div class="spinner"></div>
+    Chargement en cours...
+  </div>
+
+  <!-- Erreur -->
+  <div class="error-msg" *ngIf="!isLoading && errorMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/>
+      <line x1="12" y1="8" x2="12" y2="12"/>
+      <line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
+    {{ errorMessage }}
+  </div>
+
+  <!-- Succès -->
+  <div class="success-msg" *ngIf="successMessage">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2">
+      <polyline points="20 6 9 17 4 12"></polyline>
+    </svg>
+    {{ successMessage }}
+  </div>
+
+  <!-- Tableau -->
+  <div class="table-wrap" *ngIf="!isLoading && !errorMessage">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th>Photo</th>
+          <th>Nom</th>
+          <th>Email</th>
+          <th>Rôles</th>
+          <th>Adresse</th>
+          <th>Téléphone</th>
+          <th class="actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+
+        <tr *ngFor="let u of users">
+
+          <!-- Avatar cliquable pour zoom -->
+          <td class="photo-cell">
+            <img
+              [src]="photoUrl(u.photo || u.avatar)"
+              alt="avatar"
+              class="avatar-sm"
+              (click)="openAvatarModal(u)"
+              title="Cliquer pour agrandir"
+            />
+          </td>
+
+          <td><div class="user-name">{{ u.nomprenom || '—' }}</div></td>
+          <td>{{ u.email }}</td>
+          <td>
+            <span class="role-badge"
+              [class.admin]="roleNames(u).toLowerCase().includes('admin')">
+              {{ roleNames(u) || '—' }}
+            </span>
+          </td>
+          <td>{{ u.adresse || '—' }}</td>
+          <td>{{ u.telephone || '—' }}</td>
+          <td class="actions">
+            <button class="btn small" (click)="openEditModal(u)">Éditer</button>
+            <button class="btn danger small" (click)="remove(u.id)">Supprimer</button>
+          </td>
+        </tr>
+
+        <tr *ngIf="users.length === 0" class="state-row">
+          <td colspan="7">
+            <div class="empty-state">
+              <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+              <p>Aucun utilisateur trouvé.</p>
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ═══ Modal zoom avatar ═════════════════════════════════════════════ -->
+<div class="avatar-modal-overlay"
+     *ngIf="avatarModalOpen"
+     (click)="closeAvatarModal()">
+  <div class="avatar-modal-box" (click)="$event.stopPropagation()">
+    <button class="avatar-modal-close" (click)="closeAvatarModal()">✕</button>
+    <img [src]="avatarModalUrl" alt="avatar agrandi" class="avatar-modal-img" />
+    <div class="avatar-modal-name">{{ avatarModalName }}</div>
+  </div>
+</div>
+
+<!-- ═══ Modal Ajouter/Éditer Utilisateur ═════════════════════════════ -->
+<div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>{{ editingId ? 'Modifier utilisateur' : 'Ajouter utilisateur' }}</h2>
+      <button class="modal-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <div class="modal-content">
+      <!-- Messages -->
+      <div class="error-msg" *ngIf="errorMessage">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ errorMessage }}
+      </div>
+
+      <!-- Formulaire -->
+      <form (ngSubmit)="save()">
+        <div class="form-group">
+          <label>Nom complet *</label>
+          <input
+            type="text"
+            [(ngModel)]="form.nomprenom"
+            name="nomprenom"
+            placeholder="Ex: Jean Dupont"
+            class="form-control"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Email *</label>
+          <input
+            type="email"
+            [(ngModel)]="form.email"
+            name="email"
+            placeholder="Ex: jean@example.com"
+            class="form-control"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Rôle *</label>
+          <div class="select-wrapper">
+            <select
+              [(ngModel)]="form.roles"
+              name="roles"
+              class="form-control"
+            >
+              <option value="">-- Sélectionner un rôle --</option>
+              <option *ngFor="let role of roles" value="{{ role.name || role }}">
+                {{ role.name || role }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Adresse</label>
+          <input
+            type="text"
+            [(ngModel)]="form.adresse"
+            name="adresse"
+            placeholder="Ex: 123 Rue de Paris"
+            class="form-control"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>Téléphone</label>
+          <input
+            type="tel"
+            [(ngModel)]="form.telephone"
+            name="telephone"
+            placeholder="Ex: +216 XX XXX XXX"
+            class="form-control"
+          />
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn" (click)="closeModal()">Annuler</button>
+          <button type="submit" class="btn primary">
+            {{ editingId ? 'Mettre à jour' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

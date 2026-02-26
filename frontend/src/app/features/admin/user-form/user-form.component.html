@@ -1,0 +1,254 @@
+﻿<!-- En-tête de page -->
+<div class="page-header">
+  <a class="back-btn" (click)="router.navigate(['/admin'])">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+      stroke="currentColor" stroke-width="2.5">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Retour
+  </a>
+  <div class="page-header-title">
+    <div class="page-badge">{{ isEdit ? 'Modification' : 'Création' }}</div>
+    <h1 class="page-title">{{ isEdit ? "Modifier l'utilisateur" : 'Nouvel utilisateur' }}</h1>
+  </div>
+</div>
+
+<!-- Chargement -->
+<div class="loading-wrap" *ngIf="isLoading">
+  <div class="spinner"></div>
+  Chargement...
+</div>
+
+<!-- Erreur globale -->
+<div class="alert-error" *ngIf="errorMessage">
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
+    stroke="currentColor" stroke-width="2">
+    <circle cx="12" cy="12" r="10"/>
+    <line x1="12" y1="8" x2="12" y2="12"/>
+    <line x1="12" y1="16" x2="12.01" y2="16"/>
+  </svg>
+  {{ errorMessage }}
+</div>
+
+<!-- Formulaire -->
+<div class="form-card" *ngIf="!isLoading">
+  <form [formGroup]="form" (ngSubmit)="submit()" class="user-form" autocomplete="off">
+
+    <!-- ── Section 1 : Informations personnelles ── -->
+    <div class="form-section">
+      <div class="form-section-title">
+        <span class="section-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        </span>
+        Informations personnelles
+      </div>
+
+      <div class="form-grid">
+
+        <!-- Nom complet -->
+        <div class="form-group">
+          <label class="form-label" for="nomprenom">
+            Nom complet <span class="required">*</span>
+          </label>
+          <div class="input-wrapper"
+            [class.has-error]="form.get('nomprenom')?.invalid && form.get('nomprenom')?.touched">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </span>
+            <input
+              id="nomprenom"
+              formControlName="nomprenom"
+              placeholder="Nom et prénom complets"
+              class="form-input"
+            />
+          </div>
+          <div class="field-error"
+            *ngIf="form.get('nomprenom')?.invalid && form.get('nomprenom')?.touched">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Le nom complet est obligatoire.
+          </div>
+        </div>
+
+        <!-- Email -->
+        <div class="form-group">
+          <label class="form-label" for="email">
+            Adresse email <span class="required">*</span>
+          </label>
+          <div class="input-wrapper"
+            [class.has-error]="form.get('email')?.invalid && form.get('email')?.touched">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                <polyline points="22,6 12,13 2,6"/>
+              </svg>
+            </span>
+            <input
+              id="email"
+              formControlName="email"
+              type="email"
+              placeholder="exemple@etap.tn"
+              class="form-input"
+            />
+          </div>
+          <div class="field-error"
+            *ngIf="form.get('email')?.invalid && form.get('email')?.touched">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span *ngIf="form.get('email')?.errors?.['required']">L'email est obligatoire.</span>
+            <span *ngIf="form.get('email')?.errors?.['email']">Format d'email invalide.</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Section 2 : Rôle ── -->
+    <div class="form-section">
+      <div class="form-section-title">
+        <span class="section-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+        </span>
+        Rôle &amp; Permissions
+      </div>
+
+      <div class="form-grid cols-1">
+        <div class="form-group">
+          <label class="form-label" for="roles">
+            Rôle <span class="required">*</span>
+          </label>
+          <div class="select-wrapper"
+            [class.has-error]="form.get('roles')?.invalid && form.get('roles')?.touched">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              </svg>
+            </span>
+            <select id="roles" formControlName="roles" class="form-select">
+              <option value="">— Sélectionner un rôle —</option>
+              <option *ngFor="let r of roles" [value]="r.name">{{ r.name }}</option>
+            </select>
+            <span class="select-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </div>
+          <div class="field-error"
+            *ngIf="form.get('roles')?.invalid && form.get('roles')?.touched">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            Le rôle est obligatoire.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Section 3 : Coordonnées ── -->
+    <div class="form-section">
+      <div class="form-section-title">
+        <span class="section-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+        </span>
+        Coordonnées
+      </div>
+
+      <div class="form-grid">
+
+        <!-- Adresse -->
+        <div class="form-group">
+          <label class="form-label" for="adresse">Adresse</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </span>
+            <input
+              id="adresse"
+              formControlName="adresse"
+              placeholder="Adresse complète (optionnel)"
+              class="form-input"
+            />
+          </div>
+        </div>
+
+        <!-- Téléphone -->
+        <div class="form-group">
+          <label class="form-label" for="telephone">Téléphone</label>
+          <div class="input-wrapper">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07
+                  A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.44
+                  2 2 0 0 1 3.59 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81
+                  a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.16 6.16l.91-.91
+                  a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+              </svg>
+            </span>
+            <input
+              id="telephone"
+              formControlName="telephone"
+              placeholder="+216 XX XXX XXX (optionnel)"
+              class="form-input"
+            />
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="form-actions">
+      <button class="btn-cancel" type="button" (click)="router.navigate(['/admin'])">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/>
+          <line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+        Annuler
+      </button>
+      <button class="btn-submit" type="submit">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ isEdit ? "Mettre à jour" : "Créer l'utilisateur" }}
+      </button>
+    </div>
+
+  </form>
+</div>

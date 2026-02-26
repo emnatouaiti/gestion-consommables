@@ -1,0 +1,365 @@
+﻿<div class="products-page">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <div class="page-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path
+            d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+          <line x1="12" y1="22.08" x2="12" y2="12" />
+        </svg>
+      </div>
+      <div>
+        <h2>Gestion des produits</h2>
+        <span class="subtitle" *ngIf="!isLoading">{{ pagination.total }} produit{{ pagination.total > 1 ? 's' : ''
+          }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" (click)="loadAll()">Rafraîchir</button>
+      <button class="btn-primary" (click)="openAddModal()">+ Ajouter un produit</button>
+    </div>
+  </div>
+
+  <!-- Toasts -->
+  <div class="toast success" *ngIf="successMessage">✓ {{ successMessage }}</div>
+  <div class="toast error" *ngIf="errorMessage && !showModal">✗ {{ errorMessage }}</div>
+
+  <!-- KPIs -->
+  <div class="kpi-grid" *ngIf="overview">
+    <div class="kpi-card">
+      <div class="kpi-icon total">📦</div>
+      <div class="kpi-body"><span class="kpi-label">Total</span><strong class="kpi-value">{{ overview.total_products ||
+          0 }}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon active">✅</div>
+      <div class="kpi-body"><span class="kpi-label">Actifs</span><strong class="kpi-value">{{ overview.active_products
+          || 0 }}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon warning">⚠️</div>
+      <div class="kpi-body"><span class="kpi-label">Stock faible</span><strong class="kpi-value warn">{{
+          overview.low_stock || 0 }}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon danger">🚫</div>
+      <div class="kpi-body"><span class="kpi-label">Rupture</span><strong class="kpi-value danger-val">{{
+          overview.out_of_stock || 0 }}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon stock">🏷️</div>
+      <div class="kpi-body"><span class="kpi-label">Unités</span><strong class="kpi-value">{{ overview.total_units || 0
+          }}</strong></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-icon value">💰</div>
+      <div class="kpi-body"><span class="kpi-label">Valeur</span><strong class="kpi-value">{{ (overview.inventory_value
+          || 0) | number:'1.2-2' }}</strong></div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-card">
+    <div class="filters-row">
+      <div class="search-input">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input [(ngModel)]="filters.q" (keyup.enter)="applyFilters()" placeholder="Rechercher..." />
+      </div>
+      <select [(ngModel)]="filters.status">
+        <option value="all">Tous statuts</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+      <select [(ngModel)]="filters.categorie_id">
+        <option [ngValue]="null">Toutes catégories</option>
+        <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
+      </select>
+    </div>
+    <div class="filters-row-2">
+      <label class="checkbox-label"><input type="checkbox" [(ngModel)]="filters.low_stock_only" /><span>Stock
+          faible</span></label>
+      <label class="checkbox-label"><input type="checkbox"
+          [(ngModel)]="filters.out_of_stock_only" /><span>Rupture</span></label>
+      <div class="filter-actions"><button class="btn-outline sm" (click)="applyFilters()">Filtrer</button><button
+          class="btn-text" (click)="clearFilters()">Reset</button></div>
+    </div>
+  </div>
+
+  <!-- Scanner -->
+  <div class="scan-card">
+    <div class="scan-header">🔍 Scanner code-barres</div>
+    <div class="scan-row">
+      <input [(ngModel)]="scanCode" (keyup.enter)="onScanSubmit()" placeholder="Scanner ou saisir le code..." />
+      <button class="btn-primary sm" (click)="onScanSubmit()">Rechercher</button>
+      <button class="btn-outline sm" (click)="clearScan()">Vider</button>
+    </div>
+    <p class="scan-msg" *ngIf="scanMessage">{{ scanMessage }}</p>
+  </div>
+
+  <div class="scan-result" *ngIf="scannedProduct">
+    <div class="scan-result-inner">
+      <img class="scan-photo" [src]="photoUrl(scannedProduct.photo)" alt="" />
+      <div class="scan-details">
+        <strong>{{ scannedProduct.title }}</strong>
+        <span>Réf: {{ scannedProduct.reference }} · Stock: {{ scannedProduct.stock_quantity }}</span>
+      </div>
+      <img class="scan-barcode" [src]="barcodeImage(scannedProduct.barcode_value || scannedProduct.reference)" alt="" />
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-state" *ngIf="isLoading">
+    <div class="spinner"></div><span>Chargement...</span>
+  </div>
+
+  <!-- Table -->
+  <div class="table-card" *ngIf="!isLoading">
+    <div class="table-header">Liste des produits</div>
+    <div class="empty-state" *ngIf="products.length === 0">
+      <p>Aucun produit trouvé</p><button class="btn-primary" (click)="openAddModal()">Créer un produit</button>
+    </div>
+    <div class="table-wrap" *ngIf="products.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Produit</th>
+            <th>Réf</th>
+            <th>Catégorie</th>
+            <th>Fournisseur</th>
+            <th>Emplacement</th>
+            <th>Stock</th>
+            <th>Seuil</th>
+            <th>Code-barres</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let p of products" [class.row-highlight]="highlightedProductId === p.id">
+            <td>
+              <div class="product-cell"><img class="product-thumb" [src]="photoUrl(p.photo)" alt="" /><span
+                  class="product-name" (click)="manageProductStocks(p)"
+                  style="cursor: pointer; color: #0066cc; text-decoration: underline;">{{ p.title }}</span></div>
+            </td>
+            <td><span class="ref-code">{{ p.reference }}</span></td>
+            <td>{{ p.category?.title || getCategoryTitle(p.categorie_id) }}</td>
+            <td>
+              <div class="suppliers-list" *ngIf="p.suppliers?.length">
+                <span class="supplier-badge clickable" *ngFor="let s of p.suppliers"
+                  (click)="openSupplierDetails(s.id)">
+                  <i class="fas fa-truck"></i> {{ s.name }}
+                </span>
+              </div>
+              <span *ngIf="!p.suppliers?.length" style="color: #999;">-</span>
+            </td>
+            <td>
+              <span class="location-link" (click)="viewProductsByLocation(p.warehouse_location_id)"
+                *ngIf="p.warehouse_location_id" style="cursor: pointer; color: #0066cc; text-decoration: underline;">
+                {{ getLocationDisplay(p) }}
+              </span>
+              <span *ngIf="!p.warehouse_location_id" style="color: #999;">-</span>
+            </td>
+            <td><span class="stock-badge" [ngClass]="getStockStatus(p)">{{ p.stock_quantity }}</span></td>
+            <td>{{ p.seuil_min }}</td>
+            <td><img class="barcode-img" [src]="barcodeImage(p.barcode_value || p.reference)" alt="" /></td>
+            <td><span class="status-badge" [ngClass]="p.status">{{ p.status }}</span></td>
+            <td>
+              <div class="table-actions">
+                <button class="icon-btn stocks" title="Gestion des stocks" (click)="manageProductStocks(p)">📊</button>
+                <button class="icon-btn edit" title="Éditer" (click)="openEditModal(p)">✏️</button>
+                <button class="icon-btn" title="Barcode" (click)="downloadBarcode(p)">🔖</button>
+                <button class="icon-btn danger" title="Supprimer" (click)="remove(p.id)">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="pager" *ngIf="products.length > 0">
+      <button class="btn-outline sm" (click)="prevPage()" [disabled]="pagination.page <= 1">← Préc.</button>
+      <span class="pager-info">Page {{ pagination.page }} / {{ pagination.last_page }} · {{ pagination.total }}
+        éléments</span>
+      <button class="btn-outline sm" (click)="nextPage()" [disabled]="pagination.page >= pagination.last_page">Suiv.
+        →</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingId ? 'Modifier le produit' : 'Nouveau produit' }}</h3>
+        <button class="modal-close" (click)="closeModal()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field"><label>Titre *</label><input [(ngModel)]="form.title" placeholder="Nom du produit" /></div>
+          <div class="field"><label>Référence *</label><input [(ngModel)]="form.reference" placeholder="REF-001" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="field"><label>Catégorie *</label>
+            <select [(ngModel)]="form.categorie_id">
+              <option [ngValue]="null">Sélectionner...</option>
+              <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
+            </select>
+          </div>
+          <div class="field"><label>Statut</label>
+            <div class="status-toggle">
+              <button [class.active]="form.status === 'active'" (click)="form.status = 'active'">Active</button>
+              <button [class.active]="form.status === 'inactive'" (click)="form.status = 'inactive'">Inactive</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-row triple">
+          <div class="field"><label>Seuil min</label><input type="number" [(ngModel)]="form.seuil_min"
+              placeholder="0" /></div>
+          <div class="field"><label>Prix d'achat</label><input type="number" [(ngModel)]="form.purchase_price"
+              placeholder="0.00" /></div>
+          <div class="field"><label>Unité</label>
+            <select [(ngModel)]="form.unit_id">
+              <option [ngValue]="null">Sélectionner...</option>
+              <option *ngFor="let u of units" [ngValue]="u.id">{{ u.name }} <span *ngIf="u.code">({{ u.code }})</span></option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row triple">
+          <div class="field"><label>Fabricant</label><input [(ngModel)]="form.fabricant" placeholder="Ex: HP" /></div>
+          <div class="field"><label>Marque</label><input [(ngModel)]="form.marque" placeholder="Ex: LaserJet" /></div>
+          <div class="field"><label>Modèle</label><input [(ngModel)]="form.model" placeholder="Ex: M404dn" /></div>
+        </div>
+
+        <div class="form-row triple">
+          <div class="field"><label>N° Série</label><input [(ngModel)]="form.num_serie" placeholder="SN..." /></div>
+          <div class="field"><label>N° Inventaire</label><input [(ngModel)]="form.num_inventaire" placeholder="INV..." /></div>
+          <div class="field"><label>Short description</label><input [(ngModel)]="form.short_description" placeholder="Résumé court..." /></div>
+        </div>
+
+        <div class="form-row">
+          <div class="field"><label>Fournisseur</label>
+            <select [(ngModel)]="form.supplier_id">
+              <option [ngValue]="null">Sélectionner...</option>
+              <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="field"><label>Photos</label>
+          <div class="photo-upload">
+            <input type="file" accept="image/*" multiple (change)="onPhotoSelected($event)" id="photo-input" />
+            <label for="photo-input" class="upload-label">Choisir des photos</label>
+            <div class="photo-previews" *ngIf="photoPreviewUrls.length">
+              <img class="photo-preview" *ngFor="let url of photoPreviewUrls" [src]="url" alt="Aperçu" />
+            </div>
+          </div>
+        </div>
+        <div class="field"><label>Description</label><textarea [(ngModel)]="form.description"
+            placeholder="Description..." rows="3"></textarea></div>
+        <div class="field"><label>Commentaire</label><textarea [(ngModel)]="form.commentaire"
+            placeholder="Commentaire..." rows="3"></textarea></div>
+        <div class="modal-error" *ngIf="errorMessage">{{ errorMessage }}</div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="closeModal()">Annuler</button>
+        <button class="btn-save" (click)="save()">{{ editingId ? 'Mettre à jour' : 'Créer le produit' }}</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal Détails Fournisseur (Avis + Produits) -->
+<div class="modal-backdrop" *ngIf="showSupplierDetailsModal" (click)="closeSupplierDetails()">
+  <div class="modal-panel supplier-details-modal" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <div class="header-with-img">
+        <img *ngIf="selectedSupplier?.image_path" [src]="'http://localhost:8000/storage/' + selectedSupplier.image_path"
+          class="supplier-logo-mini" />
+        <h3>Détails Fournisseur: {{ selectedSupplier?.name }}</h3>
+      </div>
+      <button class="modal-close" (click)="closeSupplierDetails()">✕</button>
+    </div>
+    <div class="modal-body scrollable-body">
+
+      <!-- Section Informations -->
+      <div class="detail-section info-card">
+        <div class="info-item" *ngIf="selectedSupplier?.phone">
+          <i class="fas fa-phone"></i> <span>{{ selectedSupplier.phone }}</span>
+        </div>
+        <div class="info-item" *ngIf="selectedSupplier?.email">
+          <i class="fas fa-envelope"></i> <span>{{ selectedSupplier.email }}</span>
+        </div>
+      </div>
+
+      <!-- Section Produits effectivement fournis (Stock) -->
+      <div class="detail-section">
+        <h4 class="section-title"><i class="fas fa-history"></i> Produits effectivement fournis (Stock)</h4>
+        <div class="supply-history-list" *ngIf="selectedSupplier?.supply_history?.length; else noSupplyHistory">
+          <div class="supply-history-item" *ngFor="let item of selectedSupplier.supply_history">
+            <div class="p-info">
+              <strong>{{ item.product?.title || 'Produit inconnu' }}</strong>
+              <span>Réf: {{ item.product?.reference || '—' }}</span>
+            </div>
+            <div class="p-quantity">
+              <span class="qty-label">Total fourni:</span>
+              <strong>{{ item.total_quantity }}</strong>
+            </div>
+          </div>
+        </div>
+        <ng-template #noSupplyHistory>
+          <p class="empty-mini">Aucune fourniture enregistrée pour le moment.</p>
+        </ng-template>
+      </div>
+
+      <!-- Section Avis -->
+      <div class="detail-section reviews-block">
+        <h4 class="section-title"><i class="fas fa-comment-dots"></i> Avis et Évaluations</h4>
+
+        <!-- Formulaire d'avis -->
+        <div class="review-compose">
+          <textarea [(ngModel)]="newReviewContent" placeholder="Votre avis sur ce fournisseur..."
+            class="review-input"></textarea>
+          <div class="review-actions">
+            <select [(ngModel)]="newReviewRating" class="rating-picker">
+              <option [ngValue]="5">⭐⭐⭐⭐⭐ (5)</option>
+              <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
+              <option [ngValue]="3">⭐⭐⭐ (3)</option>
+              <option [ngValue]="2">⭐⭐ (2)</option>
+              <option [ngValue]="1">⭐ (1)</option>
+            </select>
+            <button class="btn-primary sm" (click)="submitSupplierReview()"
+              [disabled]="isLoading || !newReviewContent.trim()">
+              <i class="fas fa-paper-plane"></i> Publier
+            </button>
+          </div>
+        </div>
+
+        <!-- Liste des avis -->
+        <div class="reviews-feed" *ngIf="selectedSupplier?.reviews?.length; else noReviews">
+          <div class="review-card" *ngFor="let rev of selectedSupplier.reviews">
+            <div class="rev-header">
+              <span class="user-info"><i class="fas fa-user-circle"></i> {{ rev.user?.name || 'Anonyme' }}</span>
+              <span class="rev-date">{{ rev.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+            </div>
+            <div class="rev-rating" *ngIf="rev.rating">
+              {{ '⭐'.repeat(rev.rating) }}
+            </div>
+            <p class="rev-text">{{ rev.content }}</p>
+          </div>
+        </div>
+        <ng-template #noReviews>
+          <p class="empty-msg">Soyez le premier à donner votre avis !</p>
+        </ng-template>
+      </div>
+
+    </div>
+    <div class="modal-footer"
+      style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafbff; border-radius: 0 0 16px 16px;">
+      <button class="btn-outline sm" (click)="closeSupplierDetails()">Fermer</button>
+    </div>
+  </div>
+</div>
