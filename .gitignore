@@ -1,0 +1,14 @@
+# Angular
+frontend/node_modules/
+frontend/dist/
+
+# Laravel
+backend/vendor/
+backend/.env
+
+# Général
+.env
+node_modules/
+vendor/
+dist/
+build/
