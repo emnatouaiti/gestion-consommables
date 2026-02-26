@@ -1,0 +1,654 @@
+/* ============================================================
+   CONSUMABLE REQUEST — styles alignés sur le design system ETAP
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ---------- Variables (héritées du shell ou redéfinies ici) ---------- */
+:root {
+  --etap-50:  #e8f1fb;
+  --etap-100: #c5d9f4;
+  --etap-200: #9dbfec;
+  --etap-300: #74a4e3;
+  --etap-400: #4d8cd9;
+  --etap-500: #1a5fa8;
+  --etap-600: #155094;
+  --etap-700: #0f4080;
+  --etap-800: #0a3068;
+  --etap-900: #061f4a;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.06);
+  --shadow-md:  0 4px 16px rgba(26,95,168,.12);
+  --shadow-lg:  0 8px 32px rgba(26,95,168,.18);
+  --shadow-xl:  0 20px 60px rgba(26,95,168,.22);
+
+  --ease-out:    cubic-bezier(.16,1,.3,1);
+  --ease-spring: cubic-bezier(.34,1.56,.64,1);
+
+  --surface:  #ffffff;
+  --bg:       #eef3fb;
+  --border:   rgba(26,95,168,.1);
+  --text-primary:   #0f2444;
+  --text-secondary: #4a6080;
+  --text-muted:     #94a3b8;
+}
+
+/* ---------- Conteneur principal ---------- */
+.consumable-request-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-family: 'DM Sans', sans-serif;
+  color: var(--text-primary);
+}
+
+.consumable-request-container h1 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -.4px;
+  color: var(--etap-800);
+  position: relative;
+  padding-left: 16px;
+}
+
+.consumable-request-container h1::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 70%;
+  border-radius: 4px;
+  background: linear-gradient(to bottom, var(--etap-400), var(--etap-600));
+}
+
+/* ---------- Alert / Message ---------- */
+.alert {
+  padding: 13px 18px;
+  border-radius: var(--radius-md);
+  font-size: 13.5px;
+  font-weight: 500;
+  border-left: 4px solid transparent;
+  animation: slideDown .3s var(--ease-out);
+}
+
+.alert:not([style*="f8d7da"]) {
+  background: #d4edda !important;
+  border-left-color: #22c55e;
+  color: #14532d;
+}
+
+.alert[style*="f8d7da"] {
+  border-left-color: #ef4444;
+  color: #7f1d1d;
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Cards de section (form-section + requests-section) ---------- */
+.form-section,
+.requests-section {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-md);
+  padding: 24px 28px;
+  transition: box-shadow .25s var(--ease-out);
+}
+
+.form-section:hover,
+.requests-section:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+.form-section h2,
+.requests-section h2 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--etap-500);
+  margin-bottom: 16px;
+}
+
+.form-section p {
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  background: var(--etap-50);
+  border-radius: var(--radius-md);
+  padding: 12px 16px;
+  border-left: 3px solid var(--etap-300);
+}
+
+/* ---------- Bouton principal ---------- */
+.btn-open-modal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  background: linear-gradient(135deg, var(--etap-500) 0%, var(--etap-700) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  box-shadow: 0 4px 16px rgba(26,95,168,.35);
+  transition: all .24s var(--ease-spring);
+}
+
+.btn-open-modal:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 28px rgba(26,95,168,.45);
+}
+
+.btn-open-modal:active {
+  transform: translateY(0) scale(.98);
+}
+
+/* ---------- États loading / no-data ---------- */
+.loading,
+.no-data {
+  text-align: center;
+  padding: 40px 20px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.loading::before {
+  content: '';
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2.5px solid var(--etap-200);
+  border-top-color: var(--etap-500);
+  animation: spin .7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ---------- Tableau ---------- */
+.requests-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13.5px;
+}
+
+.requests-table thead tr {
+  background: linear-gradient(to right, var(--etap-50), #f0f6ff);
+}
+
+.requests-table th {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.6px;
+  color: var(--etap-600);
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 2px solid var(--etap-100);
+  white-space: nowrap;
+}
+
+.requests-table th:first-child { border-radius: var(--radius-sm) 0 0 0; }
+.requests-table th:last-child  { border-radius: 0 var(--radius-sm) 0 0; }
+
+.requests-table tbody tr {
+  transition: background .18s;
+}
+
+.requests-table tbody tr:hover {
+  background: #f5f9ff;
+}
+
+.requests-table td {
+  padding: 13px 14px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(26,95,168,.06);
+  vertical-align: middle;
+}
+
+.requests-table td:first-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* ---------- Status badge ---------- */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .6px;
+  text-transform: uppercase;
+  color: white;
+  white-space: nowrap;
+}
+
+/* Override Angular ngStyle pour forcer les couleurs ETAP selon statut */
+/* Le composant Angular passe background-color via getStatusColor() —
+   on surcharge ici si la couleur orange est injectée */
+.status-badge[style*="orange"],
+.status-badge[style*="#f97316"],
+.status-badge[style*="rgb(249, 115, 22)"] {
+  background-color: var(--etap-500) !important;
+}
+
+/* Statuts sémantiques via classe si ajoutées côté TS */
+.status-pending   { background: var(--etap-500) !important; }
+.status-approved  { background: #16a34a !important; }
+.status-rejected  { background: #dc2626 !important; }
+
+/* ---------- Boutons d'actions tableau ---------- */
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.btn-edit,
+.btn-delete,
+.btn-approve,
+.btn-reject {
+  padding: 6px 13px;
+  border-radius: 50px;
+  border: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .3px;
+  transition: all .2s var(--ease-out);
+  white-space: nowrap;
+}
+
+.btn-edit {
+  background: var(--etap-50);
+  color: var(--etap-600);
+  border: 1px solid var(--etap-200);
+}
+.btn-edit:hover {
+  background: var(--etap-500);
+  color: #fff;
+  border-color: var(--etap-500);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(26,95,168,.25);
+}
+
+.btn-delete {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.btn-delete:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239,68,68,.25);
+}
+
+.btn-approve {
+  background: linear-gradient(135deg, #16a34a, #15803d);
+  color: #fff;
+  border: none;
+  box-shadow: 0 3px 10px rgba(22,163,74,.25);
+}
+.btn-approve:hover {
+  background: linear-gradient(135deg, #15803d, #14532d);
+  color: #fff;
+  border-color: transparent;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 16px rgba(22,163,74,.35);
+}
+
+.btn-reject {
+  background: #fff;
+  color: #dc2626;
+  border: 1.5px solid #fca5a5;
+}
+.btn-reject:hover {
+  background: #ef4444;
+  color: #fff;
+  border-color: #ef4444;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239,68,68,.25);
+}
+
+/* Table layout — scroll horizontal natif, colonnes auto */
+.requests-section {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.requests-table {
+  min-width: 980px;
+  table-layout: auto;
+  font-size: 13px;
+}
+
+/* Padding réduit sur th pour éviter les chevauchements */
+.requests-table th {
+  padding: 12px 10px;
+}
+
+.requests-table td {
+  padding: 13px 10px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid rgba(26,95,168,.06);
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.requests-table td:first-child {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Service "Non defini" en italique atténué */
+.requests-table td:nth-child(3) {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.no-action {
+  display: none;
+}
+
+/* ============================================================
+   MODALES
+   ============================================================ */
+.approval-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6,31,74,.45);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  padding: 20px;
+  animation: fadeIn .22s var(--ease-out);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.approval-modal {
+  background: var(--surface);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xl);
+  padding: 32px 28px 24px;
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  animation: slideUp .3s var(--ease-spring);
+}
+
+.request-modal {
+  max-width: 600px;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.approval-modal h3 {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--etap-800);
+  margin-bottom: 22px;
+  letter-spacing: -.3px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---------- Grille de résumé de la modale d'approbation ---------- */
+.approval-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: var(--etap-50);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid var(--etap-100);
+}
+
+.approval-grid > div {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.approval-grid strong {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--etap-500);
+  margin-bottom: 3px;
+}
+
+/* ---------- Formulaire dans les modales ---------- */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--etap-600);
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  border: 1.5px solid var(--etap-100);
+  background: #f8fbff;
+  color: var(--text-primary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  transition: border-color .2s, box-shadow .2s;
+  outline: none;
+  appearance: none;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  border-color: var(--etap-400);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(26,95,168,.12);
+}
+
+.form-group input::placeholder {
+  color: var(--text-muted);
+}
+
+/* ---------- Lignes de demande multi-produit ---------- */
+.request-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.request-line {
+  display: grid;
+  grid-template-columns: 1fr 120px auto;
+  gap: 8px;
+  align-items: center;
+  background: var(--etap-50);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  border: 1px solid var(--etap-100);
+  animation: slideDown .22s var(--ease-out);
+}
+
+.request-line select,
+.request-line input[type="number"] {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--etap-100);
+  background: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color .2s, box-shadow .2s;
+}
+
+.request-line select:focus,
+.request-line input:focus {
+  border-color: var(--etap-400);
+  box-shadow: 0 0 0 3px rgba(26,95,168,.1);
+}
+
+/* ---------- Actions de modale ---------- */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-confirm {
+  padding: 11px 24px;
+  background: linear-gradient(135deg, var(--etap-500) 0%, var(--etap-700) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 50px;
+  font-size: 13.5px;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(26,95,168,.35);
+  transition: all .22s var(--ease-spring);
+}
+
+.btn-confirm:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(26,95,168,.45);
+}
+
+.btn-confirm:disabled {
+  opacity: .55;
+  cursor: not-allowed;
+}
+
+.btn-cancel {
+  padding: 11px 20px;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1.5px solid rgba(26,95,168,.18);
+  border-radius: 50px;
+  font-size: 13.5px;
+  font-weight: 500;
+  transition: all .2s;
+}
+
+.btn-cancel:hover {
+  background: var(--etap-50);
+  color: var(--etap-600);
+  border-color: var(--etap-300);
+}
+
+/* ---------- Scrollbar personnalisée ---------- */
+.approval-modal::-webkit-scrollbar {
+  width: 5px;
+}
+.approval-modal::-webkit-scrollbar-track {
+  background: transparent;
+}
+.approval-modal::-webkit-scrollbar-thumb {
+  background: var(--etap-200);
+  border-radius: 10px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 900px) {
+  .requests-table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .approval-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .consumable-request-container {
+    gap: 16px;
+  }
+
+  .form-section,
+  .requests-section {
+    padding: 18px 16px;
+  }
+
+  .approval-modal {
+    padding: 22px 16px 18px;
+  }
+
+  .request-line {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .btn-confirm,
+  .btn-cancel {
+    width: 100%;
+    text-align: center;
+    justify-content: center;
+  }
+}

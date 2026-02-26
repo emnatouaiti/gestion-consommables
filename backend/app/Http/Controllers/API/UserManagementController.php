@@ -71,6 +71,8 @@ class UserManagementController extends Controller
         $validator = Validator::make($request->all(), [
             'nomprenom' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
+            'service' => 'nullable|string|max:255',
+            'poste' => 'nullable|string|max:255',
             'roles' => 'nullable',
         ]);
 
@@ -94,6 +96,8 @@ class UserManagementController extends Controller
             'nomprenom' => $request->nomprenom,
             'email' => $request->email,
             'password' => Hash::make($plain),
+            'service' => $request->input('service', 'Non defini'),
+            'poste' => $request->input('poste', 'Non defini'),
             'role' => $validRoleNames[0],
         ]);
 
@@ -121,7 +125,7 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone']);
+        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

@@ -1,5 +1,5 @@
-import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+﻿import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UnitService } from '../../../core/services/unit.service';
 
@@ -24,23 +24,42 @@ export class UnitsComponent implements OnInit {
     description: ''
   };
 
-  constructor(private readonly unitService: UnitService) { }
+  constructor(
+    private readonly unitService: UnitService,
+    private readonly cdr: ChangeDetectorRef,
+    @Inject(PLATFORM_ID) private readonly platformId: Object
+  ) { }
 
   ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.isLoading = false;
+      return;
+    }
+
     this.load();
   }
 
   load(): void {
+    if (!isPlatformBrowser(this.platformId)) {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+      return;
+    }
+
     this.isLoading = true;
     this.errorMessage = '';
+    this.cdr.detectChanges();
+
     this.unitService.list().subscribe({
       next: (data) => {
         this.units = Array.isArray(data) ? data : [];
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
-      error: (err) => {
-        this.errorMessage = err?.message || 'Erreur de chargement des unités.';
+      error: (err: any) => {
+        this.errorMessage = err?.message || 'Erreur de chargement des unites.';
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -91,27 +110,34 @@ export class UnitsComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingId ? 'Unité mise à jour.' : 'Unité créée.';
+        this.successMessage = this.editingId ? 'Unite mise a jour.' : 'Unite creee.';
         this.closeModal();
         this.load();
-        setTimeout(() => this.successMessage = '', 2500);
+        this.cdr.detectChanges();
+        setTimeout(() => (this.successMessage = ''), 2500);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = err?.error?.message || err?.message || 'Erreur de sauvegarde.';
+        this.cdr.detectChanges();
       }
     });
   }
 
   remove(id: number): void {
-    if (!confirm('Supprimer cette unité ?')) return;
+    if (!confirm('Supprimer cette unite ?')) {
+      return;
+    }
+
     this.unitService.delete(id).subscribe({
       next: () => {
-        this.successMessage = 'Unité supprimée.';
+        this.successMessage = 'Unite supprimee.';
         this.load();
-        setTimeout(() => this.successMessage = '', 2000);
+        this.cdr.detectChanges();
+        setTimeout(() => (this.successMessage = ''), 2000);
       },
-      error: (err) => {
+      error: (err: any) => {
         this.errorMessage = err?.error?.message || err?.message || 'Suppression impossible.';
+        this.cdr.detectChanges();
       }
     });
   }

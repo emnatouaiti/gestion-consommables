@@ -1,6 +1,6 @@
 ﻿<div class="page-header">
   <h1 class="page-title">Gestion des utilisateurs</h1>
-  <span class="page-count" *ngIf="!isLoading">{{ users.length }} utilisateur(s)</span>
+  <span class="page-count" *ngIf="!isLoading">{{ displayedUsers.length }} utilisateur(s)</span>
 </div>
 
 <div class="card">
@@ -30,6 +30,23 @@
       </svg>
       Ajouter
     </button>
+  </div>
+
+  <div class="card-top">
+    <div class="search-area">
+      <div class="select-wrapper">
+        <select class="form-control" [(ngModel)]="selectedServiceFilter">
+          <option value="">Tous les services</option>
+          <option *ngFor="let s of serviceFilterOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <div class="select-wrapper">
+        <select class="form-control" [(ngModel)]="selectedRoleFilter">
+          <option value="">Tous les rôles</option>
+          <option *ngFor="let r of roleFilterOptions" [value]="r">{{ r }}</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- Chargement -->
@@ -67,6 +84,8 @@
           <th>Nom</th>
           <th>Email</th>
           <th>Rôles</th>
+          <th>Service</th>
+          <th>Poste</th>
           <th>Adresse</th>
           <th>Téléphone</th>
           <th class="actions">Actions</th>
@@ -74,7 +93,7 @@
       </thead>
       <tbody>
 
-        <tr *ngFor="let u of users">
+        <tr *ngFor="let u of displayedUsers">
 
           <!-- Avatar cliquable pour zoom -->
           <td class="photo-cell">
@@ -95,6 +114,8 @@
               {{ roleNames(u) || '—' }}
             </span>
           </td>
+          <td>{{ u.service || '—' }}</td>
+          <td>{{ u.poste || '—' }}</td>
           <td>{{ u.adresse || '—' }}</td>
           <td>{{ u.telephone || '—' }}</td>
           <td class="actions">
@@ -104,7 +125,7 @@
         </tr>
 
         <tr *ngIf="users.length === 0" class="state-row">
-          <td colspan="7">
+          <td colspan="9">
             <div class="empty-state">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="1.5">
@@ -180,6 +201,37 @@
         </div>
 
         <div class="form-group">
+          <label>Service</label>
+          <div class="select-wrapper">
+            <select
+              [(ngModel)]="form.service"
+              (ngModelChange)="onServiceChange()"
+              name="service"
+              class="form-control"
+            >
+              <option value="">-- Sélectionner un service --</option>
+              <option *ngFor="let service of serviceOptions" [value]="service">
+                {{ service }}
+              </option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Poste</label>
+          <div class="select-wrapper">
+            <select
+              [(ngModel)]="form.poste"
+              name="poste"
+              class="form-control"
+            >
+              <option value="">-- Sélectionner un poste --</option>
+              <option *ngFor="let poste of availablePostes" [value]="poste">{{ poste }}</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
           <label>Rôle *</label>
           <div class="select-wrapper">
             <select
@@ -188,8 +240,8 @@
               class="form-control"
             >
               <option value="">-- Sélectionner un rôle --</option>
-              <option *ngFor="let role of roles" value="{{ role.name || role }}">
-                {{ role.name || role }}
+              <option *ngFor="let role of filteredRoles" [value]="role">
+                {{ role }}
               </option>
             </select>
           </div>

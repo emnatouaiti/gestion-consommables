@@ -345,6 +345,7 @@ button { font-family: inherit; cursor: pointer; }
 }
 
 .top-actions { display: flex; align-items: center; gap: 8px; }
+.top-actions { position: relative; }
 
 .action-btn {
   display: flex;
@@ -391,6 +392,67 @@ button { font-family: inherit; cursor: pointer; }
 .logout-btn:hover {
   background: #ef4444;
   border-color: #ef4444;
+}
+
+.notif-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 98px;
+  width: 320px;
+  max-height: 360px;
+  overflow: auto;
+  background: #fff;
+  border: 1px solid rgba(26, 95, 168, .16);
+  border-radius: 12px;
+  box-shadow: 0 14px 30px rgba(15, 64, 128, .18);
+  z-index: 50;
+}
+
+.notif-header {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1e293b;
+  padding: 12px 14px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.notif-loading,
+.notif-empty {
+  font-size: 13px;
+  color: #64748b;
+  padding: 14px;
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+  transition: background .2s;
+}
+
+.notif-item:hover {
+  background: #f8fafc;
+}
+
+.notif-item:last-child {
+  border-bottom: none;
+}
+
+.notif-title {
+  font-size: 13px;
+  color: #334155;
+  font-weight: 600;
+}
+
+.notif-time {
+  margin-top: 2px;
+  font-size: 11px;
+  color: #94a3b8;
 }
 
 .content {

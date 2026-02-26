@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -28,6 +29,8 @@ class AuthController extends Controller
             'nomprenom' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'service' => $request->input('service', 'Non defini'),
+            'poste' => $request->input('poste', 'Non defini'),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -63,6 +66,43 @@ class AuthController extends Controller
         return $request->user()->load(['roles', 'permissions']);
     }
 
+    public function unreadNotificationsCount(Request $request)
+    {
+        if (!Schema::hasTable('notifications')) {
+            return response()->json(['count' => 0]);
+        }
+
+        return response()->json([
+            'count' => $request->user()->unreadNotifications()->count()
+        ]);
+    }
+
+    public function notifications(Request $request)
+    {
+        if (!Schema::hasTable('notifications')) {
+            return response()->json([]);
+        }
+
+        return response()->json(
+            $request->user()
+                ->notifications()
+                ->latest()
+                ->limit(20)
+                ->get()
+        );
+    }
+
+    public function markAllNotificationsRead(Request $request)
+    {
+        if (!Schema::hasTable('notifications')) {
+            return response()->json(['message' => 'Aucune notification a marquer.']);
+        }
+
+        $request->user()->unreadNotifications->markAsRead();
+
+        return response()->json(['message' => 'Notifications marquees comme lues.']);
+    }
+
     public function updateProfile(Request $request)
     {
         $user = $request->user();
@@ -73,6 +113,8 @@ class AuthController extends Controller
             'email' => 'nullable|string|email|max:255|unique:users,email,' . $user->id,
             'adresse' => 'nullable|string|max:255',
             'telephone' => 'nullable|string|max:50',
+            'service' => 'nullable|string|max:255',
+            'poste' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -89,7 +131,7 @@ class AuthController extends Controller
             }
         }
 
-        $data = $request->only(['email', 'adresse', 'telephone']);
+        $data = $request->only(['email', 'adresse', 'telephone', 'service', 'poste']);
         $data['nomprenom'] = $request->input('nomprenom', $request->input('name', $user->nomprenom));
 
         if ($request->hasFile('photo')) {

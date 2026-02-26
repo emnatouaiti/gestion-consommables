@@ -43,6 +43,8 @@ class SocialAuthController extends Controller
                         'password' => bcrypt(str()->random(24)),
                         'avatar' => $googleUser->avatar,
                         'photo' => $googleUser->avatar,
+                        'service' => 'Non defini',
+                        'poste' => 'Non defini',
                     ]);
 
                     $user->assignRole('Utilisateur');

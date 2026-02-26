@@ -18,11 +18,12 @@ import { ProductsByWarehouseComponent } from './products-by-warehouse/products-b
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
+import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 
 const adminRoles = ['Administrateur'];
 const directorRoles = ['Directeur', 'Validateur'];
 const agentManagerRoles = ['Agent', 'Responsable', 'Gestionnaire'];
-const userRoles = ['Utilisateur'];
+const requesterRoles = ['Utilisateur', 'Agent', 'Responsable', 'Gestionnaire', 'PDG'];
 
 const routes: Routes = [
   {
@@ -45,9 +46,9 @@ const routes: Routes = [
 
       {
         path: 'validation-demandes',
-        component: AdminRolePageComponent,
+        component: ConsumableRequestComponent,
         canActivate: [RoleGuard],
-        data: { roles: directorRoles, view: 'validation' }
+        data: { roles: directorRoles, mode: 'validation' }
       },
       {
         path: 'anomalies-critiques',
@@ -124,10 +125,10 @@ const routes: Routes = [
       },
 
       {
-        path: 'mes-demandes',
-        component: AdminRolePageComponent,
+        path: 'demandes-consommables',
+        component: ConsumableRequestComponent,
         canActivate: [RoleGuard],
-        data: { roles: userRoles, view: 'demandes' }
+        data: { roles: requesterRoles, mode: 'request' }
       },
 
       // Keep this dynamic route last to avoid matching static admin paths (ex: gerer-categories).

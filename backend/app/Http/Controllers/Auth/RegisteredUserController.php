@@ -39,6 +39,8 @@ class RegisteredUserController extends Controller
             'nomprenom' => $request->nomprenom,
             'email' => $request->email,
             'password' => $request->password,
+            'service' => $request->input('service', 'Non defini'),
+            'poste' => $request->input('poste', 'Non defini'),
         ]);
 
         event(new Registered($user));

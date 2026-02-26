@@ -19,6 +19,7 @@ import { ProductsByWarehouseComponent } from './products-by-warehouse/products-b
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
+import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 
 @NgModule({
   declarations: [
@@ -37,6 +38,15 @@ import { UnitsComponent } from './units/units.component';
     ProductsByWarehouseComponent,
     ProductsByRoomComponent,
   ],
-  imports: [CommonModule, AdminRoutingModule, ReactiveFormsModule, FormsModule, RouterModule, SuppliersComponent, UnitsComponent]
+  imports: [
+    CommonModule,
+    AdminRoutingModule,
+    ReactiveFormsModule,
+    FormsModule,
+    RouterModule,
+    SuppliersComponent,
+    UnitsComponent,
+    ConsumableRequestComponent
+  ]
 })
 export class AdminModule { }

@@ -2,6 +2,7 @@
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
+import { ApiService } from '../../core/services/api.service';
 
 interface NavItem {
   label: string;
@@ -24,6 +25,10 @@ interface NavSection {
 export class AdminLayoutComponent implements OnInit {
   q: string | null = null;
   user: any = null;
+  notifCount = 0;
+  notifications: any[] = [];
+  notificationsOpen = false;
+  notificationsLoading = false;
 
   private readonly adminSections: NavSection[] = [
     {
@@ -36,13 +41,12 @@ export class AdminLayoutComponent implements OnInit {
       title: 'Administration',
       items: [
         { label: 'Utilisateurs', route: '/admin/users', exact: true },
-        { label: 'Archivés', route: '/admin/archived' },
-        { label: 'Gérer catégories', route: '/admin/gerer-categories' },
-        { label: 'Gérer unités', route: '/admin/gerer-unites' },
-        { label: 'Gérer produits', route: '/admin/gerer-produits' },
-        { label: 'Gérer dépôts', route: '/admin/gerer-depots' },
-        { label: 'Gérer fournisseurs', route: '/admin/gerer-fournisseurs' },
-
+        { label: 'Archives', route: '/admin/archived' },
+        { label: 'Gerer categories', route: '/admin/gerer-categories' },
+        { label: 'Gerer unites', route: '/admin/gerer-unites' },
+        { label: 'Gerer produits', route: '/admin/gerer-produits' },
+        { label: 'Gerer depots', route: '/admin/gerer-depots' },
+        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
         { label: 'Mon Profil', route: '/admin/profile' }
       ]
     }
@@ -52,10 +56,10 @@ export class AdminLayoutComponent implements OnInit {
     {
       title: 'Direction',
       items: [
-        { label: 'Validation des demandes', route: '/admin/validation-demandes', exact: true, badge: 'Priorité' },
+        { label: 'Validation des demandes', route: '/admin/validation-demandes', exact: true, badge: 'Priorite' },
         { label: 'Consulter tableaux de bord', route: '/admin/dashboard' },
         { label: 'Consulter anomalies critiques', route: '/admin/anomalies-critiques' },
-        { label: 'Consulter prévisions', route: '/admin/previsions' }
+        { label: 'Consulter previsions', route: '/admin/previsions' }
       ]
     },
     {
@@ -68,10 +72,11 @@ export class AdminLayoutComponent implements OnInit {
 
   private readonly agentManagerSections: NavSection[] = [
     {
-      title: 'Opérations',
+      title: 'Operations',
       items: [
-        { label: 'Gérer produits', route: '/admin/gerer-produits', exact: true },
-        { label: 'Gérer fournisseurs', route: '/admin/gerer-fournisseurs' }
+        { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
+        { label: 'Gerer produits', route: '/admin/gerer-produits' },
+        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' }
       ]
     },
     {
@@ -86,7 +91,7 @@ export class AdminLayoutComponent implements OnInit {
     {
       title: 'Espace utilisateur',
       items: [
-        { label: 'Mes demandes', route: '/admin/mes-demandes', exact: true },
+        { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
         { label: 'Tableau de bord', route: '/admin/dashboard' }
       ]
     },
@@ -110,6 +115,7 @@ export class AdminLayoutComponent implements OnInit {
 
   constructor(
     private authService: AuthService,
+    private apiService: ApiService,
     private router: Router,
     private readonly cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private readonly platformId: Object
@@ -126,10 +132,13 @@ export class AdminLayoutComponent implements OnInit {
       this.authService.getCurrentUser().subscribe({
         next: (user) => {
           this.user = user;
+          this.loadUnreadNotifications();
           this.cdr.detectChanges();
           this.redirectAdminRootToFirstMenu();
         }
       });
+    } else {
+      this.loadUnreadNotifications();
     }
 
     this.redirectAdminRootToFirstMenu();
@@ -161,7 +170,7 @@ export class AdminLayoutComponent implements OnInit {
     }
 
     if (this.authService.userHasAnyRole(this.user, ['Agent', 'Responsable', 'Gestionnaire'])) {
-      return 'Opérations';
+      return 'Operations';
     }
 
     if (this.authService.userHasAnyRole(this.user, ['Utilisateur'])) {
@@ -188,6 +197,58 @@ export class AdminLayoutComponent implements OnInit {
     this.router.navigate(['/admin/users'], { queryParams: { q: (this.q || '').trim() } });
   }
 
+  toggleNotifications(): void {
+    this.notificationsOpen = !this.notificationsOpen;
+    if (!this.notificationsOpen) {
+      return;
+    }
+
+    this.notificationsLoading = true;
+    this.apiService.get('notifications').subscribe({
+      next: (res) => {
+        this.notifications = Array.isArray(res) ? res : [];
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.notifications = [];
+        this.notificationsLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+
+    this.markNotificationsRead();
+  }
+
+  markNotificationsRead(): void {
+    this.apiService.put('notifications/read-all', {}).subscribe({
+      next: () => {
+        this.notifCount = 0;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  notificationLabel(notification: any): string {
+    const data = notification?.data || {};
+    const item = data?.item_name || 'Article';
+    const qty = data?.requested_quantity ?? '-';
+    return `${item} (${qty})`;
+  }
+
+  onNotificationClick(notification: any): void {
+    const requestId = notification?.data?.consumable_request_id;
+    const target = notification?.data?.url || '/admin/validation-demandes';
+    this.notificationsOpen = false;
+
+    if (requestId) {
+      this.router.navigate([target], { queryParams: { request_id: requestId } });
+      return;
+    }
+
+    this.router.navigate([target]);
+  }
+
   private redirectAdminRootToFirstMenu(): void {
     const isAdminRoot = this.router.url === '/admin' || this.router.url === '/admin/';
 
@@ -199,5 +260,17 @@ export class AdminLayoutComponent implements OnInit {
     if (firstRoute) {
       this.router.navigateByUrl(firstRoute);
     }
+  }
+
+  private loadUnreadNotifications(): void {
+    this.apiService.get('notifications/unread-count').subscribe({
+      next: (res) => {
+        this.notifCount = Number(res?.count || 0);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.notifCount = 0;
+      }
+    });
   }
 }

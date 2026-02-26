@@ -1,0 +1,196 @@
+<div class="consumable-request-container">
+  <h1>Gestion des demandes de consommables</h1>
+
+  <div *ngIf="message" class="alert" [ngStyle]="{'background-color': message.includes('Erreur') ? '#f8d7da' : '#d4edda'}">
+    {{ message }}
+  </div>
+
+  <div class="form-section" *ngIf="canCreateRequest">
+    <h2>Nouvelle demande</h2>
+    <button type="button" class="btn-open-modal" (click)="openCreateRequestModal()">
+      Ajouter une demande
+    </button>
+  </div>
+
+  <div class="form-section" *ngIf="!canCreateRequest">
+    <h2>Validation directeur</h2>
+    <p>Vous etes en mode validation. Seules les demandes en attente peuvent etre traitees.</p>
+  </div>
+
+  <div class="requests-section">
+    <h2>Historique des demandes</h2>
+
+    <div *ngIf="loading && requests.length === 0" class="loading">
+      Chargement des demandes...
+    </div>
+
+    <div *ngIf="requests.length === 0 && !loading" class="no-data">
+      Aucune demande pour le moment
+    </div>
+
+    <table *ngIf="requests.length > 0" class="requests-table">
+      <thead>
+        <tr>
+          <th>Article</th>
+          <th>Utilisateur</th>
+          <th>Service</th>
+          <th>Poste</th>
+          <th>Quantite demandee</th>
+          <th *ngIf="canApprove">Stock disponible</th>
+          <th>Quantite approuvee</th>
+          <th>Statut</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let request of requests" class="request-row">
+          <td>{{ request.item_name }}</td>
+          <td>{{ request.requester_name || request.user?.nomprenom || request.user?.name || '-' }}</td>
+          <td>{{ request.requester_service || request.user?.service || '-' }}</td>
+          <td>{{ request.requester_poste || request.user?.poste || request.user?.role || '-' }}</td>
+          <td>{{ request.requested_quantity }}</td>
+          <td *ngIf="canApprove">{{ request.available_stock ?? '-' }}</td>
+          <td>{{ request.approved_quantity ?? '-' }}</td>
+          <td>
+            <span class="status-badge" [ngStyle]="{'background-color': getStatusColor(request.status)}">
+              {{ request.status }}
+            </span>
+          </td>
+          <td>{{ request.created_at | date: 'short' }}</td>
+          <td class="actions">
+            <button
+              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests"
+              class="btn-edit"
+              (click)="openEditRequestModal(request)"
+              title="Modifier cette demande"
+            >
+              Modifier
+            </button>
+            <button
+              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests"
+              class="btn-delete"
+              (click)="deleteRequest(request.id)"
+              title="Supprimer cette demande"
+            >
+              Supprimer
+            </button>
+            <button
+              *ngIf="request.status === 'pending' && canApprove"
+              class="btn-approve"
+              (click)="openApproveModal(request)"
+              title="Approuver cette demande"
+            >
+              Approuver
+            </button>
+            <button
+              *ngIf="request.status === 'pending' && canApprove"
+              class="btn-reject"
+              (click)="rejectRequest(request.id)"
+              title="Rejeter cette demande"
+            >
+              Rejeter
+            </button>
+            <span *ngIf="request.status !== 'pending' || !canApprove" class="no-action">Pas d'action</span>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="approval-modal-overlay" *ngIf="requestModalOpen" (click)="closeRequestModal()">
+  <div class="approval-modal request-modal" (click)="$event.stopPropagation()">
+    <h3>{{ requestModalEditMode ? 'Modifier la demande' : 'Nouvelle demande' }}</h3>
+    <form [formGroup]="form" (ngSubmit)="submitRequest()">
+      <ng-container *ngIf="requestModalEditMode; else createMultiMode">
+        <div class="form-group">
+          <label for="product_id">Produit :</label>
+          <select id="product_id" formControlName="product_id">
+            <option [ngValue]="null">Selectionner un produit</option>
+            <option *ngFor="let p of products" [ngValue]="p.id">
+              {{ p.title }} ({{ p.reference || 'N/A' }})
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="item_name">Ou saisir un article manuel :</label>
+          <input id="item_name" type="text" formControlName="item_name" placeholder="Ex: Papier A4, Stylos" />
+        </div>
+
+        <div class="form-group">
+          <label for="requested_quantity">Quantite demandee :</label>
+          <input id="requested_quantity" type="number" formControlName="requested_quantity" min="1" required />
+        </div>
+      </ng-container>
+
+      <ng-template #createMultiMode>
+        <div class="form-group">
+          <small *ngIf="loadingProducts" class="loading">Chargement des produits...</small>
+        </div>
+        <div class="request-lines">
+          <div class="request-line" *ngFor="let line of requestLines; let i = index">
+            <select [(ngModel)]="line.product_id" [ngModelOptions]="{standalone: true}">
+              <option [ngValue]="null">Selectionner un produit</option>
+              <option *ngFor="let p of products" [ngValue]="p.id">
+                {{ p.title }} ({{ p.reference || 'N/A' }})
+              </option>
+            </select>
+            <input
+              type="number"
+              min="1"
+              placeholder="Quantite"
+              [(ngModel)]="line.requested_quantity"
+              [ngModelOptions]="{standalone: true}"
+            />
+            <button type="button" class="btn-delete" (click)="removeRequestLine(i)">Supprimer</button>
+          </div>
+          <button type="button" class="btn-edit" (click)="addRequestLine()">Ajouter un produit</button>
+        </div>
+      </ng-template>
+
+      <div class="modal-actions">
+        <button type="submit" class="btn-confirm" [disabled]="loading">
+          {{ loading ? 'Envoi...' : (requestModalEditMode ? 'Enregistrer' : 'Soumettre') }}
+        </button>
+        <button type="button" class="btn-cancel" (click)="closeRequestModal()">Annuler</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="approval-modal-overlay" *ngIf="selectedRequestForApproval" (click)="closeApproveModal()">
+  <div class="approval-modal" (click)="$event.stopPropagation()">
+    <h3>Validation de la demande</h3>
+
+    <div class="approval-grid">
+      <div><strong>Article:</strong> {{ selectedRequestForApproval?.item_name }}</div>
+      <div><strong>Utilisateur:</strong> {{ selectedRequestForApproval?.requester_name || selectedRequestForApproval?.user?.nomprenom || selectedRequestForApproval?.user?.name || '-' }}</div>
+      <div><strong>Service:</strong> {{ selectedRequestForApproval?.requester_service || selectedRequestForApproval?.user?.service || '-' }}</div>
+      <div><strong>Poste:</strong> {{ selectedRequestForApproval?.requester_poste || '-' }}</div>
+      <div><strong>Quantite demandee:</strong> {{ selectedRequestForApproval?.requested_quantity }}</div>
+      <div><strong>Stock disponible:</strong> {{ selectedRequestForApproval?.available_stock ?? '-' }}</div>
+      <div><strong>Quantite proposee:</strong> {{ selectedRequestForApproval?.suggested_approved_quantity ?? '-' }}</div>
+    </div>
+
+    <div class="form-group">
+      <label for="modal_approved_quantity">Quantite a approuver:</label>
+      <input
+        id="modal_approved_quantity"
+        type="number"
+        min="0"
+        [max]="selectedRequestForApproval?.available_stock ?? selectedRequestForApproval?.requested_quantity"
+        [(ngModel)]="modalApprovedQuantity"
+      />
+    </div>
+
+    <div class="modal-actions">
+     
+      <button type="button" class="btn-confirm" [disabled]="approving" (click)="confirmApprove()">
+        {{ approving ? 'Validation...' : 'Confirmer approbation' }}
+      </button>
+      <button type="button" class="btn-cancel" (click)="closeApproveModal()">Annuler</button>
+    </div>
+  </div>
+</div>

@@ -11,6 +11,25 @@ use Illuminate\Support\Facades\Validator;
 
 class ProductController extends Controller
 {
+    public function requestList(Request $request)
+    {
+        $q = trim((string) $request->get('q', ''));
+
+        $query = Product::query()
+            ->where('status', 'active')
+            ->select(['id', 'title', 'reference', 'stock_quantity'])
+            ->orderBy('title');
+
+        if ($q !== '') {
+            $query->where(function ($sub) use ($q) {
+                $sub->where('title', 'like', "%{$q}%")
+                    ->orWhere('reference', 'like', "%{$q}%");
+            });
+        }
+
+        return response()->json($query->get());
+    }
+
     public function index(Request $request)
     {
         $query = Product::with([
