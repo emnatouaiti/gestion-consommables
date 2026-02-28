@@ -53,6 +53,13 @@ class ProductController extends Controller
             $query->where('categorie_id', $request->categorie_id);
         }
 
+        if ($request->filled('supplier_id')) {
+            $supplierId = (int) $request->supplier_id;
+            $query->whereHas('suppliers', function ($sub) use ($supplierId) {
+                $sub->where('suppliers.id', $supplierId);
+            });
+        }
+
         if ($request->filled('q')) {
             $q = trim($request->q);
             $query->where(function ($sub) use ($q) {

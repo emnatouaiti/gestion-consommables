@@ -51,6 +51,7 @@ export class ProductsComponent implements OnInit {
     q: '',
     status: 'all',
     categorie_id: null as number | null,
+    supplier_id: null as number | null,
     low_stock_only: false,
     out_of_stock_only: false
   };
@@ -207,6 +208,7 @@ export class ProductsComponent implements OnInit {
       q: this.filters.q.trim(),
       status: this.filters.status,
       categorie_id: this.filters.categorie_id,
+      supplier_id: this.filters.supplier_id,
       low_stock_only: this.filters.low_stock_only,
       out_of_stock_only: this.filters.out_of_stock_only,
       page: this.pagination.page,
@@ -513,7 +515,32 @@ export class ProductsComponent implements OnInit {
   }
 
   clearFilters(): void {
-    this.filters = { q: '', status: 'all', categorie_id: null, low_stock_only: false, out_of_stock_only: false };
+    this.filters = {
+      q: '',
+      status: 'all',
+      categorie_id: null,
+      supplier_id: null,
+      low_stock_only: false,
+      out_of_stock_only: false
+    };
+    this.pagination.page = 1;
+    this.loadProducts();
+  }
+
+  filterByCategory(categoryId: number | null): void {
+    if (!categoryId) {
+      return;
+    }
+    this.filters.categorie_id = categoryId;
+    this.pagination.page = 1;
+    this.loadProducts();
+  }
+
+  filterBySupplier(supplierId: number | null): void {
+    if (!supplierId) {
+      return;
+    }
+    this.filters.supplier_id = supplierId;
     this.pagination.page = 1;
     this.loadProducts();
   }

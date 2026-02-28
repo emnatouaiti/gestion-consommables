@@ -79,6 +79,10 @@
         <option [ngValue]="null">Toutes catégories</option>
         <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
       </select>
+      <select [(ngModel)]="filters.supplier_id">
+        <option [ngValue]="null">Tous fournisseurs</option>
+        <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
+      </select>
     </div>
     <div class="filters-row-2">
       <label class="checkbox-label"><input type="checkbox" [(ngModel)]="filters.low_stock_only" /><span>Stock
@@ -147,7 +151,11 @@
                   style="cursor: pointer; color: #0066cc; text-decoration: underline;">{{ p.title }}</span></div>
             </td>
             <td><span class="ref-code">{{ p.reference }}</span></td>
-            <td>{{ p.category?.title || getCategoryTitle(p.categorie_id) }}</td>
+            <td>
+              <span class="filter-link" (click)="filterByCategory(p.categorie_id)">
+                {{ p.category?.title || getCategoryTitle(p.categorie_id) }}
+              </span>
+            </td>
             <td>
               <div class="suppliers-list" *ngIf="p.suppliers?.length">
                 <span class="supplier-badge clickable" *ngFor="let s of p.suppliers"

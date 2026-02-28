@@ -47,6 +47,7 @@ export class AdminStockService {
     q?: string;
     status?: string;
     categorie_id?: number | null;
+    supplier_id?: number | null;
     low_stock_only?: boolean;
     out_of_stock_only?: boolean;
     page?: number;
@@ -58,6 +59,7 @@ export class AdminStockService {
     if (params?.q) query.push(`q=${encodeURIComponent(params.q)}`);
     if (params?.status && params.status !== 'all') query.push(`status=${encodeURIComponent(params.status)}`);
     if (params?.categorie_id) query.push(`categorie_id=${encodeURIComponent(String(params.categorie_id))}`);
+    if (params?.supplier_id) query.push(`supplier_id=${encodeURIComponent(String(params.supplier_id))}`);
     if (params?.low_stock_only) query.push('low_stock_only=1');
     if (params?.out_of_stock_only) query.push('out_of_stock_only=1');
     if (params?.page) query.push(`page=${encodeURIComponent(String(params.page))}`);

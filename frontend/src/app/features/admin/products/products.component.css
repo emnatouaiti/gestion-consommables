@@ -1075,6 +1075,12 @@ td {
   box-shadow: 0 8px 24px rgba(26,95,168,.4);
 }
 
+.filter-link {
+  cursor: pointer;
+  color: #0066cc;
+  text-decoration: underline;
+}
+
 /* ══════════════════════════════════════════════════════════════════════
    MODAL DÉTAILS FOURNISSEUR
 ══════════════════════════════════════════════════════════════════════ */
