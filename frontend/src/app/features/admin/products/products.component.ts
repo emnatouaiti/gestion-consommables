@@ -26,6 +26,7 @@ export class ProductsComponent implements OnInit {
   scanCode = '';
   scanMessage = '';
   selectedSupplier: any | null = null;
+  selectedProductDetails: any | null = null;
   showSupplierDetailsModal = false;
   newReviewContent = '';
   newReviewRating: number | null = 5;
@@ -35,6 +36,7 @@ export class ProductsComponent implements OnInit {
   photoPreviewUrls: string[] = [];
   showModal = false;
   private readonly barcodeCache = new Map<string, string>();
+  updatingPhotoId: number | null = null;
 
   warehouses: any[] = [];
   rooms: any[] = [];
@@ -464,11 +466,58 @@ export class ProductsComponent implements OnInit {
     input.value = '';
   }
 
+  onRowPhotoSelected(event: Event, product: any): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length) return;
+
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      this.errorMessage = 'Veuillez choisir une image.';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.errorMessage = 'Image trop lourde (max 2 Mo).';
+      return;
+    }
+
+    this.errorMessage = '';
+    this.updatingPhotoId = product.id;
+    this.stockService.updateProduct(product.id, { photos: [file] }).subscribe({
+      next: () => {
+        this.successMessage = 'Photo mise à jour.';
+        this.updatingPhotoId = null;
+        this.loadProducts();
+        setTimeout(() => (this.successMessage = ''), 2000);
+      },
+      error: (err) => {
+        this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
+        this.updatingPhotoId = null;
+      }
+    });
+  }
+
   photoUrl(path: string | null | undefined): string {
     if (!path) return 'assets/default-avatar.svg';
     if (path.startsWith('http')) return path;
     const cleanPath = path.replace(/^\/+/, '');
     return `http://localhost:8000/storage/${cleanPath}`;
+  }
+
+  productThumb(product: any): string {
+    const direct = product?.photo;
+    if (direct) return this.photoUrl(direct);
+    const firstPhoto = Array.isArray(product?.photos) && product.photos.length ? product.photos[0].path || product.photos[0] : null;
+    return this.photoUrl(firstPhoto);
+  }
+
+  openProductDetails(p: any): void {
+    this.selectedProductDetails = p;
+  }
+
+  closeProductDetails(): void {
+    this.selectedProductDetails = null;
   }
 
   /* ─── Scan ─── */

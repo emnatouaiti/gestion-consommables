@@ -25,6 +25,7 @@ class ConsumableRequestController extends Controller
                 ->map(function (ConsumableRequest $request) {
                     $availableStock = $this->getAvailableStock($request);
                     $suggestion = $this->computeSuggestedQuantity($request, $availableStock);
+                    $productThreshold = optional($request->product)->seuil_min ?? null;
 
                     $request->setAttribute('requester_name', $this->getRequesterName($request->user));
                     $request->setAttribute('requester_service', $this->getRequesterService($request->user));
@@ -32,14 +33,67 @@ class ConsumableRequestController extends Controller
                     $request->setAttribute('available_stock', $availableStock);
                     $request->setAttribute('suggested_approved_quantity', $suggestion['quantity']);
                     $request->setAttribute('suggestion_reason', $suggestion['reason']);
+                    $request->setAttribute('product_threshold', $productThreshold);
+                    $request->setAttribute('stock_alert', $this->isStockBelowThreshold($availableStock, $productThreshold, $request->requested_quantity));
 
                     return $request;
-                });
+                })
+                ->groupBy(fn ($req) => $req->batch_code ?: $req->id)
+                ->map(function ($group) {
+                    $first = $group->first();
+                    $items = $group->values();
+                    $requestedTotal = $group->sum('requested_quantity');
+                    $approvedTotal = $group->sum('approved_quantity');
+
+                    return [
+                        'id' => $first->id,
+                        'batch_code' => $first->batch_code,
+                        'item_name' => count($items) > 1 ? count($items) . ' produits' : $first->item_name,
+                        'requested_quantity' => $requestedTotal,
+                        'approved_quantity' => $approvedTotal ?: null,
+                        'status' => $this->computeGroupStatus($group),
+                        'created_at' => $first->created_at,
+                        'user' => $first->user,
+                        'requester_name' => $first->getAttribute('requester_name'),
+                        'requester_service' => $first->getAttribute('requester_service'),
+                        'requester_poste' => $first->getAttribute('requester_poste'),
+                        'available_stock' => $first->getAttribute('available_stock'),
+                        'suggested_approved_quantity' => $first->getAttribute('suggested_approved_quantity'),
+                        'suggestion_reason' => $first->getAttribute('suggestion_reason'),
+                        'product_threshold' => $first->getAttribute('product_threshold'),
+                        'stock_alert' => $first->getAttribute('stock_alert'),
+                        'items' => $items,
+                    ];
+                })
+                ->values();
         } else {
             $requests = ConsumableRequest::where('user_id', $user->id)
                 ->with('user.roles', 'product')
                 ->latest()
-                ->get();
+                ->get()
+                ->groupBy(fn ($req) => $req->batch_code ?: $req->id)
+                ->map(function ($group) {
+                    $first = $group->first();
+                    $items = $group->values();
+                    $requestedTotal = $group->sum('requested_quantity');
+                    $approvedTotal = $group->sum('approved_quantity');
+
+                    return [
+                        'id' => $first->id,
+                        'batch_code' => $first->batch_code,
+                        'item_name' => count($items) > 1 ? count($items) . ' produits' : $first->item_name,
+                        'requested_quantity' => $requestedTotal,
+                        'approved_quantity' => $approvedTotal ?: null,
+                        'status' => $this->computeGroupStatus($group),
+                        'created_at' => $first->created_at,
+                        'user' => $first->user,
+                        'requester_name' => $this->getRequesterName($first->user),
+                        'requester_service' => $this->getRequesterService($first->user),
+                        'requester_poste' => $this->getRequesterPoste($first->user),
+                        'items' => $items,
+                    ];
+                })
+                ->values();
         }
 
         return response()->json($requests);
@@ -58,11 +112,13 @@ class ConsumableRequestController extends Controller
 
         $payloads = $this->buildCreateRequestPayloads($request);
         $createdRequests = [];
+        $batchCode = count($payloads) > 1 ? (string) Str::uuid() : null;
 
-        DB::transaction(function () use ($payloads, $user, &$createdRequests) {
+        DB::transaction(function () use ($payloads, $user, $batchCode, &$createdRequests) {
             foreach ($payloads as $payload) {
                 $createdRequests[] = ConsumableRequest::create(array_merge($payload, [
                     'user_id' => $user->id,
+                    'batch_code' => $batchCode,
                     'status' => 'pending',
                 ]));
             }
@@ -463,6 +519,38 @@ class ConsumableRequestController extends Controller
         return $this->userHasAnyRole($user, ['directeur', 'durecteur', 'director'])
             || in_array(Str::lower((string) ($user?->poste ?? '')), ['directeur', 'durecteur', 'director'], true)
             || in_array(Str::lower((string) ($user?->role ?? '')), ['directeur', 'durecteur', 'director'], true);
+    }
+
+    private function isStockBelowThreshold(?int $availableStock, ?int $threshold, int $requested): bool
+    {
+        if ($availableStock === null) {
+            return false;
+        }
+
+        if ($threshold !== null && $threshold > 0 && $availableStock < $threshold) {
+            return true;
+        }
+
+        return $availableStock < $requested;
+    }
+
+    private function computeGroupStatus($group): string
+    {
+        $statuses = collect($group)->pluck('status')->map(fn ($s) => Str::lower((string) $s));
+
+        if ($statuses->contains('pending')) {
+            return 'pending';
+        }
+
+        if ($statuses->contains('rejected')) {
+            return 'rejected';
+        }
+
+        if ($statuses->every(fn ($s) => $s === 'approved')) {
+            return 'approved';
+        }
+
+        return $statuses->first() ?? 'pending';
     }
 
     private function canRequesterEditOrDelete(?User $user, ConsumableRequest $consumableRequest): bool

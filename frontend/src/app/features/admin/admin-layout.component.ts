@@ -47,6 +47,7 @@ export class AdminLayoutComponent implements OnInit {
         { label: 'Gerer produits', route: '/admin/gerer-produits' },
         { label: 'Gerer depots', route: '/admin/gerer-depots' },
         { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
+        { label: 'Consulter le journal d audit', route: '/admin/journal-audit' },
         { label: 'Mon Profil', route: '/admin/profile' }
       ]
     }

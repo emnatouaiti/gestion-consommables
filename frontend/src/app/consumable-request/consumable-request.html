@@ -1,20 +1,16 @@
 <div class="consumable-request-container">
-  <h1>Gestion des demandes de consommables</h1>
-
-  <div *ngIf="message" class="alert" [ngStyle]="{'background-color': message.includes('Erreur') ? '#f8d7da' : '#d4edda'}">
-    {{ message }}
-  </div>
-
-  <div class="form-section" *ngIf="canCreateRequest">
-    <h2>Nouvelle demande</h2>
-    <button type="button" class="btn-open-modal" (click)="openCreateRequestModal()">
-      Ajouter une demande
+  <div class="page-top">
+    <div>
+      <h1>Gestion des demandes de consommables</h1>
+      <p class="subtitle">Espace utilisateur</p>
+    </div>
+    <button class="btn-open-modal" *ngIf="canCreateRequest" (click)="openCreateRequestModal()">
+      Nouvelle demande
     </button>
   </div>
 
-  <div class="form-section" *ngIf="!canCreateRequest">
-    <h2>Validation directeur</h2>
-    <p>Vous etes en mode validation. Seules les demandes en attente peuvent etre traitees.</p>
+  <div *ngIf="message" class="alert" [ngStyle]="{'background-color': message.includes('Erreur') ? '#f8d7da' : '#d4edda'}">
+    {{ message }}
   </div>
 
   <div class="requests-section">
@@ -24,35 +20,33 @@
       Chargement des demandes...
     </div>
 
-    <div *ngIf="requests.length === 0 && !loading" class="no-data">
+    <div *ngIf="filteredRequests.length === 0 && !loading" class="no-data">
       Aucune demande pour le moment
     </div>
 
-    <table *ngIf="requests.length > 0" class="requests-table">
+    <table *ngIf="filteredRequests.length > 0" class="requests-table">
       <thead>
         <tr>
-          <th>Article</th>
+          <th>Article(s)</th>
           <th>Utilisateur</th>
           <th>Service</th>
           <th>Poste</th>
-          <th>Quantite demandee</th>
-          <th *ngIf="canApprove">Stock disponible</th>
-          <th>Quantite approuvee</th>
-          <th>Statut</th>
+          <th *ngIf="!canApprove">Statut</th>
           <th>Date</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let request of requests" class="request-row">
-          <td>{{ request.item_name }}</td>
+        <tr *ngFor="let request of filteredRequests" class="request-row">
+          <td>
+            <div class="row-main">
+              <span>{{ request.item_name }}</span>
+            </div>
+          </td>
           <td>{{ request.requester_name || request.user?.nomprenom || request.user?.name || '-' }}</td>
           <td>{{ request.requester_service || request.user?.service || '-' }}</td>
           <td>{{ request.requester_poste || request.user?.poste || request.user?.role || '-' }}</td>
-          <td>{{ request.requested_quantity }}</td>
-          <td *ngIf="canApprove">{{ request.available_stock ?? '-' }}</td>
-          <td>{{ request.approved_quantity ?? '-' }}</td>
-          <td>
+          <td *ngIf="!canApprove">
             <span class="status-badge" [ngStyle]="{'background-color': getStatusColor(request.status)}">
               {{ request.status }}
             </span>
@@ -60,38 +54,28 @@
           <td>{{ request.created_at | date: 'short' }}</td>
           <td class="actions">
             <button
-              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests"
+              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
               class="btn-edit"
-              (click)="openEditRequestModal(request)"
+              (click)="openEditRequestModal(request.items?.[0] || request)"
               title="Modifier cette demande"
             >
               Modifier
             </button>
             <button
-              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests"
+              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
               class="btn-delete"
-              (click)="deleteRequest(request.id)"
+              (click)="deleteRequest((request.items?.[0]?.id) || request.id)"
               title="Supprimer cette demande"
             >
               Supprimer
             </button>
             <button
-              *ngIf="request.status === 'pending' && canApprove"
-              class="btn-approve"
-              (click)="openApproveModal(request)"
-              title="Approuver cette demande"
+              class="btn-edit"
+              (click)="openDetailsModal(request)"
             >
-              Approuver
+              Voir details
             </button>
-            <button
-              *ngIf="request.status === 'pending' && canApprove"
-              class="btn-reject"
-              (click)="rejectRequest(request.id)"
-              title="Rejeter cette demande"
-            >
-              Rejeter
-            </button>
-            <span *ngIf="request.status !== 'pending' || !canApprove" class="no-action">Pas d'action</span>
+            <span *ngIf="request.status !== 'pending' && !canApprove" class="no-action">Pas d'action</span>
           </td>
         </tr>
       </tbody>
@@ -105,10 +89,16 @@
     <form [formGroup]="form" (ngSubmit)="submitRequest()">
       <ng-container *ngIf="requestModalEditMode; else createMultiMode">
         <div class="form-group">
+          <input
+            type="text"
+            placeholder="Rechercher un produit..."
+            [(ngModel)]="productSearchTerm"
+            [ngModelOptions]="{standalone: true}"
+          />
           <label for="product_id">Produit :</label>
           <select id="product_id" formControlName="product_id">
             <option [ngValue]="null">Selectionner un produit</option>
-            <option *ngFor="let p of products" [ngValue]="p.id">
+            <option *ngFor="let p of filteredProducts" [ngValue]="p.id">
               {{ p.title }} ({{ p.reference || 'N/A' }})
             </option>
           </select>
@@ -127,13 +117,19 @@
 
       <ng-template #createMultiMode>
         <div class="form-group">
+          <input
+            type="text"
+            placeholder="Rechercher un produit..."
+            [(ngModel)]="productSearchTerm"
+            [ngModelOptions]="{standalone: true}"
+          />
           <small *ngIf="loadingProducts" class="loading">Chargement des produits...</small>
         </div>
         <div class="request-lines">
           <div class="request-line" *ngFor="let line of requestLines; let i = index">
             <select [(ngModel)]="line.product_id" [ngModelOptions]="{standalone: true}">
               <option [ngValue]="null">Selectionner un produit</option>
-              <option *ngFor="let p of products" [ngValue]="p.id">
+              <option *ngFor="let p of filteredProducts" [ngValue]="p.id">
                 {{ p.title }} ({{ p.reference || 'N/A' }})
               </option>
             </select>
@@ -191,6 +187,55 @@
         {{ approving ? 'Validation...' : 'Confirmer approbation' }}
       </button>
       <button type="button" class="btn-cancel" (click)="closeApproveModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<div class="approval-modal-overlay" *ngIf="selectedRequestDetails" (click)="closeDetailsModal()">
+  <div class="approval-modal" (click)="$event.stopPropagation()">
+    <h3>Details de la demande</h3>
+    <div class="detail-grid" *ngIf="selectedRequestDetails?.items?.length; else singleDetail">
+      <div class="item-card" *ngFor="let it of selectedRequestDetails.items">
+        <div class="item-head">
+          <strong>{{ it.item_name }}</strong>
+          <span class="status-tag" [ngClass]="stockStatusClass(it)">
+            {{ stockStatusLabel(it) }}
+          </span>
+        </div>
+        <div class="item-meta">
+          <span>Ref: {{ it.product?.reference || 'N/A' }}</span>
+          <span>Demande: {{ it.requested_quantity }}</span>
+          <span>Approuvee: {{ it.approved_quantity ?? '-' }}</span>
+          <span>Statut: {{ it.status }}</span>
+        </div>
+        <div class="item-actions" *ngIf="canEditFromDetails(it)">
+          <button class="btn-edit" (click)="editItemFromDetails(it)">Modifier</button>
+          <button class="btn-delete" (click)="deleteItemFromDetails(it)">Supprimer</button>
+        </div>
+        <div class="item-actions" *ngIf="canApprove && it.status === 'pending'">
+          <button class="btn-approve" (click)="approveFromDetails(it)">Approuver</button>
+          <button class="btn-reject" (click)="rejectRequest(it.id)">Rejeter</button>
+        </div>
+      </div>
+    </div>
+    <ng-template #singleDetail>
+      <div class="detail-grid">
+        <div><strong>Produit:</strong> {{ selectedRequestDetails?.product?.title || selectedRequestDetails?.item_name }}</div>
+        <div><strong>Reference:</strong> {{ selectedRequestDetails?.product?.reference || 'N/A' }}</div>
+        <div><strong>Quantite demandee:</strong> {{ selectedRequestDetails?.requested_quantity }}</div>
+        <div><strong>Statut:</strong> {{ selectedRequestDetails?.status }}</div>
+      </div>
+      <div class="item-actions" *ngIf="canEditFromDetails(selectedRequestDetails)">
+        <button class="btn-edit" (click)="editItemFromDetails(selectedRequestDetails)">Modifier</button>
+        <button class="btn-delete" (click)="deleteItemFromDetails(selectedRequestDetails)">Supprimer</button>
+      </div>
+      <div class="item-actions" *ngIf="canApprove && selectedRequestDetails?.status === 'pending'">
+        <button class="btn-approve" (click)="approveFromDetails(selectedRequestDetails)">Approuver</button>
+        <button class="btn-reject" (click)="rejectRequest(selectedRequestDetails?.id)">Rejeter</button>
+      </div>
+    </ng-template>
+    <div class="modal-actions">
+      <button type="button" class="btn-cancel" (click)="closeDetailsModal()">Fermer</button>
     </div>
   </div>
 </div>

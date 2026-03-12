@@ -67,6 +67,7 @@ Route::prefix('api')->group(function () {
 
     Route::middleware(['auth:sanctum', 'role:Administrateur'])->group(function () {
         Route::get('admin/dashboard', [AdminController::class, 'dashboard']);
+        Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
 
         Route::get('admin/users', [UserManagementController::class, 'index']);
         Route::post('admin/users', [UserManagementController::class, 'store']);

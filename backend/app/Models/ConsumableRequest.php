@@ -9,6 +9,7 @@ class ConsumableRequest extends Model
 {
     protected $fillable = [
         'user_id',
+        'batch_code',
         'product_id',
         'item_name',
         'requested_quantity',

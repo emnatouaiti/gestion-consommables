@@ -15,6 +15,8 @@ import { AuthService } from '../core/services/auth.service';
 export class ConsumableRequestComponent implements OnInit {
   requests: any[] = [];
   products: any[] = [];
+  expandedRequestIds = new Set<number>();
+  productSearchTerm = '';
   form: FormGroup;
   loading = false;
   loadingProducts = false;
@@ -108,6 +110,80 @@ export class ConsumableRequestComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  get filteredRequests(): any[] {
+    return this.requests;
+  }
+
+  get filteredProducts(): any[] {
+    const term = this.productSearchTerm.trim().toLowerCase();
+    if (!term) return this.products;
+    return this.products.filter((p) =>
+      String(p.title || '').toLowerCase().includes(term) ||
+      String(p.reference || '').toLowerCase().includes(term)
+    );
+  }
+
+  toggleDetails(id: number): void {
+    if (this.expandedRequestIds.has(id)) {
+      this.expandedRequestIds.delete(id);
+    } else {
+      this.expandedRequestIds.add(id);
+    }
+  }
+
+  selectedRequestDetails: any = null;
+
+  openDetailsModal(request: any): void {
+    this.selectedRequestDetails = request;
+  }
+
+  closeDetailsModal(): void {
+    this.selectedRequestDetails = null;
+  }
+
+  canEditFromDetails(request: any): boolean {
+    const isPending = String(request?.status || '').toLowerCase() === 'pending';
+    const isOwnerAllowed = this.canEditDeleteOwnRequests;
+    return isPending && isOwnerAllowed;
+  }
+
+  editItemFromDetails(item: any): void {
+    this.closeDetailsModal();
+    this.openEditRequestModal(item);
+  }
+
+  deleteItemFromDetails(item: any): void {
+    this.closeDetailsModal();
+    this.deleteRequest(item.id);
+  }
+
+  approveFromDetails(item: any): void {
+    this.closeDetailsModal();
+    this.openApproveModal(item);
+  }
+
+  stockStatusLabel(request: any): string {
+    const available = Number(request?.available_stock ?? -1);
+    const threshold = Number(request?.product_threshold ?? 0);
+    if (!Number.isFinite(available) || available < 0) {
+      return 'Stock inconnu';
+    }
+    if (threshold > 0 && available < threshold) {
+      return 'Sous seuil';
+    }
+    if (available < Number(request?.requested_quantity ?? 0)) {
+      return 'Insuffisant';
+    }
+    return 'Suffisant';
+  }
+
+  stockStatusClass(request: any): string {
+    const label = this.stockStatusLabel(request);
+    if (label === 'Suffisant') return 'tag-success';
+    if (label === 'Stock inconnu') return 'tag-neutral';
+    return 'tag-warning';
   }
 
   submitRequest(): void {

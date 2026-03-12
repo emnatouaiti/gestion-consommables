@@ -35,6 +35,10 @@
       <button class="side-item" [class.active]="activeSection === 'documents'" (click)="setSection('documents')">
         Documents
       </button>
+      <button class="side-item" [class.active]="activeSection === 'images'" (click)="setSection('images')">
+        Images
+      </button>
+      <input #photoInput type="file" accept="image/*" style="display:none" (change)="onPhotoSelected($event)" />
     </aside>
 
     <section class="content">
@@ -252,6 +256,32 @@
           <div class="empty-docs">
             <p>Section documents (factures, bons, images) à brancher à l’API.</p>
           </div>
+        </div>
+      </ng-container>
+
+      <!-- IMAGES -->
+      <ng-container *ngIf="activeSection === 'images'">
+        <div class="card">
+          <div class="card-header">
+            <h2>Images du produit</h2>
+            <button class="btn primary" type="button" (click)="photoInput.click()" [disabled]="photoUploadInProgress">
+              {{ photoUploadInProgress ? 'Upload...' : 'Ajouter une image' }}
+            </button>
+          </div>
+          <div class="images-grid" *ngIf="getProductPhotos().length; else noPhotos">
+            <div class="image-card" *ngFor="let ph of getProductPhotos()">
+              <img [src]="getPhotoUrl(ph.path)" alt="Produit" />
+              <div class="image-actions">
+                <button class="btn ghost" (click)="setDefaultPhoto(ph.path)">Définir par défaut</button>
+              </div>
+            </div>
+          </div>
+          <ng-template #noPhotos>
+            <div class="empty-docs">
+              <p>Aucune image. Ajoutez-en une pour ce produit.</p>
+              <button class="btn primary" type="button" (click)="photoInput.click()">Choisir une image</button>
+            </div>
+          </ng-template>
         </div>
       </ng-container>
     </section>

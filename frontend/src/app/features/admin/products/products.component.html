@@ -60,49 +60,51 @@
     </div>
   </div>
 
-  <!-- Filters -->
-  <div class="filters-card">
-    <div class="filters-row">
-      <div class="search-input">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8" />
-          <line x1="21" y1="21" x2="16.65" y2="16.65" />
-        </svg>
-        <input [(ngModel)]="filters.q" (keyup.enter)="applyFilters()" placeholder="Rechercher..." />
+  <div class="filters-scan-wrapper">
+    <!-- Filters -->
+    <div class="filters-card">
+      <div class="filters-row">
+        <div class="search-input">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8" />
+            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+          </svg>
+          <input [(ngModel)]="filters.q" (keyup.enter)="applyFilters()" placeholder="Rechercher..." />
+        </div>
+        <select [(ngModel)]="filters.status">
+          <option value="all">Tous statuts</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <select [(ngModel)]="filters.categorie_id">
+          <option [ngValue]="null">Toutes catégories</option>
+          <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
+        </select>
+        <select [(ngModel)]="filters.supplier_id">
+          <option [ngValue]="null">Tous fournisseurs</option>
+          <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
+        </select>
       </div>
-      <select [(ngModel)]="filters.status">
-        <option value="all">Tous statuts</option>
-        <option value="active">Active</option>
-        <option value="inactive">Inactive</option>
-      </select>
-      <select [(ngModel)]="filters.categorie_id">
-        <option [ngValue]="null">Toutes catégories</option>
-        <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
-      </select>
-      <select [(ngModel)]="filters.supplier_id">
-        <option [ngValue]="null">Tous fournisseurs</option>
-        <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
-      </select>
+      <div class="filters-row-2">
+        <label class="checkbox-label"><input type="checkbox" [(ngModel)]="filters.low_stock_only" /><span>Stock
+            faible</span></label>
+        <label class="checkbox-label"><input type="checkbox"
+            [(ngModel)]="filters.out_of_stock_only" /><span>Rupture</span></label>
+        <div class="filter-actions"><button class="btn-outline sm" (click)="applyFilters()">Filtrer</button><button
+            class="btn-text" (click)="clearFilters()">Reset</button></div>
+      </div>
     </div>
-    <div class="filters-row-2">
-      <label class="checkbox-label"><input type="checkbox" [(ngModel)]="filters.low_stock_only" /><span>Stock
-          faible</span></label>
-      <label class="checkbox-label"><input type="checkbox"
-          [(ngModel)]="filters.out_of_stock_only" /><span>Rupture</span></label>
-      <div class="filter-actions"><button class="btn-outline sm" (click)="applyFilters()">Filtrer</button><button
-          class="btn-text" (click)="clearFilters()">Reset</button></div>
-    </div>
-  </div>
 
-  <!-- Scanner -->
-  <div class="scan-card">
-    <div class="scan-header">🔍 Scanner code-barres</div>
-    <div class="scan-row">
-      <input [(ngModel)]="scanCode" (keyup.enter)="onScanSubmit()" placeholder="Scanner ou saisir le code..." />
-      <button class="btn-primary sm" (click)="onScanSubmit()">Rechercher</button>
-      <button class="btn-outline sm" (click)="clearScan()">Vider</button>
+    <!-- Scanner -->
+    <div class="scan-card">
+      <div class="scan-header">🔍 Scanner code-barres</div>
+      <div class="scan-row inline">
+        <input [(ngModel)]="scanCode" (keyup.enter)="onScanSubmit()" placeholder="Scanner ou saisir le code..." />
+        <button class="btn-primary sm" (click)="onScanSubmit()">Rechercher</button>
+        <button class="btn-outline sm" (click)="clearScan()">Vider</button>
+      </div>
+      <p class="scan-msg" *ngIf="scanMessage">{{ scanMessage }}</p>
     </div>
-    <p class="scan-msg" *ngIf="scanMessage">{{ scanMessage }}</p>
   </div>
 
   <div class="scan-result" *ngIf="scannedProduct">
@@ -146,7 +148,7 @@
         <tbody>
           <tr *ngFor="let p of products" [class.row-highlight]="highlightedProductId === p.id">
             <td>
-              <div class="product-cell"><img class="product-thumb" [src]="photoUrl(p.photo)" alt="" /><span
+              <div class="product-cell"><img class="product-thumb" [src]="productThumb(p)" alt="" /><span
                   class="product-name" (click)="manageProductStocks(p)"
                   style="cursor: pointer; color: #0066cc; text-decoration: underline;">{{ p.title }}</span></div>
             </td>
@@ -179,6 +181,10 @@
             <td>
               <div class="table-actions">
                 <button class="icon-btn stocks" title="Gestion des stocks" (click)="manageProductStocks(p)">📊</button>
+                <label class="icon-btn" title="Image">
+                  🖼️
+                  <input type="file" accept="image/*" (change)="onRowPhotoSelected($event, p)" style="display:none" />
+                </label>
                 <button class="icon-btn edit" title="Éditer" (click)="openEditModal(p)">✏️</button>
                 <button class="icon-btn" title="Barcode" (click)="downloadBarcode(p)">🔖</button>
                 <button class="icon-btn danger" title="Supprimer" (click)="remove(p.id)">🗑️</button>
@@ -279,6 +285,7 @@
     </div>
   </div>
 </div>
+
 
 <!-- Modal Détails Fournisseur (Avis + Produits) -->
 <div class="modal-backdrop" *ngIf="showSupplierDetailsModal" (click)="closeSupplierDetails()">

@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
+use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
@@ -105,5 +107,43 @@ class AdminController extends Controller
             'categoryStock' => $categoryStock,
             'movementsTrend' => $movementsTrend
         ]);
+    }
+
+    public function auditLogs(Request $request)
+    {
+        $perPage = (int) $request->query('per_page', 20);
+        $perPage = max(5, min($perPage, 100));
+
+        $query = AuditLog::query()
+            ->with('user:id,nomprenom,email,service,poste')
+            ->latest();
+
+        $search = trim((string) $request->query('q', ''));
+        if ($search !== '') {
+            $query->where(function ($builder) use ($search) {
+                $builder->where('action', 'like', "%{$search}%")
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhere('ip_address', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('nomprenom', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
+            });
+        }
+
+        $action = trim((string) $request->query('action', ''));
+        if ($action !== '') {
+            $query->where('action', $action);
+        }
+
+        if ($request->filled('from')) {
+            $query->whereDate('created_at', '>=', $request->query('from'));
+        }
+
+        if ($request->filled('to')) {
+            $query->whereDate('created_at', '<=', $request->query('to'));
+        }
+
+        return response()->json($query->paginate($perPage));
     }
 }

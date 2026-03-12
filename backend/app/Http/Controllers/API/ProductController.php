@@ -133,7 +133,7 @@ class ProductController extends Controller
             'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
-            'photo' => 'nullable|file|mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/heic,image/heif|max:2048',
+            'photo' => 'nullable',
             'photos' => 'nullable|array',
             'photos.*' => 'nullable|file|mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/heic,image/heif|max:2048',
         ]);
@@ -227,7 +227,7 @@ class ProductController extends Controller
             'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
-            'photo' => 'nullable|file|mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/heic,image/heif|max:2048',
+            'photo' => 'nullable|string',
             'photos' => 'nullable|array',
             'photos.*' => 'nullable|file|mimetypes:image/jpeg,image/png,image/webp,image/gif,image/svg+xml,image/heic,image/heif|max:2048',
         ]);
@@ -250,8 +250,12 @@ class ProductController extends Controller
             if ($product->photo && Storage::disk('public')->exists($product->photo)) {
                 Storage::disk('public')->delete($product->photo);
             }
-
             $data['photo'] = $request->file('photo')->store('products', 'public');
+        } elseif (array_key_exists('photo', $data) && is_string($data['photo']) && $data['photo'] !== '') {
+            // Accept existing path as default image without re-upload
+            $data['photo'] = ltrim($data['photo'], '/');
+        } else {
+            unset($data['photo']);
         }
 
         $referenceChanged = $product->reference !== $data['reference'];

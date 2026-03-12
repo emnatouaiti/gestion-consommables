@@ -48,8 +48,9 @@ export class ProductStocksComponent implements OnInit {
   selectedWarehouseIdForForm: string = '';
   selectedRoomIdForForm: string = '';
 
-  activeSection: 'details' | 'stock' | 'documents' = 'stock';
+  activeSection: 'details' | 'stock' | 'documents' | 'images' = 'stock';
   selectedPhotoIndex = 0;
+  photoUploadInProgress = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -76,9 +77,105 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
-  setSection(section: 'details' | 'stock' | 'documents'): void {
+  setSection(section: 'details' | 'stock' | 'documents' | 'images'): void {
     this.activeSection = section;
     this.cdr.detectChanges();
+  }
+
+  onPhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const files = Array.from(input.files || []);
+    input.value = '';
+    if (!files.length || !this.productId) return;
+
+    const file = files[0];
+    if (!file.type.startsWith('image/')) {
+      this.errorMessage = 'Veuillez choisir une image.';
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      this.errorMessage = 'Image trop lourde (max 2 Mo).';
+      return;
+    }
+
+    this.photoUploadInProgress = true;
+    this.errorMessage = '';
+    const payload = this.buildUpdatePayload();
+    (payload as any).photos = [file];
+
+    this.adminStockService.updateProduct(this.productId, payload).subscribe({
+      next: () => {
+        this.successMessage = 'Photo mise à jour.';
+        this.photoUploadInProgress = false;
+        this.loadProductDetails();
+        this.setSection('images');
+        setTimeout(() => this.successMessage = '', 2000);
+      },
+      error: (err) => {
+        this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
+        this.photoUploadInProgress = false;
+      }
+    });
+  }
+
+  setDefaultPhoto(photoPath: string): void {
+    if (!this.productId) return;
+    this.photoUploadInProgress = true;
+    const payload = this.buildUpdatePayload();
+    (payload as any).photo = photoPath;
+
+    this.adminStockService.updateProduct(this.productId, payload).subscribe({
+      next: () => {
+        this.successMessage = 'Image par défaut mise à jour.';
+        this.photoUploadInProgress = false;
+        this.loadProductDetails();
+        setTimeout(() => this.successMessage = '', 2000);
+      },
+      error: (err) => {
+        this.errorMessage = this.extractApiError(err, 'Impossible de définir l\'image par défaut.');
+        this.photoUploadInProgress = false;
+      }
+    });
+  }
+
+  private buildUpdatePayload(): any {
+    const p: any = this.product || {};
+    return {
+      status: p.status || 'active',
+      title: p.title || '',
+      short_description: p.short_description || '',
+      description: p.description || '',
+      commentaire: p.commentaire || '',
+      fabricant: p.fabricant || '',
+      num_serie: p.num_serie || '',
+      num_inventaire: p.num_inventaire || '',
+      model: p.model || '',
+      marque: p.marque || '',
+      seuil_min: p.seuil_min ?? 0,
+      reference: p.reference || '',
+      categorie_id: p.categorie_id || p.category?.id,
+      stock_quantity: p.stock_quantity ?? 0,
+      purchase_price: p.purchase_price ?? null,
+      sale_price: p.sale_price ?? null,
+      unit_id: p.unit_id || p.unit?.id || null,
+      unit: p.unit?.name || p.unit || '',
+      location: p.location || '',
+      warehouse_location_id: p.warehouse_location_id || null,
+      supplier_ids: Array.isArray(p.suppliers) ? p.suppliers.map((s: any) => s.id) : [],
+    };
+  }
+
+  private extractApiError(err: any, fallback: string): string {
+    if (!err) return fallback;
+    if (typeof err.message === 'string' && err.message.trim()) return err.message;
+    const errors = err.errors;
+    if (errors && typeof errors === 'object') {
+      const firstField = Object.keys(errors)[0];
+      const firstValue = firstField ? errors[firstField] : null;
+      if (Array.isArray(firstValue) && firstValue.length) return String(firstValue[0]);
+      if (typeof firstValue === 'string') return firstValue;
+    }
+    return fallback;
   }
 
   getProductPhotos(): any[] {

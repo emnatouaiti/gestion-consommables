@@ -20,6 +20,7 @@ import { ProductsByRoomComponent } from './products-by-room/products-by-room.com
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
+import { AuditLogsComponent } from './audit-logs/audit-logs.component';
 
 @NgModule({
   declarations: [
@@ -46,7 +47,8 @@ import { ConsumableRequestComponent } from '../../consumable-request/consumable-
     RouterModule,
     SuppliersComponent,
     UnitsComponent,
-    ConsumableRequestComponent
+    ConsumableRequestComponent,
+    AuditLogsComponent
   ]
 })
 export class AdminModule { }
