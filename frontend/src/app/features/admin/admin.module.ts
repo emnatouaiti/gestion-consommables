@@ -19,6 +19,7 @@ import { ProductsByWarehouseComponent } from './products-by-warehouse/products-b
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
+import { StockMovementsComponent } from './stock-movements/stock-movements.component';
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
 
@@ -47,6 +48,7 @@ import { AuditLogsComponent } from './audit-logs/audit-logs.component';
     RouterModule,
     SuppliersComponent,
     UnitsComponent,
+    StockMovementsComponent,
     ConsumableRequestComponent,
     AuditLogsComponent
   ]

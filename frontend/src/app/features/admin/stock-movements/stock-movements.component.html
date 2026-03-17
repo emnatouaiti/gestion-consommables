@@ -1,0 +1,294 @@
+<div class="stock-movements-page">
+  <div class="page-header">
+    <div class="header-left">
+      <div class="page-icon" aria-hidden="true">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M7 17l4 4 4-4" />
+          <path d="M7 7l4-4 4 4" />
+          <path d="M11 21V3" />
+        </svg>
+      </div>
+      <div>
+        <h2>Mouvements de stock</h2>
+        <span class="subtitle" *ngIf="!loading">{{ total }} mouvement{{ total > 1 ? 's' : '' }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-outline" (click)="load()">Rafraichir</button>
+      <button class="btn-primary" (click)="openCreate()">+ Nouveau mouvement</button>
+    </div>
+  </div>
+
+  <div class="filters-card">
+    <div class="filters-row">
+      <select [(ngModel)]="filters.status" (change)="applyFilters()">
+        <option value="">Tous statuts</option>
+        <option value="draft">Brouillon</option>
+        <option value="executed">Execute</option>
+        <option value="cancelled">Annule</option>
+      </select>
+
+      <select [(ngModel)]="filters.movement_type" (change)="applyFilters()">
+        <option value="">Tous types</option>
+        <option value="in">Entree</option>
+        <option value="out">Sortie</option>
+      </select>
+
+      <div class="search-input">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
+        </svg>
+        <input [(ngModel)]="filters.reference" (keyup.enter)="applyFilters()" placeholder="Reference (SMV-...)" />
+      </div>
+
+      <select [(ngModel)]="perPage" (change)="applyFilters()">
+        <option [ngValue]="10">10 / page</option>
+        <option [ngValue]="20">20 / page</option>
+        <option [ngValue]="50">50 / page</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="toast error" *ngIf="message">{{ message }}</div>
+
+  <div class="table-card">
+    <div class="loading-wrap" *ngIf="loading">
+      <div class="spinner"></div>
+      Chargement...
+    </div>
+
+    <div class="empty" *ngIf="!loading && movements.length === 0">Aucun mouvement.</div>
+
+    <div class="table-wrap" *ngIf="!loading && movements.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Type</th>
+            <th>Statut</th>
+            <th>Cree par</th>
+            <th>Produits</th>
+            <th>Date</th>
+            <th style="text-align:right">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of movements">
+            <td>
+              <a href="#" (click)="$event.preventDefault(); openDetails(m)" class="ref-link">{{ m.reference || ('#' + m.id) }}</a>
+            </td>
+            <td>
+              <span class="pill in" *ngIf="(m.movement_type || m.type) === 'in'">Entree</span>
+              <span class="pill out" *ngIf="(m.movement_type || m.type) === 'out'">Sortie</span>
+            </td>
+            <td>
+              <span class="status-pill draft" *ngIf="m.status === 'draft'">draft</span>
+              <span class="status-pill ok" *ngIf="m.status === 'executed'">executed</span>
+              <span class="status-pill bad" *ngIf="m.status === 'cancelled'">cancelled</span>
+              <span class="status-pill draft" *ngIf="!m.status">draft</span>
+            </td>
+            <td>{{ m.creator?.name || m.created_by || '-' }}</td>
+            <td class="products-cell">
+              <span class="products-text" [title]="m._productsSummary?.full || ''">{{ m._productsSummary?.short || '-' }}</span>
+            </td>
+            <td>{{ m.created_at | date:'short' }}</td>
+            <td class="table-actions">
+              <button class="btn-outline sm" (click)="validate(m)" [disabled]="m.status !== 'draft'">Executer</button>
+              <button class="btn-outline sm danger" (click)="cancel(m)" [disabled]="m.status !== 'draft'">Annuler</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="pager" *ngIf="!loading && lastPage > 1">
+      <button class="btn-outline sm" (click)="prevPage()" [disabled]="page <= 1">Precedent</button>
+      <div class="pager-info">Page {{ page }} / {{ lastPage }}</div>
+      <button class="btn-outline sm" (click)="nextPage()" [disabled]="page >= lastPage">Suivant</button>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="selectedMovement" (click)="closeDetails()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Details mouvement</h3>
+        <button class="modal-close" (click)="closeDetails()">x</button>
+      </div>
+      <div class="modal-body">
+        <div class="kv">
+          <div class="k">Reference</div>
+          <div class="v">{{ selectedMovement.reference || ('#' + selectedMovement.id) }}</div>
+        </div>
+        <div class="kv">
+          <div class="k">Type</div>
+          <div class="v">{{ selectedMovement.movement_type || selectedMovement.type }}</div>
+        </div>
+        <div class="kv">
+          <div class="k">Statut</div>
+          <div class="v">{{ selectedMovement.status }}</div>
+        </div>
+        <div class="kv">
+          <div class="k">Notes</div>
+          <div class="v">{{ selectedMovement.notes || '-' }}</div>
+        </div>
+
+        <div class="section-title">Lignes</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Produit</th><th>Quantite</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let l of selectedMovement.lines">
+                <td>{{ l.product?.title || ('#' + l.product_id) }}</td>
+                <td>{{ l.quantity }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-outline sm" (click)="validate(selectedMovement)" [disabled]="selectedMovement.status !== 'draft'">Executer</button>
+          <button class="btn-outline sm danger" (click)="cancel(selectedMovement)" [disabled]="selectedMovement.status !== 'draft'">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="creating" (click)="closeCreate()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Nouveau mouvement</h3>
+        <button class="modal-close" (click)="closeCreate()">x</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="field">
+            <label>Type</label>
+            <select [(ngModel)]="newMovement.movement_type" (change)="onMovementTypeChange()">
+              <option value="out">Sortie</option>
+              <option value="in">Entree</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Reference (optionnel)</label>
+            <input [(ngModel)]="newMovement.reference" placeholder="Auto si vide" />
+          </div>
+        </div>
+        <div class="field">
+          <label>Notes</label>
+          <textarea [(ngModel)]="newMovement.notes" rows="2"></textarea>
+        </div>
+
+        <div class="section-title" *ngIf="newMovement.movement_type === 'out'">Sortie: depuis depot vers local</div>
+        <div class="form-row" *ngIf="newMovement.movement_type === 'out'">
+          <div class="field">
+            <label>Depot (societe)</label>
+            <select [(ngModel)]="newMovement.source_warehouse_id" (change)="onSourceWarehouseChange()">
+              <option [ngValue]="null">Selectionner depot...</option>
+              <option *ngFor="let w of sourceWarehouses" [ngValue]="w.id">{{ w.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Etage</label>
+            <select [(ngModel)]="newMovement.source_room_id" (change)="onSourceRoomChange()">
+              <option [ngValue]="null">Selectionner etage...</option>
+              <option *ngFor="let r of sourceRooms" [ngValue]="r.id">{{ r.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" *ngIf="newMovement.movement_type === 'out'">
+          <label>Salle (stock source)</label>
+          <select [(ngModel)]="newMovement.source_warehouse_location_id">
+            <option [ngValue]="null">Selectionner salle...</option>
+            <option *ngFor="let l of sourceLocations" [ngValue]="l.id">{{ l.code }} - {{ l.name }}</option>
+          </select>
+        </div>
+
+        <div class="section-title" *ngIf="newMovement.movement_type === 'out'">Destination (local)</div>
+        <div class="form-row" *ngIf="newMovement.movement_type === 'out'">
+          <div class="field">
+            <label>Local (siege / agence)</label>
+            <select [(ngModel)]="newMovement.destination_warehouse_id" (change)="onDestinationWarehouseChange()">
+              <option [ngValue]="null">Selectionner local...</option>
+              <option *ngFor="let w of destinationWarehouses" [ngValue]="w.id">{{ w.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Etage</label>
+            <select [(ngModel)]="newMovement.destination_room_id" (change)="onDestinationRoomChange()">
+              <option [ngValue]="null">Selectionner etage...</option>
+              <option *ngFor="let r of destRooms" [ngValue]="r.id">{{ r.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" *ngIf="newMovement.movement_type === 'out'">
+          <label>Salle (destination)</label>
+          <select [(ngModel)]="newMovement.destination_warehouse_location_id">
+            <option [ngValue]="null">Selectionner salle...</option>
+            <option *ngFor="let l of destLocations" [ngValue]="l.id">{{ l.code }} - {{ l.name }}</option>
+          </select>
+        </div>
+
+        <div class="section-title" *ngIf="newMovement.movement_type === 'in'">Entree: livraison fournisseur</div>
+        <div class="form-row" *ngIf="newMovement.movement_type === 'in'">
+          <div class="field">
+            <label>Fournisseur (livraison)</label>
+            <select [(ngModel)]="newMovement.supplier_id">
+              <option [ngValue]="null">Selectionner fournisseur...</option>
+              <option *ngFor="let s of suppliers" [ngValue]="s.id">{{ s.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Stocker dans</label>
+            <select [(ngModel)]="newMovement.destination_kind" (change)="newMovement.destination_warehouse_id=null; destRooms=[]; destLocations=[];">
+              <option value="depot">Depot</option>
+              <option value="local">Local</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row" *ngIf="newMovement.movement_type === 'in'">
+          <div class="field">
+            <label>Societe</label>
+            <select [(ngModel)]="newMovement.destination_warehouse_id" (change)="onDestinationWarehouseChange()">
+              <option [ngValue]="null">Selectionner...</option>
+              <option *ngFor="let w of destinationWarehouses" [ngValue]="w.id">{{ w.name }}</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Etage</label>
+            <select [(ngModel)]="newMovement.destination_room_id" (change)="onDestinationRoomChange()">
+              <option [ngValue]="null">Selectionner etage...</option>
+              <option *ngFor="let r of destRooms" [ngValue]="r.id">{{ r.name }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="field" *ngIf="newMovement.movement_type === 'in'">
+          <label>Salle (stock destination)</label>
+          <select [(ngModel)]="newMovement.destination_warehouse_location_id">
+            <option [ngValue]="null">Selectionner salle...</option>
+            <option *ngFor="let l of destLocations" [ngValue]="l.id">{{ l.code }} - {{ l.name }}</option>
+          </select>
+        </div>
+
+        <div class="section-title">Lignes</div>
+        <div class="lines">
+          <div *ngFor="let line of newMovement.lines; let i = index" class="line-row">
+            <select [(ngModel)]="line.product_id">
+              <option [ngValue]="null">Selectionner</option>
+              <option *ngFor="let p of products" [ngValue]="p.id">{{ p.title }} ({{ p.reference || 'N/A' }})</option>
+            </select>
+            <input type="number" min="1" [(ngModel)]="line.quantity" />
+            <button class="btn-outline sm danger" (click)="removeLine(i)" [disabled]="newMovement.lines.length<=1">Supprimer</button>
+            <div class="line-warn" *ngIf="stockWarning(line)">{{ stockWarning(line) }}</div>
+          </div>
+          <button class="btn-outline sm" (click)="addLine()">+ Ajouter une ligne</button>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn-primary" (click)="submitCreate()">Creer</button>
+          <button class="btn-outline" (click)="closeCreate()">Annuler</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -177,8 +177,8 @@
             <div class="item-title">{{ cabinet.name }}</div>
             <div class="item-meta" *ngIf="cabinet.code">{{ cabinet.code }}</div>
             <div class="item-actions" (click)="$event.stopPropagation()">
-              <button class="btn mini" (click)="openEditCabinetModal(cabinet)">âœŽ</button>
-              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">âœ•</button>
+              <button class="btn mini" (click)="openEditCabinetModal(cabinet)">✎</button>
+              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">✕</button>
             </div>
           </div>
 
@@ -201,7 +201,7 @@
 <div class="modal-backdrop" *ngIf="showWarehouseModal" (click)="closeWarehouseModal()">
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>{{ editingWarehouseId ? 'Modifier dépôt' : 'Ajouter dépôt' }}</h2>
+      <h2>{{ editingWarehouseId ? 'Modifier dépôt' : 'Ajouter dépôt / local' }}</h2>
       <button class="modal-close" (click)="closeWarehouseModal()">✕</button>
     </div>
 
@@ -210,6 +210,14 @@
         <div class="form-group">
           <label>Nom *</label>
           <input type="text" [(ngModel)]="warehouseForm.name" name="name" class="form-control" />
+        </div>
+
+        <div class="form-group">
+          <label>Type</label>
+          <select [(ngModel)]="warehouseForm.kind" name="kind" class="form-control">
+            <option value="depot">Dépôt</option>
+            <option value="local">Local (siège/agence)</option>
+          </select>
         </div>
 
         <div class="form-row">
@@ -386,7 +394,7 @@
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ editingCabinetId ? 'Modifier armoire' : 'Ajouter armoire' }}</h2>
-      <button class="modal-close" (click)="closeCabinetModal()">âœ•</button>
+      <button class="modal-close" (click)="closeCabinetModal()">✕</button>
     </div>
 
     <div class="modal-content">
@@ -416,7 +424,7 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeCabinetModal()">Annuler</button>
-          <button type="submit" class="btn primary">{{ editingCabinetId ? 'Mettre Ã  jour' : 'CrÃ©er' }}</button>
+          <button type="submit" class="btn primary">{{ editingCabinetId ? 'Mettre à jour' : 'Créer' }}</button>
         </div>
       </form>
     </div>

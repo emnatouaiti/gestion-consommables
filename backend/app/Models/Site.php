@@ -6,25 +6,21 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Warehouse extends Model
+class Site extends Model
 {
     use HasFactory;
 
     protected $fillable = [
         'name',
-        'kind',
-        'description',
+        'type',
         'address',
         'city',
-        'governorate',
-        'latitude',
-        'longitude',
-        'phone',
         'status',
     ];
 
-    public function rooms(): HasMany
+    public function floors(): HasMany
     {
-        return $this->hasMany(WarehouseRoom::class);
+        return $this->hasMany(SiteFloor::class);
     }
 }
+

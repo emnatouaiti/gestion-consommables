@@ -41,11 +41,13 @@ export class AdminLayoutComponent implements OnInit {
       title: 'Administration',
       items: [
         { label: 'Utilisateurs', route: '/admin/users', exact: true },
+          { label: 'Mouvements de stock', route: '/admin/mouvements-stock' },
         { label: 'Archives', route: '/admin/archived' },
         { label: 'Gerer categories', route: '/admin/gerer-categories' },
         { label: 'Gerer unites', route: '/admin/gerer-unites' },
         { label: 'Gerer produits', route: '/admin/gerer-produits' },
         { label: 'Gerer depots', route: '/admin/gerer-depots' },
+        { label: 'Gerer locaux', route: '/admin/gerer-locaux' },
         { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
         { label: 'Consulter le journal d audit', route: '/admin/journal-audit' },
         { label: 'Mon Profil', route: '/admin/profile' }
@@ -76,6 +78,7 @@ export class AdminLayoutComponent implements OnInit {
       title: 'Operations',
       items: [
         { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
+        { label: 'Mouvements de stock', route: '/admin/mouvements-stock' },
         { label: 'Gerer produits', route: '/admin/gerer-produits' },
         { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' }
       ]

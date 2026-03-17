@@ -5,6 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\ConsumableRequest;
 use App\Models\Product;
 use App\Models\User;
+use App\Models\AuditLog;
+use App\Models\StockMovement;
+use App\Models\StockMovementLine;
+use App\Notifications\StockMovementNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -112,44 +116,57 @@ class ConsumableRequestController extends Controller
 
         $payloads = $this->buildCreateRequestPayloads($request);
         $createdRequests = [];
-        $batchCode = count($payloads) > 1 ? (string) Str::uuid() : null;
+        // Allow client to provide an existing batch_code to append items to a draft group
+        $incomingBatch = $request->input('batch_code');
+        $batchCode = $incomingBatch ?: (count($payloads) > 1 ? (string) Str::uuid() : null);
 
         DB::transaction(function () use ($payloads, $user, $batchCode, &$createdRequests) {
             foreach ($payloads as $payload) {
+                // allow client to request initial status (e.g., 'draft'), default to 'draft'
+                $initialStatus = isset($payload['status']) ? $payload['status'] : 'draft';
+                if (!in_array($initialStatus, ['draft', 'pending', 'approved', 'rejected'], true)) {
+                    $initialStatus = 'draft';
+                }
+
                 $createdRequests[] = ConsumableRequest::create(array_merge($payload, [
                     'user_id' => $user->id,
                     'batch_code' => $batchCode,
-                    'status' => 'pending',
+                    'status' => $initialStatus,
                 ]));
             }
         });
-
-        // Notifier uniquement le directeur (role/poste/role legacy).
-        $directors = User::query()
-            ->where(function ($query) {
-                $query->whereHas('roles', function ($roleQuery) {
-                    $roleQuery->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
+        // Notifier uniquement le directeur (role/poste/role legacy) si la demande est en 'pending'.
+        $firstStatus = collect($createdRequests)->first()?->status ?? null;
+        $directors = collect();
+        if ($firstStatus === 'pending') {
+            $directors = User::query()
+                ->where(function ($query) {
+                    $query->whereHas('roles', function ($roleQuery) {
+                        $roleQuery->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
+                    })
+                    ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
+                    ->orWhereRaw('LOWER(role) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
                 })
-                ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
-                ->orWhereRaw('LOWER(role) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
-            })
-            ->where('id', '!=', $user->id)
-            ->get();
+                ->where('id', '!=', $user->id)
+                ->get();
 
-        $notifiedCount = 0;
-        foreach ($directors as $director) {
-            try {
-                foreach ($createdRequests as $createdRequest) {
-                    $director->notify(new \App\Notifications\ConsumableRequestNotification($createdRequest));
-                    $notifiedCount++;
+            $notifiedCount = 0;
+            foreach ($directors as $director) {
+                try {
+                    foreach ($createdRequests as $createdRequest) {
+                        $director->notify(new \App\Notifications\ConsumableRequestNotification($createdRequest));
+                        $notifiedCount++;
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Notification en echec pour demande consommable', [
+                        'request_ids' => collect($createdRequests)->pluck('id')->all(),
+                        'director_id' => $director->id,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-            } catch (\Throwable $e) {
-                Log::error('Notification en echec pour demande consommable', [
-                    'request_ids' => collect($createdRequests)->pluck('id')->all(),
-                    'director_id' => $director->id,
-                    'error' => $e->getMessage(),
-                ]);
             }
+        } else {
+            $notifiedCount = 0;
         }
 
         return response()->json([
@@ -167,11 +184,38 @@ class ConsumableRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($consumableRequest->status !== 'pending') {
-            return response()->json(['message' => 'Only pending requests can be modified.'], 422);
+        $currentStatus = Str::lower((string) $consumableRequest->status);
+        if (!in_array($currentStatus, ['pending', 'draft'], true)) {
+            return response()->json(['message' => 'Only pending or draft requests can be modified.'], 422);
+        }
+
+        // If the request only contains a status change (e.g. validating a draft), handle it without requiring other fields.
+        $hasPayloadFields = $request->has('requested_quantity') || $request->has('item_name') || $request->has('product_id') || $request->has('items');
+        if ($request->has('status') && !$hasPayloadFields) {
+            $requestedStatus = Str::lower((string) $request->input('status'));
+            if (!in_array($requestedStatus, ['draft', 'pending'], true)) {
+                return response()->json(['message' => 'Invalid status change.'], 422);
+            }
+
+            $consumableRequest->status = $requestedStatus;
+            $consumableRequest->save();
+
+            return response()->json([
+                'message' => 'Request updated successfully.',
+                'request' => $consumableRequest->fresh(['user.roles', 'product']),
+            ]);
         }
 
         $payload = $this->buildRequestPayload($request);
+
+        // Allow client to change status to 'pending' when validating a draft.
+        if ($request->has('status')) {
+            $requestedStatus = Str::lower((string) $request->input('status'));
+            if (in_array($requestedStatus, ['draft', 'pending'], true)) {
+                $payload['status'] = $requestedStatus;
+            }
+        }
+
         $consumableRequest->update($payload);
 
         return response()->json([
@@ -189,8 +233,9 @@ class ConsumableRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($consumableRequest->status !== 'pending') {
-            return response()->json(['message' => 'Only pending requests can be deleted.'], 422);
+        $currentStatus = Str::lower((string) $consumableRequest->status);
+        if (!in_array($currentStatus, ['pending', 'draft'], true)) {
+            return response()->json(['message' => 'Only pending or draft requests can be deleted.'], 422);
         }
 
         $consumableRequest->delete();
@@ -242,6 +287,52 @@ class ConsumableRequestController extends Controller
             $consumableRequest->approved_quantity = $approvedQuantity;
             $consumableRequest->status = 'approved';
             $consumableRequest->save();
+
+            // Create an outgoing stock movement representing this approval
+            if ($approvedQuantity > 0) {
+                $movement = \App\Models\StockMovement::create([
+                    'type' => 'out',
+                    'reference' => 'REQ-' . $consumableRequest->id,
+                    'created_by' => Auth::id(),
+                    'related_request_id' => $consumableRequest->id,
+                    'notes' => 'Sortie suite a approbation de demande',
+                ]);
+
+                \App\Models\StockMovementLine::create([
+                    'stock_movement_id' => $movement->id,
+                    'product_id' => $productId,
+                    'quantity' => $approvedQuantity,
+                ]);
+                // Audit log for movement
+                try {
+                    AuditLog::create([
+                        'user_id' => Auth::id(),
+                        'action' => 'stock_movement.create',
+                        'description' => "Mouvement {$movement->id} cree suite approbation demande {$consumableRequest->id}",
+                        'ip_address' => request()->ip(),
+                        'user_agent' => request()->userAgent(),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('Failed to create audit log for stock movement (approve)', ['err' => $e->getMessage()]);
+                }
+
+                // Notify admins and request owner
+                try {
+                    $admins = User::whereHas('roles', function ($q) { $q->whereRaw("LOWER(name) = 'administrateur'"); })->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new StockMovementNotification($movement));
+                    }
+
+                    if ($consumableRequest->user_id) {
+                        $owner = User::find($consumableRequest->user_id);
+                        if ($owner) {
+                            $owner->notify(new StockMovementNotification($movement));
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to send stock movement notifications (approve)', ['err' => $e->getMessage()]);
+                }
+            }
         });
 
         return response()->json([

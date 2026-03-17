@@ -42,6 +42,7 @@ export class WarehousesComponent implements OnInit {
 
   warehouseForm = {
     name: '',
+    kind: 'depot',
     description: '',
     address: '',
     city: '',
@@ -171,6 +172,7 @@ export class WarehousesComponent implements OnInit {
     this.editingWarehouseId = warehouse.id;
     this.warehouseForm = {
       name: warehouse.name || '',
+      kind: warehouse.kind || 'depot',
       description: warehouse.description || '',
       address: warehouse.address || '',
       city: warehouse.city || '',
@@ -415,6 +417,7 @@ export class WarehousesComponent implements OnInit {
   resetWarehouseForm(): void {
     this.warehouseForm = {
       name: '',
+      kind: 'depot',
       description: '',
       address: '',
       city: '',

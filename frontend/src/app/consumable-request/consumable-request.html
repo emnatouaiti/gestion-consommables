@@ -48,26 +48,29 @@
           <td>{{ request.requester_poste || request.user?.poste || request.user?.role || '-' }}</td>
           <td *ngIf="!canApprove">
             <span class="status-badge" [ngStyle]="{'background-color': getStatusColor(request.status)}">
-              {{ request.status }}
+              {{ request.status === 'draft' ? 'Brouillon' : request.status }}
             </span>
           </td>
           <td>{{ request.created_at | date: 'short' }}</td>
           <td class="actions">
             <button
-              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
+              *ngIf="(request.status === 'pending' || request.status === 'draft') && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
               class="btn-edit"
               (click)="openEditRequestModal(request.items?.[0] || request)"
               title="Modifier cette demande"
             >
-              Modifier
+              {{ request.status === 'draft' ? 'Modifier / Vérifier' : 'Modifier' }}
             </button>
             <button
-              *ngIf="request.status === 'pending' && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
+              *ngIf="(request.status === 'pending' || request.status === 'draft') && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
               class="btn-delete"
               (click)="deleteRequest((request.items?.[0]?.id) || request.id)"
               title="Supprimer cette demande"
             >
               Supprimer
+            </button>
+            <button *ngIf="request.status === 'draft' && canEditDeleteOwnRequests" class="btn-confirm" (click)="validateDraft(request.items?.[0]?.id || request.id)">
+              Valider
             </button>
             <button
               class="btn-edit"
@@ -228,6 +231,9 @@
       <div class="item-actions" *ngIf="canEditFromDetails(selectedRequestDetails)">
         <button class="btn-edit" (click)="editItemFromDetails(selectedRequestDetails)">Modifier</button>
         <button class="btn-delete" (click)="deleteItemFromDetails(selectedRequestDetails)">Supprimer</button>
+      </div>
+      <div class="item-actions" *ngIf="selectedRequestDetails?.status === 'draft' && canEditDeleteOwnRequests">
+        <button class="btn-edit" (click)="openCreateRequestModalWithBatch(selectedRequestDetails.batch_code)">Ajouter un produit au brouillon</button>
       </div>
       <div class="item-actions" *ngIf="canApprove && selectedRequestDetails?.status === 'pending'">
         <button class="btn-approve" (click)="approveFromDetails(selectedRequestDetails)">Approuver</button>

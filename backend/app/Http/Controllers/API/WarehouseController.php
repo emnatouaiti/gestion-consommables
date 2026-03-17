@@ -12,6 +12,10 @@ class WarehouseController extends Controller
     {
         $query = Warehouse::query();
 
+        if ($request->filled('kind')) {
+            $query->where('kind', $request->input('kind'));
+        }
+
         if ($request->has('q') && !empty($request->q)) {
             $search = $request->q;
             $query->where('name', 'like', "%{$search}%")
@@ -30,6 +34,7 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'kind' => 'nullable|in:depot,local',
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'city' => 'nullable|string',
@@ -52,6 +57,7 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
+            'kind' => 'nullable|in:depot,local',
             'description' => 'nullable|string',
             'address' => 'nullable|string',
             'city' => 'nullable|string',

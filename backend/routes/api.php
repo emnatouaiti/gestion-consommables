@@ -15,6 +15,9 @@ use App\Http\Controllers\API\WarehouseCabinetController;
 use App\Http\Controllers\API\WarehouseController;
 use App\Http\Controllers\API\WarehouseLocationController;
 use App\Http\Controllers\API\WarehouseRoomController;
+use App\Http\Controllers\API\SiteController;
+use App\Http\Controllers\API\SiteFloorController;
+use App\Http\Controllers\API\SiteRoomController;
 use App\Http\Controllers\ConsumableRequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -62,6 +65,16 @@ Route::prefix('api')->group(function () {
             Route::delete('/{id}', [ConsumableRequestController::class, 'destroy']);
             Route::put('/{id}/approve', [ConsumableRequestController::class, 'approve']);
             Route::put('/{id}/reject', [ConsumableRequestController::class, 'reject']);
+        });
+        // Stock movements endpoints
+        Route::prefix('stock-movements')->middleware('role:Administrateur')->group(function () {
+            Route::get('/', [\App\Http\Controllers\StockMovementController::class, 'index']);
+            Route::post('/', [\App\Http\Controllers\StockMovementController::class, 'store']);
+            Route::get('/{id}', [\App\Http\Controllers\StockMovementController::class, 'show']);
+            Route::put('/{id}', [\App\Http\Controllers\StockMovementController::class, 'update']);
+            Route::delete('/{id}', [\App\Http\Controllers\StockMovementController::class, 'destroy']);
+            Route::put('/{id}/validate', [\App\Http\Controllers\StockMovementController::class, 'validateMovement']);
+            Route::put('/{id}/cancel', [\App\Http\Controllers\StockMovementController::class, 'cancelMovement']);
         });
     });
 
@@ -117,6 +130,25 @@ Route::prefix('api')->group(function () {
         Route::get('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'show']);
         Route::put('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'update']);
         Route::delete('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'destroy']);
+
+        // Locaux (sites) -> etages -> salles
+        Route::get('admin/sites', [SiteController::class, 'index']);
+        Route::post('admin/sites', [SiteController::class, 'store']);
+        Route::get('admin/sites/{site}', [SiteController::class, 'show']);
+        Route::put('admin/sites/{site}', [SiteController::class, 'update']);
+        Route::delete('admin/sites/{site}', [SiteController::class, 'destroy']);
+
+        Route::get('admin/site-floors', [SiteFloorController::class, 'index']);
+        Route::post('admin/site-floors', [SiteFloorController::class, 'store']);
+        Route::get('admin/site-floors/{floor}', [SiteFloorController::class, 'show']);
+        Route::put('admin/site-floors/{floor}', [SiteFloorController::class, 'update']);
+        Route::delete('admin/site-floors/{floor}', [SiteFloorController::class, 'destroy']);
+
+        Route::get('admin/site-rooms', [SiteRoomController::class, 'index']);
+        Route::post('admin/site-rooms', [SiteRoomController::class, 'store']);
+        Route::get('admin/site-rooms/{room}', [SiteRoomController::class, 'show']);
+        Route::put('admin/site-rooms/{room}', [SiteRoomController::class, 'update']);
+        Route::delete('admin/site-rooms/{room}', [SiteRoomController::class, 'destroy']);
 
         Route::get('admin/products/{product}/stocks', [ProductStockController::class, 'getProductStocks']);
         Route::get('admin/products/{product}/total-stock', [ProductStockController::class, 'getTotalStock']);

@@ -18,6 +18,7 @@ import { ProductsByWarehouseComponent } from './products-by-warehouse/products-b
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
+import { StockMovementsComponent } from './stock-movements/stock-movements.component';
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
 
@@ -83,10 +84,23 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { roles: adminRoles }
       },
+      {
+        path: 'gerer-locaux',
+        component: WarehousesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: adminRoles }
+      },
 
       {
         path: 'produit/:productId/stocks',
         component: ProductStocksComponent,
+        canActivate: [RoleGuard],
+        data: { roles: adminRoles }
+      },
+
+      {
+        path: 'mouvements-stock',
+        component: StockMovementsComponent,
         canActivate: [RoleGuard],
         data: { roles: adminRoles }
       },

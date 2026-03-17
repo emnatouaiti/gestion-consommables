@@ -36,6 +36,8 @@ export class ConsumableRequestComponent implements OnInit {
   requestLines: Array<{ product_id: number | null; requested_quantity: number | null }> = [
     { product_id: null, requested_quantity: null }
   ];
+  // When creating, optionally append to an existing batch (draft)
+  currentBatchCode: string | null = null;
 
   constructor(
     private consumableRequestService: ConsumableRequestService,
@@ -113,7 +115,19 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   get filteredRequests(): any[] {
-    return this.requests;
+    // Afficher d'abord les brouillons, puis les autres par ordre: pending, approved, rejected, ...
+    const order = { draft: 0, pending: 1, approved: 2, rejected: 3 } as any;
+    return [...this.requests].sort((a, b) => {
+      const sa = String(a?.status || '').toLowerCase();
+      const sb = String(b?.status || '').toLowerCase();
+      const oa = order[sa] !== undefined ? order[sa] : 99;
+      const ob = order[sb] !== undefined ? order[sb] : 99;
+      if (oa !== ob) return oa - ob;
+      // fallback: plus recent en premier si disponible
+      const da = new Date(a?.created_at || 0).getTime();
+      const db = new Date(b?.created_at || 0).getTime();
+      return db - da;
+    });
   }
 
   get filteredProducts(): any[] {
@@ -144,9 +158,10 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   canEditFromDetails(request: any): boolean {
-    const isPending = String(request?.status || '').toLowerCase() === 'pending';
+    const status = String(request?.status || '').toLowerCase();
     const isOwnerAllowed = this.canEditDeleteOwnRequests;
-    return isPending && isOwnerAllowed;
+    // Allow editing drafts and pending requests by the owner
+    return (status === 'pending' || status === 'draft') && isOwnerAllowed;
   }
 
   editItemFromDetails(item: any): void {
@@ -223,7 +238,12 @@ export class ConsumableRequestComponent implements OnInit {
           product_id: Number(line.product_id),
           requested_quantity: Number(line.requested_quantity),
         })),
+        // create as draft so user can verify/modify before validating
+        status: 'draft',
       };
+      if (this.currentBatchCode) {
+        (payload as any).batch_code = this.currentBatchCode;
+      }
 
       request$ = this.consumableRequestService.createRequest(payload);
     }
@@ -236,6 +256,7 @@ export class ConsumableRequestComponent implements OnInit {
           ? 'Demande modifiee avec succes.'
           : 'Demande creee avec succes.';
         this.closeRequestModal();
+        this.currentBatchCode = null;
         this.loadRequests();
         this.loading = false;
         this.cdr.detectChanges();
@@ -253,10 +274,15 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   openCreateRequestModal(): void {
+    this.openCreateRequestModalWithBatch(null);
+  }
+
+  openCreateRequestModalWithBatch(batchCode: string | null): void {
     if (!this.canCreateRequest) {
       return;
     }
 
+    this.currentBatchCode = batchCode;
     this.requestModalOpen = true;
     this.requestModalEditMode = false;
     this.editingRequestId = null;
@@ -265,7 +291,12 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   openEditRequestModal(request: any): void {
-    if (!this.canEditDeleteOwnRequests || request?.status !== 'pending') {
+    // Allow editing for owner's drafts and pending requests
+    if (!this.canEditDeleteOwnRequests) {
+      return;
+    }
+    const status = String(request?.status || '').toLowerCase();
+    if (status !== 'pending' && status !== 'draft') {
       return;
     }
 
@@ -276,6 +307,26 @@ export class ConsumableRequestComponent implements OnInit {
       product_id: request?.product_id ?? null,
       item_name: request?.item_name ?? '',
       requested_quantity: request?.requested_quantity ?? '',
+    });
+  }
+
+  validateDraft(id: number): void {
+    if (!this.canEditDeleteOwnRequests) return;
+    this.loading = true;
+    this.consumableRequestService.updateRequest(id, { status: 'pending' }).subscribe({
+      next: () => {
+        this.message = 'Demande validee et mise en attente.';
+        this.loadRequests();
+        this.loading = false;
+        this.cdr.detectChanges();
+        setTimeout(() => (this.message = ''), 3000);
+      },
+      error: (err: unknown) => {
+        this.message = 'Erreur lors de la validation de la demande.';
+        console.error(err);
+        this.loading = false;
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -418,6 +469,8 @@ export class ConsumableRequestComponent implements OnInit {
 
   getStatusColor(status: string): string {
     switch (status) {
+      case 'draft':
+        return '#3b82f6';
       case 'approved':
         return 'green';
       case 'rejected':
