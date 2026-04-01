@@ -22,6 +22,7 @@ import { UnitsComponent } from './units/units.component';
 import { StockMovementsComponent } from './stock-movements/stock-movements.component';
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
+import { DocumentsComponent } from './documents/documents.component';
 
 @NgModule({
   declarations: [
@@ -50,7 +51,8 @@ import { AuditLogsComponent } from './audit-logs/audit-logs.component';
     UnitsComponent,
     StockMovementsComponent,
     ConsumableRequestComponent,
-    AuditLogsComponent
+    AuditLogsComponent,
+    DocumentsComponent
   ]
 })
 export class AdminModule { }

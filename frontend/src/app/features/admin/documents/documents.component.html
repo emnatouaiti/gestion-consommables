@@ -1,0 +1,199 @@
+<div class="documents-page">
+  <h2>Documents (OCR)</h2>
+
+  <div class="modal-backdrop" *ngIf="productConfirmation" (click)="cancelProductCreation()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <h3>Création produit nécessaire</h3>
+      <p>Plusieurs produits inconnus ont été détectés. Choisissez une catégorie pour chacun.</p>
+
+      <div *ngFor="let s of productConfirmation.suggestedProducts; let i = index" class="suggested-item">
+        <div class="field">
+          <label>Produit</label>
+          <input type="text" [value]="s.title" readonly />
+        </div>
+        <div class="field">
+          <label>Référence</label>
+          <input type="text" [value]="s.reference || 'N/A'" readonly />
+        </div>
+        <div class="field">
+          <label>Catégorie</label>
+          <select [(ngModel)]="s.category_id">
+            <option [ngValue]="null">Sélectionner une catégorie</option>
+            <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.title || c.name || 'Catégorie inconnue' }}</option>
+          </select>
+        </div>
+        <hr *ngIf="i < productConfirmation.suggestedProducts.length - 1" />
+      </div>
+
+      <div class="actions">
+        <button class="btn primary" (click)="confirmProductCreation()">Valider création produit</button>
+        <button class="btn secondary" (click)="cancelProductCreation()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" *ngIf="supplierConfirmation" (click)="cancelSupplierCreation()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <h3>Création fournisseur nécessaire</h3>
+      <p>Fournisseur proposé : <strong>{{ supplierConfirmation.suggested.name }}</strong> ({{ supplierConfirmation.suggested.email || 'N/A' }})</p>
+      <div class="field">
+        <label>Nom fournisseur</label>
+        <input type="text" [(ngModel)]="supplierConfirmation.name" />
+      </div>
+      <div class="field">
+        <label>Email fournisseur</label>
+        <input type="email" [(ngModel)]="supplierConfirmation.email" />
+      </div>
+      <div class="actions">
+        <button class="btn primary" (click)="confirmSupplierCreation()">Confirmer fournisseur</button>
+        <button class="btn secondary" (click)="cancelSupplierCreation()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card upload-card">
+    <h3 style="grid-column: 1 / -1;">Importer un Document</h3>
+    <div class="field">
+      <label>Fichier *</label>
+      <input type="file" (change)="onFileChange($event)" />
+    </div>
+    <div class="field">
+      <label>Titre</label>
+      <input type="text" [(ngModel)]="title" placeholder="Optionnel" />
+    </div>
+    <div class="field">
+      <label>Type</label>
+      <input type="text" [(ngModel)]="type" placeholder="bon_livraison / bon_sortie..." />
+    </div>
+    <div class="field">
+      <label>Direction</label>
+      <select [(ngModel)]="direction">
+        <option value="unknown">Inconnue</option>
+        <option value="in">Entree</option>
+        <option value="out">Sortie</option>
+      </select>
+    </div>
+    <div class="actions" style="grid-column: 1 / -1;">
+      <button class="btn primary" (click)="upload()" [disabled]="isLoading || !file">Uploader</button>
+    </div>
+    <div class="msg success" *ngIf="message" style="grid-column: 1 / -1;">{{ message }}</div>
+    <div class="msg error" *ngIf="error" style="grid-column: 1 / -1;">{{ error }}</div>
+  </div>
+
+  <div class="card">
+    <h3>Documents Importes</h3>
+    <div *ngIf="isLoading" class="loading">Chargement...</div>
+    <div *ngIf="!isLoading && documents.length === 0" class="empty">Aucun document importe.</div>
+
+    <div *ngIf="documents.length > 0" class="documents-list">
+      <div *ngFor="let d of documents" class="document-item" [class.expanded]="expandedDocId === d.id">
+        <div class="document-header" (click)="toggleExpanded(d.id)">
+          <div class="doc-info">
+            <strong>#{{ d.id }} - {{ d.title || d.path }}</strong>
+            <span class="type">{{ d.type }}</span>
+            <span class="direction" [class]="d.direction">{{ d.direction }}</span>
+            <span class="status" [class]="d.status">{{ d.status }}</span>
+          </div>
+          <div class="ocr-count">
+            <strong>{{ d.ocr_lines?.length || 0 }}</strong> ligne(s)
+          </div>
+          <button class="expand-btn">{{ expandedDocId === d.id ? 'V' : '>' }}</button>
+        </div>
+
+        <div *ngIf="expandedDocId === d.id" class="document-details">
+          <!-- OCR Lines Display -->
+          <div class="section ocr-section">
+            <div class="section-header">
+              <h4>Lignes OCR ({{ d.ocr_lines?.length || 0 }})</h4>
+              <div class="buttons">
+                <button class="btn small" (click)="toggleEditLines(d.id)">
+                  {{ showEditLines === d.id ? 'Masquer' : 'Editer' }}
+                </button>
+                <button class="btn small" (click)="runDiagnostic(d)">Diagnostiquer</button>
+              </div>
+            </div>
+
+            <!-- Edit Mode -->
+            <div *ngIf="showEditLines === d.id" class="edit-mode">
+              <table class="edit-table">
+                <thead>
+                  <tr>
+                    <th>Reference</th>
+                    <th>Titre</th>
+                    <th>Quantite</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let line of d.ocr_lines; let i = index">
+                    <td>
+                      <input type="text" [(ngModel)]="line.reference" placeholder="Ex: A001" />
+                    </td>
+                    <td>
+                      <input type="text" [(ngModel)]="line.title" placeholder="Nom du produit" />
+                    </td>
+                    <td>
+                      <input type="number" [(ngModel)]="line.quantity" min="1" />
+                    </td>
+                    <td>
+                      <button class="btn danger small" (click)="removeOcrLine(d, i)">X</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <button class="btn small" (click)="addOcrLine(d)">+ Ajouter ligne</button>
+            </div>
+
+            <!-- View Mode -->
+            <div *ngIf="showEditLines !== d.id" class="view-mode">
+              <div *ngIf="d.ocr_lines?.length === 0" class="empty-ocr">
+                Aucune ligne OCR trouvee. Cliquez sur "Diagnostiquer" pour verifier.
+              </div>
+              <table *ngIf="d.ocr_lines?.length > 0" class="ocr-table">
+                <thead>
+                  <tr>
+                    <th>Reference</th>
+                    <th>Titre</th>
+                    <th>Quantite</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let line of d.ocr_lines">
+                    <td><strong>{{ line.reference || 'N/A' }}</strong></td>
+                    <td>{{ line.title }}</td>
+                    <td class="qty">{{ line.quantity }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Raw OCR Text -->
+          <div class="section text-section">
+            <h4>Texte OCR Brut</h4>
+            <pre class="ocr-text">{{ d.ocr_text || '(Aucun texte)' }}</pre>
+          </div>
+
+          <!-- Apply Button -->
+            <div class="section-footer">
+            <div class="download-zone">
+              <button class="btn secondary" (click)="download(d)">Télécharger l'image</button>
+            </div>
+              <button
+                class="btn primary"
+                (click)="apply(d)"
+                [disabled]="d.status === 'applied' || isLoading || !d.ocr_lines?.length"
+                *ngIf="d.status !== 'applied'"
+            >
+              + Appliquer au Stock
+            </button>
+            <span class="success" *ngIf="d.status === 'applied'">+ Document applique au stock</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

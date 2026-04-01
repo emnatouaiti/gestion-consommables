@@ -1,4 +1,3 @@
-﻿@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap');
 
 :host {
   --etap-50:   #e8f1fb;
@@ -31,7 +30,7 @@
   font-family: 'DM Sans', sans-serif;
 }
 
-/* ── Page header ──────────────────────────────────────────────────────── */
+/* -- Page header -------------------------------------------------------- */
 .page-header {
   display: flex;
   align-items: baseline;
@@ -41,13 +40,13 @@
 }
 .page-title {
   font-family: 'Plus Jakarta Sans', sans-serif;
-  font-size: 26px;           /* ↑ agrandi */
+  font-size: 26px;           /* ? agrandi */
   font-weight: 800;
   color: var(--text-dark);
   letter-spacing: -.4px;
 }
 .page-count {
-  font-size: 14px;           /* ↑ agrandi */
+  font-size: 14px;           /* ? agrandi */
   font-weight: 600;
   color: var(--etap-500);
   background: var(--etap-50);
@@ -56,7 +55,7 @@
   padding: 3px 12px;
 }
 
-/* ── Card ─────────────────────────────────────────────────────────────── */
+/* -- Card --------------------------------------------------------------- */
 .card {
   background: white;
   border-radius: var(--radius-xl);
@@ -75,7 +74,7 @@
   flex-wrap: wrap;
 }
 
-/* ── Recherche ────────────────────────────────────────────────────────── */
+/* -- Recherche ---------------------------------------------------------- */
 .search-area { display: flex; align-items: center; gap: 10px; }
 
 .search-wrapper { position: relative; display: flex; align-items: center; }
@@ -91,7 +90,7 @@
   border: 1.5px solid var(--border);
   background: var(--bg-soft);
   outline: none;
-  font-size: 15px;             /* ↑ agrandi */
+  font-size: 15px;             /* ? agrandi */
   font-family: 'DM Sans', sans-serif;
   color: var(--text-dark);
   transition: all .25s var(--ease-out);
@@ -103,12 +102,12 @@
   box-shadow: 0 0 0 4px rgba(26,95,168,.08);
 }
 
-/* ── Boutons ──────────────────────────────────────────────────────────── */
+/* -- Boutons ------------------------------------------------------------ */
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 11px 22px;
   border-radius: 50px;
-  font-size: 14px;             /* ↑ agrandi */
+  font-size: 14px;             /* ? agrandi */
   font-weight: 600;
   font-family: 'DM Sans', sans-serif;
   border: 1.5px solid transparent;
@@ -142,7 +141,7 @@
 }
 .btn.small { padding: 7px 16px; font-size: 13px; border-radius: 50px; }
 
-/* ── Table ────────────────────────────────────────────────────────────── */
+/* -- Table -------------------------------------------------------------- */
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius-lg);
@@ -155,7 +154,7 @@
 .users-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 15px;              /* ↑ agrandi */
+  font-size: 15px;              /* ? agrandi */
 }
 
 .users-table thead tr {
@@ -173,11 +172,11 @@
 }
 
 .users-table td {
-  padding: 16px 18px;           /* ↑ plus d'espace */
+  padding: 16px 18px;           /* ? plus d'espace */
   border-bottom: 1px solid #f1f5f9;
   vertical-align: middle;
   color: var(--text-mid);
-  font-size: 15px;              /* ↑ agrandi */
+  font-size: 15px;              /* ? agrandi */
 }
 
 .users-table tbody tr { transition: background .18s; }
@@ -185,7 +184,7 @@
 .users-table tbody tr:hover td:first-child { border-left: 3px solid var(--etap-400); }
 .users-table tbody tr:last-child td { border-bottom: none; }
 
-/* ── Avatar — agrandi + cliquable ────────────────────────────────────── */
+/* -- Avatar � agrandi + cliquable -------------------------------------- */
 .photo-cell {
   width: 80px;
   text-align: center;
@@ -193,7 +192,7 @@
 }
 
 .avatar-sm {
-  width: 58px;                  /* ↑ agrandi (était 44px) */
+  width: 58px;                  /* ? agrandi (�tait 44px) */
   height: 58px;
   object-fit: cover;
   border-radius: 50%;
@@ -207,9 +206,9 @@
   box-shadow: 0 6px 20px rgba(26,95,168,.28);
 }
 
-/* ── Nom / email ──────────────────────────────────────────────────────── */
+/* -- Nom / email -------------------------------------------------------- */
 .user-name {
-  font-weight: 700;             /* ↑ plus gras */
+  font-weight: 700;             /* ? plus gras */
   font-size: 15px;
   color: var(--text-dark);
 }
@@ -219,7 +218,7 @@
   margin-top: 2px;
 }
 
-/* ── Badge rôle ───────────────────────────────────────────────────────── */
+/* -- Badge r�le --------------------------------------------------------- */
 .role-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -240,7 +239,7 @@
 th.actions { text-align: right; padding-right: 22px; }
 td.actions  { text-align: right; padding-right: 18px; white-space: nowrap; }
 
-/* ── États ────────────────────────────────────────────────────────────── */
+/* -- �tats -------------------------------------------------------------- */
 .loading-wrap {
   display: flex; align-items: center; justify-content: center;
   gap: 12px; padding: 48px 0;
@@ -273,7 +272,7 @@ td.actions  { text-align: right; padding-right: 18px; white-space: nowrap; }
 .empty-state svg { opacity: .3; }
 .empty-state p { font-size: 15px; font-weight: 500; }
 
-/* ── Modal zoom avatar ────────────────────────────────────────────────── */
+/* -- Modal zoom avatar -------------------------------------------------- */
 .avatar-modal-overlay {
   position: fixed; inset: 0;
   background: rgba(10, 20, 50, 0.80);
@@ -320,7 +319,7 @@ td.actions  { text-align: right; padding-right: 18px; white-space: nowrap; }
 }
 .avatar-modal-close:hover { background: #e11d48; color: white; transform: scale(1.1); }
 
-/* ── Animations ───────────────────────────────────────────────────────── */
+/* -- Animations --------------------------------------------------------- */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }

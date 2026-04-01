@@ -65,6 +65,7 @@
         <thead>
           <tr>
             <th>Reference</th>
+            <th>Doc</th>
             <th>Type</th>
             <th>Statut</th>
             <th>Cree par</th>
@@ -77,6 +78,31 @@
           <tr *ngFor="let m of movements">
             <td>
               <a href="#" (click)="$event.preventDefault(); openDetails(m)" class="ref-link">{{ m.reference || ('#' + m.id) }}</a>
+            </td>
+            <td>
+              <div class="doc-icons">
+                <ng-container *ngIf="m.document || m.document_id">
+                  <a *ngIf="m.document?.path" [href]="getDocumentUrl(m.document.path)" target="_blank" class="doc-icon" title="Document lié">
+                    📄
+                  </a>
+                  <a *ngIf="!m.document?.path && m.document_id" [href]="'/admin/documents/' + m.document_id" target="_blank" class="doc-icon" title="Document lié (ID {{ m.document_id }})">
+                    📄
+                  </a>
+                </ng-container>
+
+                <ng-container *ngIf="m.in_image_path">
+                  <a [href]="getDocumentUrl(m.in_image_path)" target="_blank" class="doc-icon" title="Image entrée">
+                    🖼️
+                  </a>
+                </ng-container>
+                <ng-container *ngIf="m.out_image_path">
+                  <a [href]="getDocumentUrl(m.out_image_path)" target="_blank" class="doc-icon" title="Image sortie">
+                    🖼️
+                  </a>
+                </ng-container>
+
+                <span *ngIf="!m.document && !m.document_id && !m.in_image_path && !m.out_image_path">-</span>
+              </div>
             </td>
             <td>
               <span class="pill in" *ngIf="(m.movement_type || m.type) === 'in'">Entree</span>
@@ -132,6 +158,23 @@
           <div class="k">Notes</div>
           <div class="v">{{ selectedMovement.notes || '-' }}</div>
         </div>
+        <div class="kv">
+          <div class="k">Document</div>
+          <div class="v">
+            <ng-container *ngIf="selectedMovement.document">
+              <a [href]="getDocumentUrl(selectedMovement.document.path)" target="_blank">{{ selectedMovement.document.title || 'Afficher document' }}</a>
+            </ng-container>
+            <span *ngIf="!selectedMovement.document">-</span>
+          </div>
+        </div>
+        <div class="kv" *ngIf="selectedMovement.in_image_path">
+          <div class="k">Image ENTREE</div>
+          <div class="v"><a [href]="getDocumentUrl(selectedMovement.in_image_path)" target="_blank">Voir</a></div>
+        </div>
+        <div class="kv" *ngIf="selectedMovement.out_image_path">
+          <div class="k">Image SORTIE</div>
+          <div class="v"><a [href]="getDocumentUrl(selectedMovement.out_image_path)" target="_blank">Voir</a></div>
+        </div>
 
         <div class="section-title">Lignes</div>
         <div class="table-wrap">
@@ -177,6 +220,18 @@
         <div class="field">
           <label>Notes</label>
           <textarea [(ngModel)]="newMovement.notes" rows="2"></textarea>
+        </div>
+        <div class="field">
+          <label>Document lié (optionnel)</label>
+          <input type="number" [(ngModel)]="newMovement.document_id" placeholder="ID document" />
+        </div>
+        <div class="field">
+          <label>Image entree (optionnelle)</label>
+          <input type="file" (change)="onInImageChange($event)" accept="image/*" />
+        </div>
+        <div class="field">
+          <label>Image sortie (optionnelle)</label>
+          <input type="file" (change)="onOutImageChange($event)" accept="image/*" />
         </div>
 
         <div class="section-title" *ngIf="newMovement.movement_type === 'out'">Sortie: depuis depot vers local</div>

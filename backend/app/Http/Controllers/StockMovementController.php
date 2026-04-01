@@ -26,6 +26,7 @@ class StockMovementController extends Controller
                 'creator',
                 'validator',
                 'supplier',
+                'document',
                 'sourceWarehouseLocation.room.warehouse',
                 'destinationWarehouseLocation.room.warehouse',
             ])
@@ -76,6 +77,7 @@ class StockMovementController extends Controller
             'creator',
             'validator',
             'supplier',
+            'document',
             'sourceWarehouseLocation.room.warehouse',
             'destinationWarehouseLocation.room.warehouse',
         ])->findOrFail($id);
@@ -210,6 +212,9 @@ class StockMovementController extends Controller
             'supplier_id' => 'required_if:movement_type,in|nullable|exists:suppliers,id',
             'source_warehouse_location_id' => 'required_if:movement_type,out|nullable|exists:warehouse_locations,id',
             'destination_warehouse_location_id' => 'required|exists:warehouse_locations,id',
+            'document_id' => 'nullable|exists:documents,id',
+            'in_image' => 'nullable|file|image|max:10240',
+            'out_image' => 'nullable|file|image|max:10240',
             'lines' => 'required|array|min:1',
             'lines.*.product_id' => 'required|exists:products,id',
             'lines.*.quantity' => 'required|integer|min:1',
@@ -232,7 +237,7 @@ class StockMovementController extends Controller
         }
 
         $movement = DB::transaction(function () use ($request, $user, $movementType, $reference) {
-            $movement = StockMovement::create([
+            $movementData = [
                 'movement_type' => $movementType,
                 'reference' => $reference,
                 'created_by' => $user ? $user->id : null,
@@ -243,7 +248,17 @@ class StockMovementController extends Controller
                 'supplier_id' => $request->input('supplier_id'),
                 'source_warehouse_location_id' => $request->input('source_warehouse_location_id'),
                 'destination_warehouse_location_id' => $request->input('destination_warehouse_location_id'),
-            ]);
+                'document_id' => $request->input('document_id'),
+            ];
+
+            if ($request->hasFile('in_image')) {
+                $movementData['in_image_path'] = $request->file('in_image')->store('stock-movements/in', 'public');
+            }
+            if ($request->hasFile('out_image')) {
+                $movementData['out_image_path'] = $request->file('out_image')->store('stock-movements/out', 'public');
+            }
+
+            $movement = StockMovement::create($movementData);
 
             $lines = collect($request->input('lines'))->map(fn ($line) => [
                 'product_id' => (int) $line['product_id'],
@@ -306,6 +321,9 @@ class StockMovementController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'source_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'destination_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'document_id' => 'nullable|exists:documents,id',
+            'in_image' => 'nullable|file|image|max:10240',
+            'out_image' => 'nullable|file|image|max:10240',
             'lines' => 'nullable|array|min:1',
             'lines.*.product_id' => 'required_with:lines|exists:products,id',
             'lines.*.quantity' => 'required_with:lines|integer|min:1',
@@ -326,6 +344,15 @@ class StockMovementController extends Controller
             }
             if ($request->has('destination_warehouse_location_id')) {
                 $movement->destination_warehouse_location_id = $request->input('destination_warehouse_location_id');
+            }
+            if ($request->has('document_id')) {
+                $movement->document_id = $request->input('document_id');
+            }
+            if ($request->hasFile('in_image')) {
+                $movement->in_image_path = $request->file('in_image')->store('stock-movements/in', 'public');
+            }
+            if ($request->hasFile('out_image')) {
+                $movement->out_image_path = $request->file('out_image')->store('stock-movements/out', 'public');
             }
             $movement->save();
 

@@ -50,6 +50,7 @@ export class AdminLayoutComponent implements OnInit {
         { label: 'Gerer locaux', route: '/admin/gerer-locaux' },
         { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
         { label: 'Consulter le journal d audit', route: '/admin/journal-audit' },
+        { label: 'Documents OCR', route: '/admin/documents-ocr' },
         { label: 'Mon Profil', route: '/admin/profile' }
       ]
     }

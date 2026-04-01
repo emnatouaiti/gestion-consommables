@@ -10,6 +10,7 @@ use App\Http\Controllers\API\SocialAuthController;
 use App\Http\Controllers\API\SupplierContactController;
 use App\Http\Controllers\API\SupplierController;
 use App\Http\Controllers\API\UnitController;
+use App\Http\Controllers\API\DocumentController;
 use App\Http\Controllers\API\UserManagementController;
 use App\Http\Controllers\API\WarehouseCabinetController;
 use App\Http\Controllers\API\WarehouseController;
@@ -156,6 +157,11 @@ Route::prefix('api')->group(function () {
         Route::put('admin/product-stocks/{stock}', [ProductStockController::class, 'updateStock']);
         Route::delete('admin/product-stocks/{stock}', [ProductStockController::class, 'removeStock']);
         Route::get('admin/product-stocks/search', [ProductStockController::class, 'searchStocks']);
+        Route::get('admin/documents', [DocumentController::class, 'index']);
+        Route::post('admin/documents', [DocumentController::class, 'store']);
+        Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
+        Route::post('admin/documents/{id}/apply', [DocumentController::class, 'apply']);
+        Route::post('admin/documents/diagnostic', [DocumentController::class, 'diagnostic']);
 
         Route::get('admin/suppliers', [SupplierController::class, 'index']);
         Route::post('admin/suppliers', [SupplierController::class, 'store']);

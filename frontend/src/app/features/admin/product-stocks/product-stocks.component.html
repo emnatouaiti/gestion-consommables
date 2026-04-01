@@ -253,8 +253,15 @@
           <div class="card-header">
             <h2>Documents</h2>
           </div>
-          <div class="empty-docs">
-            <p>Section documents (factures, bons, images) à brancher à l’API.</p>
+          <div *ngIf="productDocuments.length === 0" class="empty-docs">
+            <p>Aucun document pour ce produit.</p>
+          </div>
+          <div class="docs-list" *ngIf="productDocuments.length > 0">
+            <div class="doc-row" *ngFor="let doc of productDocuments">
+              <div class="doc-title"><strong>{{ doc.title || doc.path }}</strong></div>
+              <div class="doc-meta">Type: {{ doc.type || '—' }} • Direction: {{ doc.direction || '—' }} • Statut: {{ doc.status }}</div>
+              <button class="btn secondary sm" (click)="downloadDoc(doc)">Télécharger</button>
+            </div>
           </div>
         </div>
       </ng-container>

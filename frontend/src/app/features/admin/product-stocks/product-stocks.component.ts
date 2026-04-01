@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
+import { HttpClient } from '@angular/common/http';
 import { ProductStockService } from '../services/product-stock.service';
 import { AdminStockService } from '../services/admin-stock.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
@@ -51,6 +52,7 @@ export class ProductStocksComponent implements OnInit {
   activeSection: 'details' | 'stock' | 'documents' | 'images' = 'stock';
   selectedPhotoIndex = 0;
   photoUploadInProgress = false;
+  productDocuments: any[] = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -58,7 +60,8 @@ export class ProductStocksComponent implements OnInit {
     @Inject(PLATFORM_ID) private platformId: Object,
     private stockService: ProductStockService,
     private adminStockService: AdminStockService,
-    private warehouseService: AdminWarehouseService
+    private warehouseService: AdminWarehouseService,
+    private http: HttpClient
   ) { }
 
   ngOnInit(): void {
@@ -73,6 +76,7 @@ export class ProductStocksComponent implements OnInit {
         this.loadWarehouses();
         this.loadRooms();
         this.loadLocations();
+        this.loadDocuments();
       }
     });
   }
@@ -194,6 +198,37 @@ export class ProductStocksComponent implements OnInit {
     if (!path) return 'assets/images/placeholder-product.png';
     if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) return path;
     return `http://localhost:8000/storage/${path}`;
+  }
+
+  // Documents liés au produit
+  loadDocuments(): void {
+    if (!isPlatformBrowser(this.platformId) || !this.productId) return;
+    this.http.get(`/api/admin/documents`).subscribe({
+      next: (docs: any) => {
+        const arr = Array.isArray(docs) ? docs : [];
+        const title = (this.product?.title || '').toString().toLowerCase();
+        this.productDocuments = arr.filter((d: any) => {
+          if (this.productId && d.product_id === this.productId) return true;
+          const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
+          return title && lines.some((l: any) => (l.title || '').toString().toLowerCase().includes(title));
+        });
+        this.cdr.detectChanges();
+      },
+      error: () => { }
+    });
+  }
+
+  downloadDoc(doc: any): void {
+    const path = doc?.path;
+    if (!path) return;
+    const url = 'http://localhost:8000/storage/' + path;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc?.title || 'document';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   getPhotoUrl(path: string | null | undefined): string {

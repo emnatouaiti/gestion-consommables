@@ -2,6 +2,7 @@ import { Component, OnInit, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angu
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { Supplier } from '../../../core/models/supplier.model';
 import { SupplierContact } from '../../../core/models/supplier-contact.model';
@@ -56,9 +57,14 @@ export class SuppliersComponent implements OnInit {
 
     newReviewContent = '';
     newReviewRating: number | undefined = 5;
+    supplierDocuments: Record<number, any[]> = {};
+    showDocsModal = false;
+    docsForSupplier: any[] = [];
+    docsSupplierName = '';
 
     constructor(
         private supplierService: SupplierService,
+        private http: HttpClient,
         private readonly cdr: ChangeDetectorRef,
         @Inject(PLATFORM_ID) private readonly platformId: Object
     ) { }
@@ -69,6 +75,7 @@ export class SuppliersComponent implements OnInit {
         }
         this.loadSuppliers();
         this.loadAvailableProducts();
+        this.loadDocuments();
     }
 
     loadAvailableProducts(): void {
@@ -121,6 +128,55 @@ export class SuppliersComponent implements OnInit {
             );
         }
         this.cdr.detectChanges();
+    }
+
+    loadDocuments(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        this.http.get('/api/admin/documents').subscribe({
+            next: (docs: any) => {
+                const arr = Array.isArray(docs) ? docs : [];
+                this.supplierDocuments = arr.reduce((acc: Record<number, any[]>, d: any) => {
+                    if (d.supplier_id) {
+                        (acc[d.supplier_id] ??= []).push(d);
+                    }
+                    return acc;
+                }, {});
+                this.cdr.detectChanges();
+            },
+            error: () => {
+                // silencieux
+            }
+        });
+    }
+
+    getDocCount(id: number): number {
+        return (this.supplierDocuments[id] || []).length;
+    }
+
+    openDocsModal(supplier: Supplier): void {
+        this.docsForSupplier = this.supplierDocuments[supplier.id] || [];
+        this.docsSupplierName = supplier.name;
+        this.showDocsModal = true;
+    }
+
+    closeDocsModal(): void {
+        this.showDocsModal = false;
+        this.docsForSupplier = [];
+        this.docsSupplierName = '';
+    }
+
+    downloadDoc(doc: any): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '') : null;
+        const url = cleanPath ? `http://localhost:8000/storage/${cleanPath}` : null;
+        if (!url) return;
+
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.download = doc?.title || 'document';
+        a.rel = 'noopener noreferrer';
+        a.click();
     }
 
     clearSearch(): void {
@@ -475,3 +531,5 @@ export class SuppliersComponent implements OnInit {
         }
     }
 }
+
+

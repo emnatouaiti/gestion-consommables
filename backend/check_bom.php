@@ -1,0 +1,10 @@
+<?php
+$p = 'app/Http/Controllers/API/DocumentController.php';
+$b = file_get_contents($p);
+$prefix = "\xEF\xBB\xBF";
+if (substr($b, 0, 3) === $prefix) {
+    file_put_contents($p, substr($b, 3));
+    echo "BOM removed\n";
+} else {
+    echo "No BOM\n";
+}

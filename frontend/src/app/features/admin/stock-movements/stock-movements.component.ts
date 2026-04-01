@@ -1,5 +1,5 @@
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { StockMovementService } from '../../../services/stock-movement.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
@@ -43,6 +43,9 @@ export class StockMovementsComponent implements OnInit {
     related_request_id: null,
     notes: '',
     supplier_id: null,
+    document_id: null,
+    in_image: null,
+    out_image: null,
 
     source_kind: 'depot',
     source_warehouse_id: null,
@@ -60,21 +63,26 @@ export class StockMovementsComponent implements OnInit {
   constructor(
     private svc: StockMovementService,
     private warehouseService: AdminWarehouseService,
-    private supplierService: SupplierService
+    private supplierService: SupplierService,
+    @Inject(PLATFORM_ID) private platformId: Object,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.load();
   }
 
   loadProducts(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.svc.getProducts().subscribe({
-      next: (data: any) => { this.products = Array.isArray(data) ? data : []; },
+      next: (data: any) => { this.products = Array.isArray(data) ? data : []; this.cdr.detectChanges(); },
       error: (err: any) => { console.error('Erreur produits', err); }
     });
   }
 
   load(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.loading = true;
     this.svc.list({
       page: this.page,
@@ -92,8 +100,9 @@ export class StockMovementsComponent implements OnInit {
         this.total = Number(data?.total ?? this.movements.length);
         this.lastPage = Number(data?.last_page ?? 1);
         this.loading = false;
+        this.cdr.detectChanges();
       },
-      error: (err: any) => { console.error(err); this.message = 'Erreur'; this.loading = false; }
+      error: (err: any) => { console.error(err); this.message = 'Erreur'; this.loading = false; this.cdr.detectChanges(); }
     });
   }
 
@@ -115,29 +124,44 @@ export class StockMovementsComponent implements OnInit {
   }
 
   validate(m: any): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     if (!confirm('Valider ce mouvement ?')) return;
     this.svc.validate(m.id).subscribe({ next: () => this.load(), error: (e: any) => { console.error(e); alert('Erreur'); } });
   }
 
   cancel(m: any): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     if (!confirm('Annuler ce mouvement ?')) return;
     const reason = prompt("Motif d'annulation (optionnel) :") ?? undefined;
     this.svc.cancel(m.id, reason).subscribe({ next: () => this.load(), error: (e: any) => { console.error(e); alert('Erreur'); } });
   }
 
   openDetails(m: any): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.selectedMovement = null;
     this.svc.show(m.id).subscribe({
-      next: (data: any) => { this.selectedMovement = data; },
+      next: (data: any) => { this.selectedMovement = data; this.cdr.detectChanges(); },
       error: (err: any) => { console.error(err); alert('Erreur lors du chargement.'); }
     });
   }
 
   closeDetails(): void {
     this.selectedMovement = null;
+    this.cdr.detectChanges();
+  }
+
+  onInImageChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.newMovement.in_image = (input.files && input.files.length) ? input.files[0] : null;
+  }
+
+  onOutImageChange(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.newMovement.out_image = (input.files && input.files.length) ? input.files[0] : null;
   }
 
   openCreate(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.creating = true;
     this.newMovement = {
       movement_type: 'out',
@@ -165,6 +189,7 @@ export class StockMovementsComponent implements OnInit {
 
   closeCreate(): void {
     this.creating = false;
+    this.cdr.detectChanges();
   }
 
   addLine(): void {
@@ -200,18 +225,24 @@ export class StockMovementsComponent implements OnInit {
       }
     }
 
-    const payload = {
-      movement_type: this.newMovement.movement_type,
-      reference: this.newMovement.reference || undefined,
-      related_request_id: this.newMovement.related_request_id || undefined,
-      notes: this.newMovement.notes || undefined,
-      supplier_id: this.newMovement.movement_type === 'in' ? Number(this.newMovement.supplier_id) : undefined,
-      source_warehouse_location_id: this.newMovement.movement_type === 'out' ? Number(this.newMovement.source_warehouse_location_id) : undefined,
-      destination_warehouse_location_id: Number(this.newMovement.destination_warehouse_location_id),
-      lines: validLines.map((l: any) => ({ product_id: Number(l.product_id), quantity: Number(l.quantity) }))
-    };
+    const form = new FormData();
+    form.append('movement_type', this.newMovement.movement_type);
+    if (this.newMovement.reference) { form.append('reference', this.newMovement.reference); }
+    if (this.newMovement.related_request_id) { form.append('related_request_id', String(this.newMovement.related_request_id)); }
+    if (this.newMovement.notes) { form.append('notes', this.newMovement.notes); }
+    if (this.newMovement.movement_type === 'in' && this.newMovement.supplier_id) { form.append('supplier_id', String(this.newMovement.supplier_id)); }
+    if (this.newMovement.movement_type === 'out' && this.newMovement.source_warehouse_location_id) { form.append('source_warehouse_location_id', String(this.newMovement.source_warehouse_location_id)); }
+    if (this.newMovement.destination_warehouse_location_id) { form.append('destination_warehouse_location_id', String(this.newMovement.destination_warehouse_location_id)); }
+    if (this.newMovement.document_id) { form.append('document_id', String(this.newMovement.document_id)); }
+    if (this.newMovement.in_image) { form.append('in_image', this.newMovement.in_image); }
+    if (this.newMovement.out_image) { form.append('out_image', this.newMovement.out_image); }
 
-    this.svc.create(payload).subscribe({
+    validLines.forEach((l: any, index: number) => {
+      form.append(`lines[${index}][product_id]`, String(l.product_id));
+      form.append(`lines[${index}][quantity]`, String(l.quantity));
+    });
+
+    this.svc.create(form).subscribe({
       next: () => { this.creating = false; this.load(); alert('Mouvement cree'); },
       error: (err) => { console.error(err); alert('Erreur creation'); }
     });
@@ -238,6 +269,12 @@ export class StockMovementsComponent implements OnInit {
     return this.warehouses.filter(w => (w.kind || 'depot') === kind);
   }
 
+  getDocumentUrl(path: string): string {
+    if (!path) return '#';
+    const cleanPath = path.replace(/^[/\\]+/, '');
+    return `${window.location.protocol}//${window.location.host}/storage/${cleanPath}`;
+  }
+
   onMovementTypeChange(): void {
     if (this.newMovement.movement_type === 'in') {
       this.newMovement.source_kind = 'depot';
@@ -257,6 +294,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   onSourceWarehouseChange(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.newMovement.source_room_id = null;
     this.newMovement.source_warehouse_location_id = null;
     this.sourceLocations = [];
@@ -271,6 +309,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   onSourceRoomChange(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.newMovement.source_warehouse_location_id = null;
     const roomId = Number(this.newMovement.source_room_id);
     if (!roomId) { this.sourceLocations = []; return; }
@@ -282,6 +321,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   onDestinationWarehouseChange(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.newMovement.destination_room_id = null;
     this.newMovement.destination_warehouse_location_id = null;
     this.destLocations = [];
@@ -296,6 +336,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   onDestinationRoomChange(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.newMovement.destination_warehouse_location_id = null;
     const roomId = Number(this.newMovement.destination_room_id);
     if (!roomId) { this.destLocations = []; return; }
@@ -307,6 +348,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private loadWarehouses(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.warehouseService.listWarehouses(null, 200, 'active').subscribe({
       next: (res: any) => { this.warehouses = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []); },
       error: () => { this.warehouses = []; }
@@ -314,6 +356,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private loadSuppliers(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
     this.supplierService.getSuppliers().subscribe({
       next: (res: any) => { this.suppliers = Array.isArray(res) ? res : []; },
       error: () => { this.suppliers = []; }

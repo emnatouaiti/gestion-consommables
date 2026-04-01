@@ -21,6 +21,7 @@ import { UnitsComponent } from './units/units.component';
 import { StockMovementsComponent } from './stock-movements/stock-movements.component';
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
+import { DocumentsComponent } from './documents/documents.component';
 
 const adminRoles = ['Administrateur'];
 const directorRoles = ['Directeur', 'Validateur'];
@@ -37,6 +38,12 @@ const routes: Routes = [
         path: '',
         component: AdminRolePageComponent,
         data: { view: 'welcome' }
+      },
+      {
+        path: 'documents-ocr',
+        component: DocumentsComponent,
+        canActivate: [RoleGuard],
+        data: { roles: adminRoles }
       },
 
       { path: 'dashboard', component: DashboardComponent },
