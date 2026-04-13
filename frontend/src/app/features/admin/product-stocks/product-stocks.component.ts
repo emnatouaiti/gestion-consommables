@@ -19,6 +19,7 @@ export class ProductStocksComponent implements OnInit {
   locations: any[] = [];
   allWarehouses: any[] = [];
   allRooms: any[] = [];
+  allCabinets: any[] = [];
 
   isLoading = false;
   errorMessage = '';
@@ -30,6 +31,7 @@ export class ProductStocksComponent implements OnInit {
 
   newStockForm = {
     warehouse_location_id: '',
+    cabinet_id: '',
     quantity: '',
     notes: '',
     supplier_id: ''
@@ -48,6 +50,7 @@ export class ProductStocksComponent implements OnInit {
   selectedWarehouseId: number | null = null;
   selectedWarehouseIdForForm: string = '';
   selectedRoomIdForForm: string = '';
+  storageTargetForForm: 'location' | 'cabinet' = 'location';
 
   activeSection: 'details' | 'stock' | 'documents' | 'images' = 'stock';
   selectedPhotoIndex = 0;
@@ -76,6 +79,7 @@ export class ProductStocksComponent implements OnInit {
         this.loadWarehouses();
         this.loadRooms();
         this.loadLocations();
+        this.loadCabinets();
         this.loadDocuments();
       }
     });
@@ -319,6 +323,16 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
+  loadCabinets(): void {
+    this.warehouseService.listCabinets(null, null, 1000).subscribe({
+      next: (res: any) => {
+        this.allCabinets = res.data || (Array.isArray(res) ? res : []);
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => console.error('Erreur chargement armoires:', err)
+    });
+  }
+
   openAddStockModal(warehouseId?: number): void {
     this.resetForm();
     this.editingStockId = null;
@@ -336,34 +350,46 @@ export class ProductStocksComponent implements OnInit {
   resetForm(): void {
     this.newStockForm = {
       warehouse_location_id: '',
+      cabinet_id: '',
       quantity: '',
       notes: '',
       supplier_id: ''
     };
     this.selectedWarehouseIdForForm = '';
     this.selectedRoomIdForForm = '';
+    this.storageTargetForForm = 'location';
   }
 
   saveStock(): void {
-    if (!this.newStockForm.warehouse_location_id || !this.newStockForm.quantity) {
-      this.errorMessage = 'Emplacement et quantité sont obligatoires.';
+    const hasStorage = this.storageTargetForForm === 'cabinet'
+      ? !!this.newStockForm.cabinet_id
+      : !!this.newStockForm.warehouse_location_id;
+
+    if (!hasStorage || !this.newStockForm.quantity) {
+      this.errorMessage = 'Emplacement ou armoire et quantite sont obligatoires.';
       return;
     }
 
-    // Check if location is full
-    const selectedLoc = this.locations.find((l: any) => l.id.toString() === this.newStockForm.warehouse_location_id.toString());
+    const selectedLoc = this.storageTargetForForm === 'location'
+      ? this.locations.find((l: any) => l.id.toString() === this.newStockForm.warehouse_location_id.toString())
+      : null;
     if (selectedLoc && selectedLoc.capacity_units && selectedLoc.current_units >= selectedLoc.capacity_units) {
-      this.errorMessage = 'Cet emplacement est plein (capacité maximale atteinte).';
+      this.errorMessage = 'Cet emplacement est plein (capacite maximale atteinte).';
       return;
     }
 
     if (!this.productId) {
-      this.errorMessage = 'Produit non chargé.';
+      this.errorMessage = 'Produit non charge.';
       return;
     }
 
     const payload = {
-      warehouse_location_id: parseInt(this.newStockForm.warehouse_location_id),
+      warehouse_location_id: this.storageTargetForForm === 'location' && this.newStockForm.warehouse_location_id
+        ? parseInt(this.newStockForm.warehouse_location_id)
+        : null,
+      cabinet_id: this.storageTargetForForm === 'cabinet' && this.newStockForm.cabinet_id
+        ? parseInt(this.newStockForm.cabinet_id)
+        : null,
       quantity: parseInt(this.newStockForm.quantity),
       notes: this.newStockForm.notes,
       supplier_id: this.newStockForm.supplier_id ? parseInt(this.newStockForm.supplier_id) : null
@@ -377,7 +403,7 @@ export class ProductStocksComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingStockId ? 'Stock mis à jour !' : 'Stock ajouté !';
+        this.successMessage = this.editingStockId ? 'Stock mis a jour !' : 'Stock ajoute !';
         this.closeAddStockModal();
         this.loadStocks();
         setTimeout(() => this.successMessage = '', 3000);
@@ -391,8 +417,21 @@ export class ProductStocksComponent implements OnInit {
 
   editStock(stock: any): void {
     this.editingStockId = stock.id;
+    this.storageTargetForForm = stock.storage_type === 'cabinet' ? 'cabinet' : 'location';
+
+    const room = this.allRooms.find((r: any) => r.name === stock.room);
+    if (room) {
+      this.selectedRoomIdForForm = room.id.toString();
+      this.selectedWarehouseIdForForm = room.warehouse_id?.toString() || '';
+    }
+
     this.newStockForm = {
-      warehouse_location_id: this.locations.find(l => l.code === stock.location_code)?.id.toString() || '',
+      warehouse_location_id: this.storageTargetForForm === 'location'
+        ? this.locations.find(l => l.code === stock.location_code)?.id.toString() || ''
+        : '',
+      cabinet_id: this.storageTargetForForm === 'cabinet'
+        ? this.allCabinets.find((c: any) => c.code === stock.location_code)?.id.toString() || ''
+        : '',
       quantity: stock.quantity.toString(),
       notes: stock.notes || '',
       supplier_id: stock.supplier_id?.toString() || ''
@@ -467,5 +506,33 @@ export class ProductStocksComponent implements OnInit {
     return this.locations
       .filter(loc => loc.room_id.toString() === this.selectedRoomIdForForm)
       .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+
+  getCabinetsForRoom(): any[] {
+    if (!this.selectedRoomIdForForm) return [];
+    return this.allCabinets
+      .filter(cabinet => cabinet.room_id.toString() === this.selectedRoomIdForForm)
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  onWarehouseFormChange(): void {
+    this.selectedRoomIdForForm = '';
+    this.newStockForm.warehouse_location_id = '';
+    this.newStockForm.cabinet_id = '';
+  }
+
+  onRoomFormChange(): void {
+    this.newStockForm.warehouse_location_id = '';
+    this.newStockForm.cabinet_id = '';
+  }
+
+  setStorageTarget(target: 'location' | 'cabinet'): void {
+    this.storageTargetForForm = target;
+    if (target === 'location') {
+      this.newStockForm.cabinet_id = '';
+    } else {
+      this.newStockForm.warehouse_location_id = '';
+    }
   }
 }

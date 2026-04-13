@@ -12,7 +12,7 @@ class ProductStockController extends Controller
 {
     public function getProductStocks(Product $product)
     {
-        return $product->stocks()->with('warehouseLocation.room.warehouse', 'supplier')->get();
+        return $product->stocks()->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')->get();
     }
 
     public function updateStock(Request $request, ProductStock $stock)
@@ -21,28 +21,39 @@ class ProductStockController extends Controller
             'quantity' => 'required|integer|min:0',
             'notes' => 'nullable|string',
             'supplier_id' => 'nullable|exists:suppliers,id',
+            'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'cabinet_id' => 'nullable|exists:warehouse_cabinets,id',
         ]);
+
+        if (empty($validated['warehouse_location_id']) && empty($validated['cabinet_id'])) {
+            return response()->json(['message' => 'Choisissez un emplacement ou une armoire.'], 422);
+        }
 
         $validated['last_updated'] = now();
 
         $stock->update($validated);
-        return $stock->load('warehouseLocation.room.warehouse', 'product', 'supplier');
+        return $stock->load('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'product', 'supplier');
     }
 
     public function addStock(Request $request, Product $product)
     {
         $validated = $request->validate([
-            'warehouse_location_id' => 'required|exists:warehouse_locations,id',
+            'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'cabinet_id' => 'nullable|exists:warehouse_cabinets,id',
             'quantity' => 'required|integer|min:1',
             'notes' => 'nullable|string',
             'supplier_id' => 'nullable|exists:suppliers,id',
         ]);
 
+        if (empty($validated['warehouse_location_id']) && empty($validated['cabinet_id'])) {
+            return response()->json(['message' => 'Choisissez un emplacement ou une armoire.'], 422);
+        }
+
         $validated['last_updated'] = now();
 
         $stock = ProductStock::create(array_merge($validated, ['product_id' => $product->id]));
 
-        return $stock->load('warehouseLocation.room.warehouse', 'product', 'supplier');
+        return $stock->load('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'product', 'supplier');
     }
 
     public function removeStock(ProductStock $stock)
@@ -53,28 +64,67 @@ class ProductStockController extends Controller
 
     public function getTotalStock(Product $product)
     {
+        $product->loadMissing('suppliers', 'warehouseLocation.room.warehouse');
+        $defaultSupplier = $product->suppliers->first();
+
         // --- 1. Stocks from product_stocks table ---
         $stockEntries = $product->stocks()
-            ->with('warehouseLocation.room.warehouse', 'supplier')
+            ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
             ->get();
 
-        $stockDetails = $stockEntries->map(fn($stock) => [
-        'id' => $stock->id,
-        'warehouse' => $stock->warehouseLocation->room->warehouse->name,
-        'warehouse_id' => $stock->warehouseLocation->room->warehouse->id,
-        'room' => $stock->warehouseLocation->room->name,
-        'location_code' => $stock->warehouseLocation->code,
-        'location_name' => $stock->warehouseLocation->name,
-        'quantity' => $stock->quantity,
-        'notes' => $stock->notes,
-        'supplier_id' => $stock->supplier_id,
-        'supplier_name' => $stock->supplier ? $stock->supplier->name : null,
-        ]);
+        $stockDetails = $stockEntries->map(function ($stock) use ($defaultSupplier) {
+            $room = $stock->warehouseLocation?->room ?? $stock->warehouseCabinet?->room;
+            $warehouse = $room?->warehouse;
+
+            // Separate handling for location vs cabinet
+            $locationCode = null;
+            $locationName = null;
+            $storageType = 'location';
+
+            if ($stock->warehouseLocation_id && $stock->warehouseLocation) {
+                $locationCode = $stock->warehouseLocation->code;
+                $locationName = $stock->warehouseLocation->name;
+                $storageType = 'location';
+            } elseif ($stock->cabinet_id && $stock->warehouseCabinet) {
+                $locationCode = $stock->warehouseCabinet->code;
+                $locationName = $stock->warehouseCabinet->name;
+                $storageType = 'cabinet';
+            }
+
+            $supplier = $stock->supplier ?: $defaultSupplier;
+
+            $locationDisplay = null;
+            $cabinetDisplay = null;
+
+            if ($storageType === 'location' && $locationCode && $locationName) {
+                $locationDisplay = trim($locationCode . ' ' . $locationName);
+            }
+            if ($storageType === 'cabinet' && $locationCode && $locationName) {
+                $cabinetDisplay = trim($locationCode . ' ' . $locationName);
+            }
+
+            return [
+                'id' => $stock->id,
+                'warehouse' => $warehouse?->name,
+                'warehouse_id' => $warehouse?->id,
+                'room' => $room?->name,
+                'location_code' => $locationCode,
+                'location_name' => $locationName,
+                'storage_type' => $storageType,
+                'location_display' => $locationDisplay,
+                'cabinet_display' => $cabinetDisplay,
+                'cabinet_id' => $stock->cabinet_id,
+                'warehouse_location_id' => $stock->warehouse_location_id,
+                'quantity' => $stock->quantity,
+                'notes' => $stock->notes,
+                'supplier_id' => $supplier?->id,
+                'supplier_name' => $supplier?->name,
+            ];
+        });
 
         $totalFromStocks = $stockEntries->sum('quantity');
 
         // --- 2. Product's own location assignment ---
-        $product->load('warehouseLocation.room.warehouse');
         $ownLocation = $product->warehouseLocation;
         $ownWarehouseId = null;
 
@@ -93,8 +143,13 @@ class ProductStockController extends Controller
                 'room' => $ownLocation->room->name,
                 'location_code' => $ownLocation->code,
                 'location_name' => $ownLocation->name,
+                'storage_type' => 'location',
+                'location_display' => trim(($ownLocation->code ?: '') . ' ' . ($ownLocation->name ?: '')),
+                'cabinet_display' => null,
                 'quantity' => $ownQty,
                 'notes' => 'Stock principal du produit',
+                'supplier_id' => $defaultSupplier?->id,
+                'supplier_name' => $defaultSupplier?->name,
             ];
             $stockDetails = $stockDetails->concat([$ownDetail]);
         }
@@ -134,7 +189,7 @@ class ProductStockController extends Controller
         $search = $request->get('q', '');
         $perPage = $request->get('per_page', 20);
 
-        $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'supplier');
+        $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier');
 
         if ($search) {
             $query->whereHas('product', function ($q) use ($search) {
@@ -142,6 +197,9 @@ class ProductStockController extends Controller
                     ->orWhere('reference', 'like', "%{$search}%");
             })->orWhereHas('warehouseLocation', function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%");
+            })->orWhereHas('warehouseCabinet', function ($q) use ($search) {
+                $q->where('code', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
             });
         }
 

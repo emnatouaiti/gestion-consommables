@@ -22,6 +22,7 @@ import { StockMovementsComponent } from './stock-movements/stock-movements.compo
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
 import { DocumentsComponent } from './documents/documents.component';
+import { ChatComponent } from './chat/chat.component';
 
 const adminRoles = ['Administrateur'];
 const directorRoles = ['Directeur', 'Validateur'];
@@ -110,6 +111,11 @@ const routes: Routes = [
         component: StockMovementsComponent,
         canActivate: [RoleGuard],
         data: { roles: adminRoles }
+      },
+
+      {
+        path: 'chat',
+        component: ChatComponent
       },
 
       {

@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StockMovementService } from '../../../services/stock-movement.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-stock-movements',
@@ -272,7 +273,28 @@ export class StockMovementsComponent implements OnInit {
   getDocumentUrl(path: string): string {
     if (!path) return '#';
     const cleanPath = path.replace(/^[/\\]+/, '');
-    return `${window.location.protocol}//${window.location.host}/storage/${cleanPath}`;
+
+    let origin = '';
+    if (environment.apiUrl && environment.apiUrl.startsWith('http')) {
+      try {
+        origin = new URL(environment.apiUrl).origin;
+      } catch {
+        origin = '';
+      }
+    }
+
+    if (!origin && typeof window !== 'undefined') {
+      const proto = window.location.protocol || 'http:';
+      const host = window.location.hostname || 'localhost';
+      // API tourne sur 8000 en dev, le front sur 4200 : forcer le bon port pour servir les fichiers /storage
+      origin = `${proto}//${host}:8000`;
+    }
+
+    if (!origin) {
+      origin = 'http://localhost:8000';
+    }
+
+    return `${origin}/storage/${cleanPath}`;
   }
 
   onMovementTypeChange(): void {

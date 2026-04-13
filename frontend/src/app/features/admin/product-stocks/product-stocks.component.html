@@ -193,7 +193,8 @@
                   <thead>
                     <tr>
                       <th>Salle</th>
-                      <th>Emplacement</th>
+                      <th>Localisation</th>
+                      <th>Type</th>
                       <th>Fournisseur</th>
                       <th class="quantity-col">Quantité</th>
                       <th>Notes</th>
@@ -202,17 +203,47 @@
                   </thead>
                   <tbody>
                     <tr *ngFor="let stock of getStocksForWarehouse(wh.warehouse_id)" class="stock-row">
-                      <td class="room">{{ stock.room }}</td>
-                      <td class="location">
-                        <span class="location-code">{{ stock.location_code }}</span>
-                        <span class="location-name">{{ stock.location_name }}</span>
+                      <td class="room">
+                        <span>{{ stock.room }}</span>
                       </td>
-                      <td class="supplier">{{ stock.supplier_name || '—' }}</td>
+                      <td class="location">
+                        <span class="storage-pill" *ngIf="stock.storage_type === 'location' && stock.location_display; else cabStorage">
+                          {{ stock.location_display }}
+                        </span>
+                        <ng-template #cabStorage>
+                          <span class="storage-pill cabinet" *ngIf="stock.storage_type === 'cabinet' && stock.cabinet_display; else noStorage">
+                            {{ stock.cabinet_display }}
+                          </span>
+                        </ng-template>
+                        <ng-template #noStorage>
+                          <span class="empty-cell">—</span>
+                        </ng-template>
+                      </td>
+                      <td class="type">
+                        <span class="type-pill" [class.cabinet]="stock.storage_type === 'cabinet'">
+                          {{ stock.storage_type === 'cabinet' ? 'Armoire' : 'Emplacement' }}
+                        </span>
+                      </td>
+                      <td class="supplier">
+                        <span class="supplier-pill" *ngIf="stock.supplier_name; else noSupplier">
+                          {{ stock.supplier_name }}
+                        </span>
+                        <ng-template #noSupplier>
+                          <span class="empty-cell">—</span>
+                        </ng-template>
+                      </td>
                       <td class="quantity-col"><span class="qty-badge">{{ stock.quantity }}</span></td>
-                      <td class="notes">{{ stock.notes || '—' }}</td>
+                      <td class="notes">
+                        <span *ngIf="stock.notes; else noNotes">{{ stock.notes === 'Stock principal du produit' ? 'Stock principal' : stock.notes }}</span>
+                        <ng-template #noNotes>
+                          <span class="empty-cell">—</span>
+                        </ng-template>
+                      </td>
                       <td class="actions">
-                        <button class="btn small" (click)="editStock(stock); $event.stopPropagation()">Modifier</button>
-                        <button class="btn danger small" (click)="deleteStock(stock.id); $event.stopPropagation()">Supprimer</button>
+                        <div class="row-actions">
+                          <button class="btn small" (click)="editStock(stock); $event.stopPropagation()">Modifier</button>
+                          <button class="btn danger small" (click)="deleteStock(stock.id); $event.stopPropagation()">Supprimer</button>
+                        </div>
                       </td>
                     </tr>
                   </tbody>
@@ -240,7 +271,7 @@
               <span class="value">{{ totalStock.total_quantity }} unités</span>
             </div>
             <div class="total-item">
-              <span class="label">Nombre d'emplacements:</span>
+              <span class="label">Nombre de rangements:</span>
               <span class="value">{{ stocks.length }}</span>
             </div>
           </div>
@@ -292,5 +323,84 @@
         </div>
       </ng-container>
     </section>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="showAddStockModal" (click)="closeAddStockModal()">
+  <div class="stock-modal" (click)="$event.stopPropagation()">
+    <div class="stock-modal-header">
+      <h3>{{ editingStockId ? 'Modifier le stock' : 'Ajouter du stock' }}</h3>
+      <button class="btn danger small" type="button" (click)="closeAddStockModal()">Fermer</button>
+    </div>
+
+    <div class="stock-modal-body">
+      <div class="form-grid">
+        <div class="field-block">
+          <label>Depot</label>
+          <select [(ngModel)]="selectedWarehouseIdForForm" (ngModelChange)="onWarehouseFormChange()">
+            <option value="">Choisir un depot</option>
+            <option *ngFor="let wh of getWarehousesFromLocations()" [value]="wh.id">{{ wh.name }}</option>
+          </select>
+        </div>
+
+        <div class="field-block">
+          <label>Salle</label>
+          <select [(ngModel)]="selectedRoomIdForForm" (ngModelChange)="onRoomFormChange()" [disabled]="!selectedWarehouseIdForForm">
+            <option value="">Choisir une salle</option>
+            <option *ngFor="let room of getRoomsForWarehouse()" [value]="room.id">{{ room.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="storage-toggle" *ngIf="selectedRoomIdForForm">
+        <button type="button" class="toggle-btn" [class.active]="storageTargetForForm === 'location'" (click)="setStorageTarget('location')">Emplacement</button>
+        <button type="button" class="toggle-btn" [class.active]="storageTargetForForm === 'cabinet'" (click)="setStorageTarget('cabinet')">Armoire</button>
+      </div>
+
+      <div class="storage-helper" *ngIf="selectedRoomIdForForm">
+        Choisissez soit un emplacement, soit une armoire pour ce stock.
+      </div>
+
+      <div class="field-block" *ngIf="storageTargetForForm === 'location'">
+        <label>Emplacement</label>
+        <select [(ngModel)]="newStockForm.warehouse_location_id" [disabled]="!selectedRoomIdForForm">
+          <option value="">Choisir un emplacement</option>
+          <option *ngFor="let loc of getLocationsForRoom()" [value]="loc.id">{{ loc.code }} - {{ loc.name }}</option>
+        </select>
+      </div>
+
+      <div class="field-block" *ngIf="storageTargetForForm === 'cabinet'">
+        <label>Armoire</label>
+        <select [(ngModel)]="newStockForm.cabinet_id" [disabled]="!selectedRoomIdForForm">
+          <option value="">Choisir une armoire</option>
+          <option *ngFor="let cabinet of getCabinetsForRoom()" [value]="cabinet.id">{{ cabinet.code }} - {{ cabinet.name }}</option>
+        </select>
+      </div>
+
+      <div class="form-grid">
+        <div class="field-block">
+          <label>Quantite</label>
+          <input type="number" min="1" [(ngModel)]="newStockForm.quantity" />
+        </div>
+
+        <div class="field-block">
+          <label>Fournisseur</label>
+          <select [(ngModel)]="newStockForm.supplier_id">
+            <option value="">Aucun fournisseur</option>
+            <option *ngFor="let supplier of productSuppliers" [value]="supplier.id">{{ supplier.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="field-block">
+        <label>Notes</label>
+        <textarea rows="3" [(ngModel)]="newStockForm.notes"></textarea>
+      </div>
+    </div>
+
+    <div class="stock-modal-actions">
+      <button class="btn ghost" type="button" (click)="closeAddStockModal()">Annuler</button>
+      <button class="btn primary" type="button" (click)="saveStock()">{{ editingStockId ? 'Mettre a jour' : 'Ajouter' }}</button>
+    </div>
   </div>
 </div>

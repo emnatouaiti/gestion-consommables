@@ -1,10 +1,9 @@
 <div class="dashboard-wrapper" [class.loading]="isLoading">
-  <!-- Top Bar / Welcome -->
   <header class="dashboard-header">
     <div class="header-content">
-      <div class="welcome-badge">ConsoTrack Management</div>
-      <h1 class="welcome-title">Bienvenue, {{ user?.nomprenom || 'Administrateur' }}</h1>
-      <p class="welcome-desc">Voici l'état actuel de votre stock et de votre système.</p>
+      <div class="welcome-badge">{{ dashboardBadge }}</div>
+      <h1 class="welcome-title">{{ dashboardTitle }}</h1>
+      <p class="welcome-desc">{{ dashboardDescription }}</p>
     </div>
     <div class="header-actions">
       <button class="btn-refresh" (click)="refreshData()" [class.spinning]="isLoading">
@@ -20,62 +19,28 @@
   </header>
 
   <div class="content-container" *ngIf="!isLoading">
-    <!-- Quick Stats Bento Grid -->
     <div class="stats-bento">
-      <div class="stat-card p-stats">
-        <div class="stat-icon-wrap bg-blue">📦</div>
+      <div
+        class="stat-card p-stats"
+        *ngFor="let card of dashboardCards"
+        [class.critical]="card.critical"
+      >
+        <div class="stat-icon-wrap" [ngClass]="'bg-' + card.color">{{ card.icon }}</div>
         <div class="stat-info">
-          <span class="stat-label">Produits Totaux</span>
-          <h2 class="stat-value">{{ stats.totalProducts }}</h2>
+          <span class="stat-label">{{ card.label }}</span>
+          <h2 class="stat-value">{{ card.value }}</h2>
         </div>
+        <a *ngIf="card.route" [routerLink]="card.route" class="stat-action">Ouvrir →</a>
         <div class="stat-decoration"></div>
-      </div>
-
-      <div class="stat-card p-stats">
-        <div class="stat-icon-wrap bg-purple">🏬</div>
-        <div class="stat-info">
-          <span class="stat-label">Nombre de Dépôts</span>
-          <h2 class="stat-value">{{ stats.totalWarehouses }}</h2>
-        </div>
-        <div class="stat-decoration"></div>
-      </div>
-
-      <div class="stat-card p-stats">
-        <div class="stat-icon-wrap bg-green">👥</div>
-        <div class="stat-info">
-          <span class="stat-label">Clients Actifs</span>
-          <h2 class="stat-value">{{ stats.activeUsers }}</h2>
-        </div>
-        <div class="stat-decoration"></div>
-      </div>
-
-      <div class="stat-card p-stats">
-        <div class="stat-icon-wrap bg-yellow">💰</div>
-        <div class="stat-info">
-          <span class="stat-label">Valeur du Stock</span>
-          <h2 class="stat-value">{{ stats.totalValue | number:'1.0-0' }} TND</h2>
-        </div>
-        <div class="stat-decoration"></div>
-      </div>
-
-      <div class="stat-card critical" *ngIf="stats.lowStockAlerts > 0">
-        <div class="stat-icon-wrap bg-red">⚠️</div>
-        <div class="stat-info">
-          <span class="stat-label">Alertes Stock Bas</span>
-          <h2 class="stat-value">{{ stats.lowStockAlerts }}</h2>
-        </div>
-        <a routerLink="/admin/gerer-produits" class="stat-action">Vérifier →</a>
       </div>
     </div>
 
     <div class="main-layout">
-      <!-- Left Column: Primary Monitoring -->
       <div class="monitoring-column">
-        <!-- Activities -->
         <section class="glass-card">
           <div class="section-header">
-            <h3>Flux d'activités</h3>
-            <span class="badge ghost">Temps réel</span>
+            <h3>Flux d activites</h3>
+            <span class="badge ghost">Temps reel</span>
           </div>
           <div class="activity-feed">
             <div class="activity-entry" *ngFor="let activity of recentActivities">
@@ -89,9 +54,7 @@
           </div>
         </section>
 
-        <!-- Trends & Comparison -->
         <div class="comparison-grid">
-          <!-- Movements Chart -->
           <div class="glass-card compact trend-card">
             <div class="section-header">
               <h3>Mouvements (7 jours)</h3>
@@ -108,7 +71,7 @@
 
           <div class="glass-card compact">
             <div class="section-header">
-              <h3>Top Catégories</h3>
+              <h3>Top categories</h3>
             </div>
             <div class="cat-list">
               <div class="cat-item" *ngFor="let cat of categoryStock">
@@ -120,37 +83,23 @@
         </div>
       </div>
 
-      <!-- Right Column: Shortcuts and Users -->
       <div class="side-column">
-        <!-- Quick Actions -->
         <section class="glass-card actions-section">
-          <h3>Actions Favorites</h3>
+          <h3>Acces rapides</h3>
           <div class="action-tiles">
-            <a routerLink="/admin/gerer-produits" class="tile">
-              <div class="tile-icon">🏷️</div>
-              <span>Produits</span>
-            </a>
-            <a routerLink="/admin/gerer-depots" class="tile">
-              <div class="tile-icon">🧱</div>
-              <span>Dépôts</span>
-            </a>
-            <a routerLink="/admin/create" class="tile">
-              <div class="tile-icon">➕</div>
-              <span>User</span>
-            </a>
-            <a routerLink="/admin/users" class="tile">
-              <div class="tile-icon">👥</div>
-              <span>Gestion</span>
+            <a *ngFor="let link of quickLinks" [routerLink]="link.route" class="tile">
+              <div class="tile-icon">{{ link.icon }}</div>
+              <span>{{ link.label }}</span>
             </a>
           </div>
         </section>
 
-        <!-- Recent Users -->
         <section class="glass-card">
           <div class="section-header">
-            <h3>Utilisateurs Récents</h3>
+            <h3>{{ sidePanelTitle }}</h3>
           </div>
-          <div class="mini-users">
+
+          <div class="mini-users" *ngIf="isAdmin; else rolePanel">
             <div class="mini-user-item" *ngFor="let u of recentUsers">
               <img [src]="photoUrl(u.photo)" (error)="onImageError($event)">
               <div class="mu-info">
@@ -159,14 +108,52 @@
               </div>
             </div>
           </div>
+
+          <ng-template #rolePanel>
+            <div class="mini-users">
+              <a class="mini-user-item" routerLink="/admin/profile">
+                <div class="mu-info">
+                  <span class="mu-name">Mon profil</span>
+                  <span class="mu-email">Consulter et modifier mes informations</span>
+                </div>
+              </a>
+
+              <a class="mini-user-item" *ngIf="isDirector" routerLink="/admin/validation-demandes">
+                <div class="mu-info">
+                  <span class="mu-name">Demandes a valider</span>
+                  <span class="mu-email">Acceder aux validations sans passer par la connexion</span>
+                </div>
+              </a>
+
+              <a class="mini-user-item" *ngIf="isManager" routerLink="/admin/mouvements-stock">
+                <div class="mu-info">
+                  <span class="mu-name">Mouvements de stock</span>
+                  <span class="mu-email">Suivre les entrees, sorties et transferts</span>
+                </div>
+              </a>
+
+              <a class="mini-user-item" *ngIf="!isAdmin" routerLink="/admin/chat">
+                <div class="mu-info">
+                  <span class="mu-name">Chat interne</span>
+                  <span class="mu-email">Contacter rapidement votre equipe</span>
+                </div>
+              </a>
+
+              <a class="mini-user-item" *ngIf="isAdmin" routerLink="/admin/journal-audit">
+                <div class="mu-info">
+                  <span class="mu-name">Journal d audit</span>
+                  <span class="mu-email">Consulter les actions sensibles du systeme</span>
+                </div>
+              </a>
+            </div>
+          </ng-template>
         </section>
       </div>
     </div>
   </div>
 
-  <!-- Loading Overlay -->
   <div class="loading-overlay" *ngIf="isLoading">
     <div class="loading-spinner"></div>
-    <p>Synchronisation des données...</p>
+    <p>Synchronisation des donnees...</p>
   </div>
 </div>

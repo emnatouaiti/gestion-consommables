@@ -23,6 +23,9 @@ import { StockMovementsComponent } from './stock-movements/stock-movements.compo
 import { ConsumableRequestComponent } from '../../consumable-request/consumable-request';
 import { AuditLogsComponent } from './audit-logs/audit-logs.component';
 import { DocumentsComponent } from './documents/documents.component';
+import { ChatComponent } from './chat/chat.component';
+import { ThreadWidgetComponent } from './chat/thread-widget.component';
+import { MiniThreadsComponent } from './chat/mini-threads.component';
 
 @NgModule({
   declarations: [
@@ -52,7 +55,13 @@ import { DocumentsComponent } from './documents/documents.component';
     StockMovementsComponent,
     ConsumableRequestComponent,
     AuditLogsComponent,
-    DocumentsComponent
+    DocumentsComponent,
+    ChatComponent,
+    ThreadWidgetComponent,
+    MiniThreadsComponent
+  ],
+  providers: [
+    // empty on purpose; keeps module extensible
   ]
 })
 export class AdminModule { }

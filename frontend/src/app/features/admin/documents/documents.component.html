@@ -1,199 +1,614 @@
 <div class="documents-page">
-  <h2>Documents (OCR)</h2>
 
+  <!-- ══════════════════════════════════════════════════════════
+       EN-TÊTE
+  ══════════════════════════════════════════════════════════ -->
+  <div class="page-header">
+    <div class="page-title">
+      <h2>Documents OCR</h2>
+      <p class="page-subtitle">Importez et gérez vos documents avec extraction automatique</p>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       STATS RAPIDES
+  ══════════════════════════════════════════════════════════ -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-icon total">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value">{{ documents.length }}</span>
+        <span class="stat-label">Total documents</span>
+      </div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByStatus('pending')" [class.active-filter]="statusFilter === 'pending'">
+      <div class="stat-icon pending">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value pending">{{ countByStatus('pending') }}</span>
+        <span class="stat-label">En attente</span>
+      </div>
+      <div class="stat-badge pending" *ngIf="countByStatus('pending') > 0">!</div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByStatus('applied')" [class.active-filter]="statusFilter === 'applied'">
+      <div class="stat-icon applied">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value applied">{{ countByStatus('applied') }}</span>
+        <span class="stat-label">Appliqués</span>
+      </div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByStatus('error')" [class.active-filter]="statusFilter === 'error'">
+      <div class="stat-icon error">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value error">{{ countByStatus('error') }}</span>
+        <span class="stat-label">Erreurs</span>
+      </div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByDirection('in')" [class.active-filter]="directionFilter === 'in'">
+      <div class="stat-icon in">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="19" x2="12" y2="5"/>
+          <polyline points="5 12 12 19 19 12"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value in">{{ countByDirection('in') }}</span>
+        <span class="stat-label">Entrées</span>
+      </div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByDirection('out')" [class.active-filter]="directionFilter === 'out'">
+      <div class="stat-icon out">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <polyline points="19 12 12 5 5 12"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value out">{{ countByDirection('out') }}</span>
+        <span class="stat-label">Sorties</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL — Emplacement
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="locationConfirmation" (click)="cancelLocationConfirmation()">
+    <div class="modal-panel wide" (click)="$event.stopPropagation()">
+      <div class="modal-panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+          <circle cx="12" cy="10" r="3"/>
+        </svg>
+        <h3>Choisir l'emplacement de chaque produit</h3>
+      </div>
+      <p>Choisissez les informations une ligne à la fois : dépôt, salle, puis emplacement ou armoire.</p>
+
+      <div class="location-progress" *ngIf="locationConfirmation.items?.length">
+        <span class="progress-step">Produit {{ locationStepIndex + 1 }}</span>
+        <span class="progress-sep">/</span>
+        <span class="progress-total">{{ locationConfirmation.items.length }}</span>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill"
+            [style.width.%]="((locationStepIndex + 1) / locationConfirmation.items.length) * 100">
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="currentLocationItem() as item" class="location-item">
+        <div class="location-title">
+          <strong>{{ item.title }}</strong>
+          <span class="qty-badge">Qté : {{ item.quantity }}</span>
+        </div>
+
+        <div class="location-grid">
+          <div class="field">
+            <label>Dépôt</label>
+            <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)">
+              <option [ngValue]="null">Sélectionner un dépôt</option>
+              <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Salle</label>
+            <select [(ngModel)]="item.room_id" (ngModelChange)="onRoomSelected(item)">
+              <option [ngValue]="null">Sélectionner une salle</option>
+              <option *ngFor="let r of item.rooms" [ngValue]="r.id">{{ r.name }}</option>
+            </select>
+          </div>
+
+          <div class="field full" *ngIf="item.room_id">
+            <label>Type de rangement</label>
+            <div class="choice-cards">
+              <button type="button" class="choice-card"
+                [class.active]="item.storage_target === 'location'"
+                (click)="selectStorageTarget(item, 'location')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+                </svg>
+                Emplacement
+              </button>
+              <button type="button" class="choice-card"
+                [class.active]="item.storage_target === 'cabinet'"
+                (click)="selectStorageTarget(item, 'cabinet')">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="2" y="3" width="20" height="14" rx="2"/>
+                  <line x1="8" y1="21" x2="16" y2="21"/>
+                  <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                Armoire
+              </button>
+            </div>
+          </div>
+
+          <div class="field" *ngIf="item.room_id && item.storage_target === 'location'">
+            <label>Emplacement</label>
+            <select [(ngModel)]="item.warehouse_location_id" (ngModelChange)="onLocationSelected(item)">
+              <option [ngValue]="null">Sélectionner un emplacement</option>
+              <option *ngFor="let l of item.locations" [ngValue]="l.id">{{ l.code || l.name || ('#' + l.id) }}</option>
+            </select>
+          </div>
+
+          <div class="field" *ngIf="item.room_id && item.storage_target === 'cabinet'">
+            <label>Armoire</label>
+            <select [(ngModel)]="item.cabinet_id" (ngModelChange)="onCabinetSelected(item)">
+              <option [ngValue]="null">Aucune</option>
+              <option *ngFor="let c of item.cabinets" [ngValue]="c.id">{{ c.name || c.code || ('#' + c.id) }}</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">
+          ‹ Précédent
+        </button>
+        <button class="btn primary" (click)="nextLocationStep()" [disabled]="!canGoNextLocation()">
+          {{ locationStepIndex < locationConfirmation.items.length - 1 ? 'Suivant ›' : '✓ Valider' }}
+        </button>
+        <button class="btn ghost" (click)="cancelLocationConfirmation()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL — Création produit
+  ══════════════════════════════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="productConfirmation" (click)="cancelProductCreation()">
     <div class="modal-panel" (click)="$event.stopPropagation()">
-      <h3>Création produit nécessaire</h3>
+      <div class="modal-panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        </svg>
+        <h3>Création produit nécessaire</h3>
+      </div>
       <p>Plusieurs produits inconnus ont été détectés. Choisissez une catégorie pour chacun.</p>
 
       <div *ngFor="let s of productConfirmation.suggestedProducts; let i = index" class="suggested-item">
-        <div class="field">
-          <label>Produit</label>
-          <input type="text" [value]="s.title" readonly />
-        </div>
-        <div class="field">
-          <label>Référence</label>
-          <input type="text" [value]="s.reference || 'N/A'" readonly />
-        </div>
-        <div class="field">
-          <label>Catégorie</label>
-          <select [(ngModel)]="s.category_id">
-            <option [ngValue]="null">Sélectionner une catégorie</option>
-            <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.title || c.name || 'Catégorie inconnue' }}</option>
-          </select>
+        <div class="suggested-index">{{ i + 1 }}</div>
+        <div class="suggested-fields">
+          <div class="field">
+            <label>Produit</label>
+            <input type="text" [value]="s.title" readonly />
+          </div>
+          <div class="field">
+            <label>Référence</label>
+            <input type="text" [value]="s.reference || 'N/A'" readonly />
+          </div>
+          <div class="field full">
+            <label>Catégorie *</label>
+            <select [(ngModel)]="s.category_id">
+              <option [ngValue]="null">Sélectionner une catégorie</option>
+              <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.title || c.name || 'Catégorie inconnue' }}</option>
+            </select>
+          </div>
         </div>
         <hr *ngIf="i < productConfirmation.suggestedProducts.length - 1" />
       </div>
 
-      <div class="actions">
-        <button class="btn primary" (click)="confirmProductCreation()">Valider création produit</button>
-        <button class="btn secondary" (click)="cancelProductCreation()">Annuler</button>
+      <div class="modal-actions">
+        <button class="btn primary" (click)="confirmProductCreation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Valider la création
+        </button>
+        <button class="btn ghost" (click)="cancelProductCreation()">Annuler</button>
       </div>
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL — Création fournisseur
+  ══════════════════════════════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="supplierConfirmation" (click)="cancelSupplierCreation()">
     <div class="modal-panel" (click)="$event.stopPropagation()">
-      <h3>Création fournisseur nécessaire</h3>
-      <p>Fournisseur proposé : <strong>{{ supplierConfirmation.suggested.name }}</strong> ({{ supplierConfirmation.suggested.email || 'N/A' }})</p>
+      <div class="modal-panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+        </svg>
+        <h3>Création fournisseur nécessaire</h3>
+      </div>
+      <p *ngIf="supplierConfirmation.suggested.name || supplierConfirmation.suggested.email">
+        Fournisseur propose :
+        <strong>{{ supplierConfirmation.suggested.name || 'Non reconnu' }}</strong>
+        ({{ supplierConfirmation.suggested.email || 'N/A' }})
+      </p>
+      <p *ngIf="!supplierConfirmation.suggested.name && !supplierConfirmation.suggested.email">
+        Le fournisseur n'a pas pu etre reconnu automatiquement. Merci de le confirmer manuellement.
+      </p>
+      <div class="match-box" *ngIf="supplierConfirmation.existing">
+        <p>
+          Nous avons trouve un fournisseur proche :
+          <strong>{{ supplierConfirmation.existing.name }}</strong>
+          ({{ supplierConfirmation.existing.email || 'N/A' }})
+        </p>
+        <p>Est-ce que c'est ce fournisseur ?</p>
+        <div class="modal-actions">
+          <button class="btn primary" (click)="chooseExistingSupplier()">
+            Oui, c'est ce fournisseur
+          </button>
+          <button class="btn ghost" (click)="chooseNewSupplier()">
+            Non, utiliser mon nom
+          </button>
+        </div>
+      </div>
       <div class="field">
-        <label>Nom fournisseur</label>
-        <input type="text" [(ngModel)]="supplierConfirmation.name" />
+        <label>Nom fournisseur *</label>
+        <input type="text" [(ngModel)]="supplierConfirmation.name" placeholder="Ex: ABC Logistique" />
       </div>
       <div class="field">
         <label>Email fournisseur</label>
-        <input type="email" [(ngModel)]="supplierConfirmation.email" />
+        <input type="email" [(ngModel)]="supplierConfirmation.email" placeholder="contact@fournisseur.com" />
       </div>
-      <div class="actions">
-        <button class="btn primary" (click)="confirmSupplierCreation()">Confirmer fournisseur</button>
-        <button class="btn secondary" (click)="cancelSupplierCreation()">Annuler</button>
+      <div class="modal-actions">
+        <button class="btn primary" (click)="confirmSupplierCreation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+          Confirmer le fournisseur
+        </button>
+        <button class="btn ghost" (click)="cancelSupplierCreation()">Annuler</button>
       </div>
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════════════════════
+       CARD — Importer un document
+  ══════════════════════════════════════════════════════════ -->
   <div class="card upload-card">
-    <h3 style="grid-column: 1 / -1;">Importer un Document</h3>
-    <div class="field">
+    <h3>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+        <polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      Importer un document
+    </h3>
+
+    <div class="field" style="grid-column: 1 / -1;">
       <label>Fichier *</label>
-      <input type="file" (change)="onFileChange($event)" />
+      <div class="file-drop-zone" [class.has-file]="file">
+        <input type="file" (change)="onFileChange($event)" id="doc-file" class="hidden-input" />
+        <label for="doc-file" class="file-drop-label">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span *ngIf="!file">Cliquez ou déposez votre fichier ici</span>
+          <span *ngIf="file" class="file-name">{{ file.name }}</span>
+        </label>
+      </div>
     </div>
+
     <div class="field">
       <label>Titre</label>
       <input type="text" [(ngModel)]="title" placeholder="Optionnel" />
     </div>
+
     <div class="field">
       <label>Type</label>
       <input type="text" [(ngModel)]="type" placeholder="bon_livraison / bon_sortie..." />
     </div>
+
     <div class="field">
       <label>Direction</label>
       <select [(ngModel)]="direction">
         <option value="unknown">Inconnue</option>
-        <option value="in">Entree</option>
+        <option value="in">Entrée</option>
         <option value="out">Sortie</option>
       </select>
     </div>
-    <div class="actions" style="grid-column: 1 / -1;">
-      <button class="btn primary" (click)="upload()" [disabled]="isLoading || !file">Uploader</button>
-    </div>
-    <div class="msg success" *ngIf="message" style="grid-column: 1 / -1;">{{ message }}</div>
-    <div class="msg error" *ngIf="error" style="grid-column: 1 / -1;">{{ error }}</div>
-  </div>
 
-  <div class="card">
-    <h3>Documents Importes</h3>
-    <div *ngIf="isLoading" class="loading">Chargement...</div>
-    <div *ngIf="!isLoading && documents.length === 0" class="empty">Aucun document importe.</div>
-
-    <div *ngIf="documents.length > 0" class="documents-list">
-      <div *ngFor="let d of documents" class="document-item" [class.expanded]="expandedDocId === d.id">
-        <div class="document-header" (click)="toggleExpanded(d.id)">
-          <div class="doc-info">
-            <strong>#{{ d.id }} - {{ d.title || d.path }}</strong>
-            <span class="type">{{ d.type }}</span>
-            <span class="direction" [class]="d.direction">{{ d.direction }}</span>
-            <span class="status" [class]="d.status">{{ d.status }}</span>
-          </div>
-          <div class="ocr-count">
-            <strong>{{ d.ocr_lines?.length || 0 }}</strong> ligne(s)
-          </div>
-          <button class="expand-btn">{{ expandedDocId === d.id ? 'V' : '>' }}</button>
-        </div>
-
-        <div *ngIf="expandedDocId === d.id" class="document-details">
-          <!-- OCR Lines Display -->
-          <div class="section ocr-section">
-            <div class="section-header">
-              <h4>Lignes OCR ({{ d.ocr_lines?.length || 0 }})</h4>
-              <div class="buttons">
-                <button class="btn small" (click)="toggleEditLines(d.id)">
-                  {{ showEditLines === d.id ? 'Masquer' : 'Editer' }}
-                </button>
-                <button class="btn small" (click)="runDiagnostic(d)">Diagnostiquer</button>
-              </div>
-            </div>
-
-            <!-- Edit Mode -->
-            <div *ngIf="showEditLines === d.id" class="edit-mode">
-              <table class="edit-table">
-                <thead>
-                  <tr>
-                    <th>Reference</th>
-                    <th>Titre</th>
-                    <th>Quantite</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let line of d.ocr_lines; let i = index">
-                    <td>
-                      <input type="text" [(ngModel)]="line.reference" placeholder="Ex: A001" />
-                    </td>
-                    <td>
-                      <input type="text" [(ngModel)]="line.title" placeholder="Nom du produit" />
-                    </td>
-                    <td>
-                      <input type="number" [(ngModel)]="line.quantity" min="1" />
-                    </td>
-                    <td>
-                      <button class="btn danger small" (click)="removeOcrLine(d, i)">X</button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <button class="btn small" (click)="addOcrLine(d)">+ Ajouter ligne</button>
-            </div>
-
-            <!-- View Mode -->
-            <div *ngIf="showEditLines !== d.id" class="view-mode">
-              <div *ngIf="d.ocr_lines?.length === 0" class="empty-ocr">
-                Aucune ligne OCR trouvee. Cliquez sur "Diagnostiquer" pour verifier.
-              </div>
-              <table *ngIf="d.ocr_lines?.length > 0" class="ocr-table">
-                <thead>
-                  <tr>
-                    <th>Reference</th>
-                    <th>Titre</th>
-                    <th>Quantite</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr *ngFor="let line of d.ocr_lines">
-                    <td><strong>{{ line.reference || 'N/A' }}</strong></td>
-                    <td>{{ line.title }}</td>
-                    <td class="qty">{{ line.quantity }}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- Raw OCR Text -->
-          <div class="section text-section">
-            <h4>Texte OCR Brut</h4>
-            <pre class="ocr-text">{{ d.ocr_text || '(Aucun texte)' }}</pre>
-          </div>
-
-          <!-- Apply Button -->
-            <div class="section-footer">
-            <div class="download-zone">
-              <button class="btn secondary" (click)="download(d)">Télécharger l'image</button>
-            </div>
-              <button
-                class="btn primary"
-                (click)="apply(d)"
-                [disabled]="d.status === 'applied' || isLoading || !d.ocr_lines?.length"
-                *ngIf="d.status !== 'applied'"
-            >
-              + Appliquer au Stock
-            </button>
-            <span class="success" *ngIf="d.status === 'applied'">+ Document applique au stock</span>
-          </div>
-        </div>
+    <div class="upload-action" style="grid-column: 1 / -1;">
+      <button class="btn primary" (click)="upload()" [disabled]="isLoading || !file">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/>
+          <line x1="12" y1="3" x2="12" y2="15"/>
+        </svg>
+        {{ isLoading ? 'Envoi en cours...' : 'Uploader' }}
+      </button>
+      <div class="msg success" *ngIf="message">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        {{ message }}
+      </div>
+      <div class="msg error" *ngIf="error">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        {{ error }}
       </div>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       CARD — Liste des documents
+  ══════════════════════════════════════════════════════════ -->
+  <div class="card">
+    <h3>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="8" y1="6" x2="21" y2="6"/>
+        <line x1="8" y1="12" x2="21" y2="12"/>
+        <line x1="8" y1="18" x2="21" y2="18"/>
+        <circle cx="4" cy="6" r="1"/>
+        <circle cx="4" cy="12" r="1"/>
+        <circle cx="4" cy="18" r="1"/>
+      </svg>
+      Documents importés
+      <span class="h3-badge" *ngIf="filteredDocuments.length !== documents.length">
+        {{ filteredDocuments.length }} / {{ documents.length }}
+      </span>
+    </h3>
+
+    <!-- Filtres actifs -->
+    <div class="active-filters" *ngIf="statusFilter || directionFilter">
+      <span class="filter-label">Filtres actifs :</span>
+      <span class="filter-chip" *ngIf="statusFilter">
+        Statut : {{ statusFilter }}
+        <button (click)="filterByStatus(null)">✕</button>
+      </span>
+      <span class="filter-chip" *ngIf="directionFilter">
+        Direction : {{ directionFilter }}
+        <button (click)="filterByDirection(null)">✕</button>
+      </span>
+      <button class="btn ghost sm" (click)="clearFilters()">Tout effacer</button>
+    </div>
+
+    <div *ngIf="isLoading" class="loading">Chargement...</div>
+    <div *ngIf="!isLoading && filteredDocuments.length === 0" class="empty">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+      </svg>
+      <p>{{ statusFilter || directionFilter ? 'Aucun document pour ce filtre.' : 'Aucun document importé.' }}</p>
+    </div>
+
+    <ng-container *ngIf="!isLoading && filteredDocuments.length > 0">
+
+      <!-- Contrôles de pagination (haut) -->
+      <div class="pagination-controls">
+        <div class="per-page-selector">
+          <span>Afficher</span>
+          <button *ngFor="let n of pageSizes" class="page-size-btn"
+            [class.active]="pageSize === n" (click)="setPageSize(n)">
+            {{ n }}
+          </button>
+          <span>par page</span>
+        </div>
+        <div class="pagination-info">
+          {{ (currentPage - 1) * pageSize + 1 }}–{{ min(currentPage * pageSize, filteredDocuments.length) }}
+          sur {{ filteredDocuments.length }} document{{ filteredDocuments.length > 1 ? 's' : '' }}
+        </div>
+      </div>
+
+      <!-- Liste paginée -->
+      <div class="documents-list">
+        <div *ngFor="let d of paginatedDocuments" class="document-item" [class.expanded]="expandedDocId === d.id">
+
+          <!-- En-tête cliquable -->
+          <div class="document-header" (click)="toggleExpanded(d.id)">
+            <div class="doc-info">
+              <strong>#{{ d.id }} — {{ d.title || d.path }}</strong>
+              <span class="type" *ngIf="d.type">{{ d.type }}</span>
+              <span class="direction" [class]="d.direction">{{ d.direction }}</span>
+              <span class="status" [class]="d.status">{{ d.status }}</span>
+              <span class="type">Fournisseur: {{ d.supplier?.name || 'Non associe' }}</span>
+            </div>
+            <div class="ocr-count">
+              <strong>{{ d.ocr_lines?.length || 0 }}</strong> ligne(s)
+            </div>
+            <button class="expand-btn" [attr.aria-label]="expandedDocId === d.id ? 'Réduire' : 'Développer'">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                [style.transform]="expandedDocId === d.id ? 'rotate(90deg)' : 'rotate(0)'"
+                style="transition: transform .2s">
+                <polyline points="9 18 15 12 9 6"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Détails (expanded) -->
+          <div *ngIf="expandedDocId === d.id" class="document-details">
+
+            <!-- Section OCR -->
+            <div class="section ocr-section">
+              <div class="section-header">
+                <h4>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                    <line x1="3" y1="9" x2="21" y2="9"/>
+                    <line x1="9" y1="21" x2="9" y2="9"/>
+                  </svg>
+                  Lignes OCR ({{ d.ocr_lines?.length || 0 }})
+                </h4>
+                <div class="buttons">
+                  <button class="btn secondary sm" (click)="toggleEditLines(d.id)">
+                    {{ showEditLines === d.id ? 'Masquer' : 'Éditer' }}
+                  </button>
+                  <button class="btn secondary sm" (click)="runDiagnostic(d)">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="11" cy="11" r="8"/>
+                      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Diagnostiquer
+                  </button>
+                </div>
+              </div>
+
+              <!-- Mode édition -->
+              <div *ngIf="showEditLines === d.id" class="edit-mode">
+                <table class="edit-table">
+                  <thead>
+                    <tr>
+                      <th>Référence</th>
+                      <th>Titre</th>
+                      <th>Quantité</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let line of d.ocr_lines; let i = index">
+                      <td><input type="text" [(ngModel)]="line.reference" placeholder="Ex: A001" /></td>
+                      <td><input type="text" [(ngModel)]="line.title" placeholder="Nom du produit" /></td>
+                      <td><input type="number" [(ngModel)]="line.quantity" min="1" /></td>
+                      <td>
+                        <button class="btn danger sm" (click)="removeOcrLine(d, i)">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                          </svg>
+                        </button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+                <button class="btn secondary sm add-line-btn" (click)="addOcrLine(d)">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                  Ajouter une ligne
+                </button>
+              </div>
+
+              <!-- Mode lecture -->
+              <div *ngIf="showEditLines !== d.id" class="view-mode">
+                <div *ngIf="!d.ocr_lines?.length" class="empty-ocr">
+                  Aucune ligne OCR trouvée. Cliquez sur "Diagnostiquer" pour vérifier.
+                </div>
+                <table *ngIf="d.ocr_lines?.length > 0" class="ocr-table">
+                  <thead>
+                    <tr>
+                      <th>Référence</th>
+                      <th>Titre</th>
+                      <th>Quantité</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr *ngFor="let line of d.ocr_lines">
+                      <td><strong>{{ line.reference || 'N/A' }}</strong></td>
+                      <td>{{ line.title }}</td>
+                      <td class="qty">{{ line.quantity }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Section texte brut -->
+            <div class="section text-section">
+              <h4>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="17" y1="10" x2="3" y2="10"/>
+                  <line x1="21" y1="6" x2="3" y2="6"/>
+                  <line x1="21" y1="14" x2="3" y2="14"/>
+                  <line x1="13" y1="18" x2="3" y2="18"/>
+                </svg>
+                Texte OCR brut
+              </h4>
+              <pre class="ocr-text">{{ d.ocr_text || '(Aucun texte)' }}</pre>
+            </div>
+
+            <!-- Footer actions -->
+            <div class="section-footer">
+              <div class="download-zone">
+                <button class="btn secondary" (click)="download(d)">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Télécharger l'image
+                </button>
+              </div>
+              <button class="btn primary" (click)="apply(d)"
+                [disabled]="d.status === 'applied' || isLoading || !d.ocr_lines?.length"
+                *ngIf="d.status !== 'applied'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Appliquer au stock
+              </button>
+              <span class="applied-badge" *ngIf="d.status === 'applied'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Document appliqué au stock
+              </span>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Pagination basse -->
+      <div class="pagination-bar" *ngIf="totalPages > 1">
+        <button class="page-btn nav" (click)="goToPage(1)" [disabled]="currentPage === 1" title="Première page">«</button>
+        <button class="page-btn nav" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1" title="Précédent">‹</button>
+
+        <ng-container *ngFor="let p of pageNumbers">
+          <span *ngIf="p === '...'" class="page-ellipsis">…</span>
+          <button *ngIf="p !== '...'" class="page-btn" [class.active]="currentPage === +p" (click)="goToPage(+p)">
+            {{ p }}
+          </button>
+        </ng-container>
+
+        <button class="page-btn nav" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Suivant">›</button>
+        <button class="page-btn nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Dernière page">»</button>
+      </div>
+
+    </ng-container>
+  </div>
 </div>
-
-
-

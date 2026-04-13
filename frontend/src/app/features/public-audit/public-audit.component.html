@@ -1,0 +1,181 @@
+<div class="audit-container">
+  <div class="header">
+    <h1>Consultation des Logs d'Audit</h1>
+    <p class="subtitle">Accès Public - Historique des Opérations Système</p>
+  </div>
+
+  <!-- Error Message -->
+  <div *ngIf="errorMessage" class="alert alert-error">
+    <span>{{ errorMessage }}</span>
+    <button (click)="errorMessage = ''" class="close-btn">✕</button>
+  </div>
+
+  <!-- Success Message -->
+  <div *ngIf="successMessage" class="alert alert-success">
+    <span>{{ successMessage }}</span>
+    <button (click)="successMessage = ''" class="close-btn">✕</button>
+  </div>
+
+  <!-- Filters Section -->
+  <div class="filters-section">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label for="search">Rechercher:</label>
+        <input
+          id="search"
+          type="text"
+          [(ngModel)]="searchQuery"
+          placeholder="Rechercher par description, utilisateur, IP..."
+          (keyup.enter)="onSearch()"
+          class="filter-input"
+        />
+      </div>
+
+      <div class="filter-group">
+        <label for="action">Action:</label>
+        <select
+          id="action"
+          [(ngModel)]="selectedAction"
+          (change)="onActionChange()"
+          class="filter-select"
+        >
+          <option value="">Toutes les actions</option>
+          <option *ngFor="let act of actions" [value]="act">{{ act }}</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="fromDate">Du:</label>
+        <input
+          id="fromDate"
+          type="date"
+          [(ngModel)]="fromDate"
+          (change)="onDateChange()"
+          class="filter-input"
+        />
+      </div>
+
+      <div class="filter-group">
+        <label for="toDate">Au:</label>
+        <input
+          id="toDate"
+          type="date"
+          [(ngModel)]="toDate"
+          (change)="onDateChange()"
+          class="filter-input"
+        />
+      </div>
+
+      <button (click)="onSearch()" class="btn btn-primary">
+        Rechercher
+      </button>
+      <button (click)="resetFilters()" class="btn btn-secondary">
+        Réinitialiser
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="isLoading" class="loading">
+    <div class="spinner"></div>
+    <p>Chargement des logs d'audit...</p>
+  </div>
+
+  <!-- Audit Logs Table -->
+  <div *ngIf="!isLoading && auditLogs.length > 0" class="logs-section">
+    <div class="logs-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Date/Heure</th>
+            <th>Action</th>
+            <th>Description</th>
+            <th>Utilisateur</th>
+            <th>Service / Poste</th>
+            <th>Adresse IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let log of auditLogs" class="log-row">
+            <td class="date-cell">
+              {{ formatDate(log.created_at) }}
+            </td>
+            <td class="action-cell">
+              <span
+                class="action-badge"
+                [style.background-color]="getActionColor(log.action)"
+              >
+                <span class="icon">{{ getStatusIcon(log.action) }}</span>
+                {{ log.action }}
+              </span>
+            </td>
+            <td class="description-cell">
+              {{ log.description || '-' }}
+            </td>
+            <td class="user-cell">
+              <div class="user-info">
+                <div class="user-name">
+                  {{ log.user?.nomprenom || 'Utilisateur supprimé' }}
+                </div>
+                <div class="user-email">{{ log.user?.email || '-' }}</div>
+              </div>
+            </td>
+            <td class="service-cell">
+              <div class="service-info">
+                <div class="service">{{ log.user?.service || '-' }}</div>
+                <div class="poste">{{ log.user?.poste || '-' }}</div>
+              </div>
+            </td>
+            <td class="ip-cell">
+              {{ log.ip_address || '-' }}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <button
+        (click)="goToPage(currentPage - 1)"
+        [disabled]="currentPage === 1"
+        class="btn btn-small"
+      >
+        ← Précédent
+      </button>
+
+      <div class="page-info">
+        Page {{ currentPage }} sur {{ totalPages }}
+      </div>
+
+      <button
+        (click)="goToPage(currentPage + 1)"
+        [disabled]="currentPage === totalPages"
+        class="btn btn-small"
+      >
+        Suivant →
+      </button>
+
+      <div class="per-page-selector">
+        <label for="perPage">Afficher par page:</label>
+        <select
+          id="perPage"
+          [(ngModel)]="perPage"
+          (change)="loadAuditLogs()"
+          class="filter-select"
+        >
+          <option value="5">5</option>
+          <option value="10">10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+          <option value="100">100</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Results Message -->
+  <div *ngIf="!isLoading && auditLogs.length === 0" class="no-results">
+    <p>Aucun log d'audit trouvé selon les critères spécifiés.</p>
+  </div>
+</div>

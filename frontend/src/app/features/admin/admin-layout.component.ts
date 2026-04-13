@@ -1,8 +1,11 @@
-﻿import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
+﻿import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 import { ApiService } from '../../core/services/api.service';
+import { ChatService } from '../../services/chat.service';
+import { ChatStateService } from '../../services/chat-state.service';
+import { Subscription } from 'rxjs';
 
 interface NavItem {
   label: string;
@@ -22,13 +25,16 @@ interface NavSection {
   templateUrl: './admin-layout.component.html',
   styleUrls: ['./admin-layout.component.css']
 })
-export class AdminLayoutComponent implements OnInit {
+export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   q: string | null = null;
   user: any = null;
   notifCount = 0;
   notifications: any[] = [];
   notificationsOpen = false;
   notificationsLoading = false;
+  chatUnread = 0;
+  private chatSub?: Subscription;
+  miniChatOpen = false;
 
   private readonly adminSections: NavSection[] = [
     {
@@ -51,6 +57,7 @@ export class AdminLayoutComponent implements OnInit {
         { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
         { label: 'Consulter le journal d audit', route: '/admin/journal-audit' },
         { label: 'Documents OCR', route: '/admin/documents-ocr' },
+        { label: 'Chat interne', route: '/admin/chat' },
         { label: 'Mon Profil', route: '/admin/profile' }
       ]
     }
@@ -63,7 +70,8 @@ export class AdminLayoutComponent implements OnInit {
         { label: 'Validation des demandes', route: '/admin/validation-demandes', exact: true, badge: 'Priorite' },
         { label: 'Consulter tableaux de bord', route: '/admin/dashboard' },
         { label: 'Consulter anomalies critiques', route: '/admin/anomalies-critiques' },
-        { label: 'Consulter previsions', route: '/admin/previsions' }
+        { label: 'Consulter previsions', route: '/admin/previsions' },
+        { label: 'Chat interne', route: '/admin/chat' }
       ]
     },
     {
@@ -81,7 +89,8 @@ export class AdminLayoutComponent implements OnInit {
         { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
         { label: 'Mouvements de stock', route: '/admin/mouvements-stock' },
         { label: 'Gerer produits', route: '/admin/gerer-produits' },
-        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' }
+        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
+        { label: 'Chat interne', route: '/admin/chat' }
       ]
     },
     {
@@ -97,7 +106,8 @@ export class AdminLayoutComponent implements OnInit {
       title: 'Espace utilisateur',
       items: [
         { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
-        { label: 'Tableau de bord', route: '/admin/dashboard' }
+        { label: 'Tableau de bord', route: '/admin/dashboard' },
+        { label: 'Chat interne', route: '/admin/chat' }
       ]
     },
     {
@@ -123,6 +133,8 @@ export class AdminLayoutComponent implements OnInit {
     private apiService: ApiService,
     private router: Router,
     private readonly cdr: ChangeDetectorRef,
+    private readonly chatService: ChatService,
+    private readonly chatState: ChatStateService,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) { }
 
@@ -147,6 +159,16 @@ export class AdminLayoutComponent implements OnInit {
     }
 
     this.redirectAdminRootToFirstMenu();
+  }
+
+  ngAfterViewInit(): void {
+    if (isPlatformBrowser(this.platformId)) {
+      setTimeout(() => this.startChatBadge(), 0);
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.chatSub?.unsubscribe();
   }
 
   get navSections(): NavSection[] {
@@ -196,6 +218,15 @@ export class AdminLayoutComponent implements OnInit {
 
   logout() {
     this.authService.logout();
+  }
+
+  openChat(): void {
+    this.router.navigate(['/admin/chat']);
+  }
+
+  toggleMiniChat(): void {
+    // retour au comportement initial : ouvrir la page chat
+    this.router.navigate(['/admin/chat']);
   }
 
   doSearch() {
@@ -276,6 +307,18 @@ export class AdminLayoutComponent implements OnInit {
       error: () => {
         this.notifCount = 0;
       }
+    });
+  }
+
+  private startChatBadge(): void {
+    this.chatSub?.unsubscribe();
+    this.chatSub = this.chatService.pollConversations(7000).subscribe({
+      next: (convs: any[]) => {
+        const arr = Array.isArray(convs) ? convs : [];
+        this.chatUnread = arr.reduce((sum, c: any) => sum + Number(c?.unread || 0), 0);
+        this.cdr.detectChanges();
+      },
+      error: () => { this.chatUnread = 0; }
     });
   }
 }

@@ -106,5 +106,10 @@
     <main class="content">
       <router-outlet></router-outlet>
     </main>
+
+    <button class="chat-fab" (click)="toggleMiniChat()">
+      💬
+      <span class="chat-badge" *ngIf="chatUnread">{{ chatUnread }}</span>
+    </button>
   </div>
 </div>

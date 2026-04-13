@@ -1,0 +1,211 @@
+<div class="chat-wrapper">
+
+  <!-- ══ SIDEBAR ══ -->
+  <aside class="sidebar">
+
+    <div class="sidebar-logo">
+      <div class="sidebar-logo-icon">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+      </div>
+      <span class="sidebar-logo-title">Messagerie</span>
+      <span class="logo-badge" *ngIf="unreadCount > 0">{{ unreadCount }}</span>
+    </div>
+
+    <!-- Conversations -->
+    <div class="sb-section">
+      Conversations
+      <span class="sb-section-line"></span>
+    </div>
+    <div class="conv-list conv-list-top">
+      <div
+        class="conv"
+        *ngFor="let c of conversations"
+        [class.active]="selectedUser?.id === c.user?.id"
+        (click)="selectConversation(c)"
+      >
+        <div class="conv-avatar" [ngClass]="avatarColor(c.user?.id)">
+          {{ initials(c.user?.name) }}
+          <span class="presence-dot" [class.online]="isOnline(c.user?.last_seen_at)"></span>
+        </div>
+        <div class="conv-body">
+          <div class="conv-name">
+            {{ c.user?.name || 'Utilisateur' }}
+            <span class="conv-time">{{ smartDate(c.last_at) }}</span>
+          </div>
+          <div class="conv-preview">
+            <span class="preview-text">{{ c.last_message || '—' }}</span>
+            <span class="unread-badge" *ngIf="c.unread > 0">{{ c.unread }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="sb-empty" *ngIf="!conversations.length && !loadingConversations">
+        Aucune conversation.
+      </div>
+    </div>
+
+    <!-- Utilisateurs -->
+    <div class="sb-section">
+      Utilisateurs
+      <span class="sb-section-line"></span>
+    </div>
+    <div class="conv-list conv-list-bottom">
+      <div
+        class="conv"
+        *ngFor="let u of users"
+        [class.active]="selectedUser?.id === u.id"
+        (click)="selectConversation({ user: u })"
+      >
+        <div class="conv-avatar" [ngClass]="avatarColor(u.id)">
+          {{ initials(u.name) }}
+          <span class="presence-dot" [class.online]="isOnline(u.last_seen_at)"></span>
+        </div>
+        <div class="conv-body">
+          <div class="conv-name">{{ u.name }}</div>
+          <div class="conv-role">
+            {{ u.role || '—' }}
+            <ng-container *ngIf="u.last_seen_at">
+              · <span [class.online-text]="isOnline(u.last_seen_at)">{{ presenceLabel(u.last_seen_at) }}</span>
+            </ng-container>
+          </div>
+        </div>
+      </div>
+      <div class="sb-empty" *ngIf="!users.length">Aucun utilisateur.</div>
+    </div>
+
+  </aside>
+
+  <!-- ══ ZONE CHAT ══ -->
+  <section class="chat">
+
+    <!-- Header -->
+    <header class="chat-header" *ngIf="selectedUser; else noHeader">
+      <div class="chat-hav" [ngClass]="avatarColor(selectedUser.id)">
+        {{ initials(selectedUser.name) }}
+      </div>
+      <div class="chat-hinfo">
+        <div class="chat-hname">{{ selectedUser.name }}</div>
+        <div class="chat-hstatus" [class.online]="isOnline(selectedUser.last_seen_at)">
+          <span class="status-dot" [class.green]="isOnline(selectedUser.last_seen_at)"></span>
+          {{ statusLabel() }}
+        </div>
+      </div>
+    </header>
+
+    <ng-template #noHeader>
+      <header class="chat-header empty-header">
+        <span>Sélectionnez une conversation</span>
+      </header>
+    </ng-template>
+
+    <!-- Messages -->
+    <div class="messages" *ngIf="selectedUser; else noConv" #messagesContainer>
+      <div *ngIf="loadingMessages" class="loading-msgs">
+        <span></span><span></span><span></span>
+      </div>
+
+      <ng-container *ngFor="let m of messagesWithSeparators; let i = index">
+        <!-- Séparateur jour -->
+        <div class="day-sep" *ngIf="m.isSeparator">{{ m.label }}</div>
+
+        <!-- Message -->
+        <div
+          *ngIf="!m.isSeparator"
+          class="msg-row"
+          [class.me]="isMine(m)"
+          [class.them]="!isMine(m)"
+          [class.gap]="m.showAvatar"
+        >
+          <div class="msg-sender" *ngIf="!isMine(m) && m.showAvatar">{{ selectedUser?.name }}</div>
+          <div class="bubble-wrap">
+            <div class="mini-av" [ngClass]="avatarColor(selectedUser?.id)" *ngIf="!isMine(m) && m.showAvatar">
+              {{ initials(selectedUser?.name) }}
+            </div>
+            <div class="mini-av hidden" *ngIf="!isMine(m) && !m.showAvatar"></div>
+            <div class="bubble-stack">
+              <div class="bubble" *ngIf="m.message">{{ m.message }}</div>
+              <a
+                class="attachment-card"
+                *ngIf="m.has_attachment"
+                [href]="m.attachment_url"
+                target="_blank"
+                rel="noopener"
+              >
+                <img
+                  *ngIf="m.is_image_attachment"
+                  class="attachment-preview"
+                  [src]="m.attachment_url"
+                  [alt]="attachmentLabel(m)"
+                />
+                <div class="attachment-body">
+                  <div class="attachment-title">{{ attachmentLabel(m) }}</div>
+                  <div class="attachment-meta">
+                    {{ m.attachment_mime || 'Fichier' }}
+                    <span *ngIf="m.attachment_size">· {{ attachmentSize(m.attachment_size) }}</span>
+                  </div>
+                </div>
+              </a>
+              <div class="bubble-meta">
+                <span class="btime">{{ m.created_at | date:'HH:mm' }}</span>
+                <span class="read-check" [class.seen]="m.read_at || m.is_read" *ngIf="isMine(m)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="16" height="16">
+                    <polyline points="1 13 5 17 11 8"/>
+                    <polyline points="8 13 12 17 22 6"/>
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <div class="seen-label" *ngIf="lastSeenMessageLabel()">{{ lastSeenMessageLabel() }}</div>
+    </div>
+
+    <ng-template #noConv>
+      <div class="no-conv">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <p>Choisissez une conversation pour démarrer.</p>
+      </div>
+    </ng-template>
+
+    <!-- Composer -->
+    <div class="composer" *ngIf="selectedUser">
+      <div class="composer-error" *ngIf="sendError">{{ sendError }}</div>
+      <div class="selected-file" *ngIf="selectedFile">
+        <div>
+          <strong>{{ selectedFile.name }}</strong>
+          <span>{{ attachmentSize(selectedFile.size) }}</span>
+        </div>
+        <button type="button" class="file-remove" (click)="clearSelectedFile()">×</button>
+      </div>
+      <div class="composer-inner">
+        <textarea
+          [(ngModel)]="messageText"
+          placeholder="Écrire un message..."
+          rows="2"
+          (keydown.enter)="onEnter($event)"
+        ></textarea>
+        <div class="composer-actions">
+          <label class="attach-btn" title="Joindre un fichier">
+            <input type="file" hidden (change)="onFileSelected($event)" />
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+          </label>
+          <button class="send-btn" (click)="send()" [disabled]="!messageText.trim() && !selectedFile">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            Envoyer
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</div>

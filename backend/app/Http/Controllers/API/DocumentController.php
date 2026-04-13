@@ -10,6 +10,7 @@ use App\Models\Supplier;
 use App\Models\Warehouse;
 use App\Models\StockMovement;
 use App\Models\StockMovementLine;
+use App\Models\ProductStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -38,6 +39,8 @@ class DocumentController extends Controller
             'product_id'   => 'nullable|exists:products,id',
             'supplier_id'  => 'nullable|exists:suppliers,id',
             'warehouse_id' => 'nullable|exists:warehouses,id',
+            'supplier_name'=> 'nullable|string|max:255',
+            'supplier_email'=> 'nullable|email|max:255',
         ]);
 
         $path       = $request->file('file')->store('documents', 'public');
@@ -51,22 +54,92 @@ class DocumentController extends Controller
         }
 
         $autoTitle            = $this->inferTitle($ocrText, $guessedType, $request->file('file')->getClientOriginalName(), $request->input('title'));
-        $supplierName         = $ocrText !== '' ? $this->guessSupplierName($ocrText) : null;
-        $supplierEmail        = $ocrText !== '' ? $this->guessSupplierEmail($ocrText) : null;
+        $supplierNameOverride = trim((string) $request->input('supplier_name', $request->input('name', '')));
+        $supplierEmailOverride= trim((string) $request->input('supplier_email', ''));
+
+        $ocrSupplierName      = $ocrText !== '' ? $this->guessSupplierName($ocrText) : null;
+        $supplierName         = $supplierNameOverride !== '' ? $supplierNameOverride : $ocrSupplierName;
+        $supplierEmail        = $supplierEmailOverride !== '' ? $supplierEmailOverride : ($ocrText !== '' ? $this->guessSupplierEmail($ocrText) : null);
         $supplierId           = $request->supplier_id;
         $allowAutoSupplier    = $request->boolean('auto_create_supplier', true);
 
+        $supplierCandidate = null;
         if (!$supplierId && $supplierEmail) {
-            $supplierId = Supplier::whereRaw('LOWER(email) = ?', [Str::lower($supplierEmail)])->value('id');
+            $emailMatchId = Supplier::whereRaw('LOWER(email) = ?', [Str::lower($supplierEmail)])->value('id');
+            if ($emailMatchId) {
+                $emailMatch = Supplier::select(['id', 'name', 'email'])->find($emailMatchId);
+                if ($emailMatch) {
+                    $supplierCandidate = [
+                        'id' => (int) $emailMatch->id,
+                        'name' => $emailMatch->name,
+                        'email' => $emailMatch->email,
+                        'score' => 100,
+                        'status' => 'exact',
+                    ];
+                }
+            }
         }
-        if (!$supplierId && $supplierName) {
-            $supplierId = Supplier::whereRaw('LOWER(name) = ?', [Str::lower($supplierName)])->value('id');
+        if (!$supplierCandidate && !$supplierId && $supplierName) {
+            $supplierMatch = $this->findMatchingSupplier($supplierName, $supplierEmail);
+            if (in_array(($supplierMatch['status'] ?? null), ['exact', 'candidate'], true)) {
+                $supplierCandidate = $supplierMatch;
+            }
+        }
+        if (!$supplierCandidate && !$supplierId && $ocrSupplierName) {
+            $historySupplierId = $this->findSupplierIdFromHistory($ocrSupplierName);
+            if ($historySupplierId) {
+                $historySupplier = Supplier::select(['id', 'name', 'email'])->find($historySupplierId);
+                if ($historySupplier) {
+                    $supplierCandidate = [
+                        'id' => (int) $historySupplier->id,
+                        'name' => $historySupplier->name,
+                        'email' => $historySupplier->email,
+                        'score' => 95,
+                        'status' => 'history',
+                    ];
+                }
+            }
+        }
+
+        if (
+            $supplierCandidate
+            && !$request->boolean('confirm_supplier_match', false)
+            && !$request->filled('supplier_id')
+            && $supplierNameOverride === ''
+        ) {
+            return response()->json([
+                'message' => 'Nous avons trouve un fournisseur. Confirmez d abord si c est le bon fournisseur.',
+                'suggested_supplier' => [
+                    'name' => $supplierName,
+                    'email' => $supplierEmail,
+                ],
+                'suggested_existing_supplier' => [
+                    'id' => $supplierCandidate['id'],
+                    'name' => $supplierCandidate['name'],
+                    'email' => $supplierCandidate['email'],
+                    'score' => $supplierCandidate['score'],
+                ],
+            ], 409);
+        }
+
+        if (!$supplierId && $request->boolean('confirm_supplier_match', false) && $request->filled('supplier_id')) {
+            $supplierId = (int) $request->input('supplier_id');
+        }
+
+        if (!$supplierId && !$allowAutoSupplier) {
+            return response()->json([
+                'message' => 'Confirmez le fournisseur avant de persister ce document.',
+                'suggested_supplier' => [
+                    'name' => $supplierName,
+                    'email' => $supplierEmail,
+                ],
+            ], 409);
         }
 
         if (!$supplierId && ($supplierName || $supplierEmail)) {
             if (!$allowAutoSupplier) {
                 return response()->json([
-                    'message' => 'Fournisseur trouvé par OCR mais la création automatique est désactivée. Confirmez avant de persister.',
+                    'message' => 'Confirmez le fournisseur avant de persister ce document.',
                     'suggested_supplier' => [
                         'name' => $supplierName,
                         'email' => $supplierEmail,
@@ -128,6 +201,8 @@ class DocumentController extends Controller
             $productId = $item['product_id'] ?? null;
             $quantity  = (int) ($item['quantity'] ?? 0);
             $dir       = $item['direction'] ?? $document->direction ?? 'unknown';
+            $locId     = $item['warehouse_location_id'] ?? $item['location_id'] ?? null;
+            $cabinetId = $item['cabinet_id'] ?? null;
 
             if ($dir === 'unknown') {
                 $guessedDir = $this->guessDirection((string) $document->ocr_text);
@@ -167,6 +242,8 @@ class DocumentController extends Controller
                     'category_id' => $categoryId,
                     'quantity' => $quantity,
                     'direction' => $dir,
+                    'warehouse_location_id' => $locId,
+                    'cabinet_id' => $cabinetId,
                     'product' => null,
                 ];
                 continue;
@@ -178,6 +255,8 @@ class DocumentController extends Controller
                 'category_id' => $item['categorie_id'] ?? $item['category_id'] ?? null,
                 'quantity' => $quantity,
                 'direction' => $dir,
+                'warehouse_location_id' => $locId,
+                'cabinet_id' => $cabinetId,
                 'product' => $product,
             ];
         }
@@ -194,9 +273,19 @@ class DocumentController extends Controller
             return response()->json(['message' => 'Produit introuvable, confirmation nécessaire avant création.'], 409);
         }
 
+        $validSupplierId = null;
+        if ($document->supplier_id && Supplier::whereKey($document->supplier_id)->exists()) {
+            $validSupplierId = (int) $document->supplier_id;
+        }
+
         foreach ($prepareActions as $action) {
             $product = $action['product'];
+            $locId   = $action['warehouse_location_id'] ?? null;
+            $cabinetId = $action['cabinet_id'] ?? null;
             if (!$product) {
+                if (!$locId && !$cabinetId) {
+                    return response()->json(['message' => 'Choisissez soit un emplacement, soit une armoire pour ce produit.'], 422);
+                }
                 $catId = $action['category_id'];
                 $product = Product::create([
                     'status'        => 'active',
@@ -205,9 +294,14 @@ class DocumentController extends Controller
                     'seuil_min'     => 0,
                     'stock_quantity'=> 0,
                     'categorie_id'  => $catId,
-                    'supplier_id'   => $document->supplier_id,
                     'photo'         => $document->path,
                 ]);
+
+                if ($validSupplierId) {
+                    $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
+                }
+            } elseif ($validSupplierId) {
+                $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
             }
 
             $quantity = $action['quantity'];
@@ -217,6 +311,32 @@ class DocumentController extends Controller
                     $product->increment('stock_quantity', $quantity);
                 } elseif ($dir === 'out') {
                     $product->decrement('stock_quantity', $quantity);
+                }
+
+                // Mettre à jour le stock par emplacement si fourni
+                if ($locId || $cabinetId) {
+                    $ps = ProductStock::firstOrNew(
+                        $locId
+                            ? [
+                                'product_id' => $product->id,
+                                'warehouse_location_id' => $locId,
+                            ]
+                            : [
+                                'product_id' => $product->id,
+                                'cabinet_id' => $cabinetId,
+                            ]
+                    );
+                    if (!$ps->exists || !$ps->supplier_id) {
+                        $ps->supplier_id = $validSupplierId;
+                    }
+                    if ($cabinetId && !$locId) {
+                        $ps->cabinet_id = $cabinetId;
+                        $ps->warehouse_location_id = null;
+                    }
+                    $delta = $dir === 'in' ? $quantity : -$quantity;
+                    $ps->quantity = max(0, (int)($ps->quantity ?? 0) + $delta);
+                    $ps->last_updated = now();
+                    $ps->save();
                 }
             }
             if ($product) {
@@ -542,8 +662,41 @@ class DocumentController extends Controller
     private function guessSupplierName(string $text): ?string
     {
         $lines = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text))));
+
+        $blacklist = [
+            'bondelivraison', 'bon de livraison', 'bon de sortie', 'bon de reception',
+            'detailsdelalivraison', 'details de la livraison', 'reference', 'date',
+            'adresse', 'contact', 'email', 'e mail', 'destinataire', 'nomduclient',
+            'nom du client', 'adresse de livraison', 'datedelivraison', 'signatureclient',
+        ];
+
+        foreach ($lines as $index => $line) {
+            $normalized = $this->normalizeSupplierValue($line);
+            if ($normalized === '' || in_array($normalized, $blacklist, true)) {
+                continue;
+            }
+
+            $previous = $index > 0 ? $this->normalizeSupplierValue($lines[$index - 1]) : '';
+            $next = $index < count($lines) - 1 ? $this->normalizeSupplierValue($lines[$index + 1]) : '';
+
+            if (
+                in_array($previous, ['bondelivraison', 'bon de livraison', 'bon', 'bon de reception'], true)
+                && !$this->looksLikeAddressOrContact($normalized)
+                && !$this->looksLikeClientField($next)
+            ) {
+                return $line;
+            }
+        }
+
         foreach ($lines as $line) {
-            if (preg_match('/^[\p{L}][\p{L}\s\-\.\d@]+$/u', $line) && mb_strlen($line) <= 60) {
+            $normalized = $this->normalizeSupplierValue($line);
+            if (
+                preg_match('/^[\p{L}][\p{L}\s\-\.\d@]+$/u', $line)
+                && mb_strlen($line) <= 60
+                && $normalized !== ''
+                && !in_array($normalized, $blacklist, true)
+                && !$this->looksLikeAddressOrContact($normalized)
+            ) {
                 return $line;
             }
         }
@@ -581,6 +734,142 @@ class DocumentController extends Controller
         }
         return 'document';
     }
+
+    private function findMatchingSupplier(?string $supplierName, ?string $supplierEmail = null): array
+    {
+        $normalizedName = $this->normalizeSupplierValue($supplierName);
+        if ($normalizedName === '') {
+            return ['status' => 'none'];
+        }
+
+        $suppliers = Supplier::query()
+            ->select(['id', 'name', 'email'])
+            ->get();
+
+        $bestId = null;
+        $bestScore = 0;
+
+        foreach ($suppliers as $supplier) {
+            if ($supplierEmail && $supplier->email && Str::lower((string) $supplier->email) === Str::lower((string) $supplierEmail)) {
+                return [
+                    'status' => 'exact',
+                    'id' => (int) $supplier->id,
+                    'name' => $supplier->name,
+                    'email' => $supplier->email,
+                    'score' => 100,
+                ];
+            }
+
+            $candidate = $this->normalizeSupplierValue($supplier->name);
+            if ($candidate === '') {
+                continue;
+            }
+
+            if ($candidate === $normalizedName) {
+                return [
+                    'status' => 'exact',
+                    'id' => (int) $supplier->id,
+                    'name' => $supplier->name,
+                    'email' => $supplier->email,
+                    'score' => 100,
+                ];
+            }
+
+            $score = 0;
+
+            if (str_contains($candidate, $normalizedName) || str_contains($normalizedName, $candidate)) {
+                $score = 92;
+            } else {
+                similar_text($normalizedName, $candidate, $percent);
+                $score = (int) round($percent);
+            }
+
+            if ($score > $bestScore) {
+                $bestScore = $score;
+                $bestId = [
+                    'id' => (int) $supplier->id,
+                    'name' => $supplier->name,
+                    'email' => $supplier->email,
+                    'score' => $score,
+                ];
+            }
+        }
+
+        if ($bestScore >= 92 && is_array($bestId)) {
+            return ['status' => 'exact', ...$bestId];
+        }
+
+        if ($bestScore >= 78 && is_array($bestId)) {
+            return ['status' => 'candidate', ...$bestId];
+        }
+
+        return ['status' => 'none'];
+    }
+
+    private function normalizeSupplierValue(?string $value): string
+    {
+        $normalized = Str::of((string) $value)
+            ->ascii()
+            ->lower()
+            ->replaceMatches('/[^a-z0-9]+/', ' ')
+            ->trim()
+            ->value();
+
+        if ($normalized === '') {
+            return '';
+        }
+
+        $stopWords = [
+            'ste', 'st', 'sarl', 'suarl', 'sa', 'sas', 'eurl', 'societe',
+            'soc', 'company', 'co', 'ltd', 'limited', 'inc', 'groupe',
+            'group', 'tunisie', 'tn',
+        ];
+
+        $parts = array_values(array_filter(
+            preg_split('/\s+/', $normalized) ?: [],
+            fn($part) => $part !== '' && !in_array($part, $stopWords, true)
+        ));
+
+        return implode(' ', $parts);
+    }
+
+    private function findSupplierIdFromHistory(?string $ocrSupplierName): ?int
+    {
+        $normalized = $this->normalizeSupplierValue($ocrSupplierName);
+        if ($normalized === '') {
+            return null;
+        }
+
+        $documents = Document::query()
+            ->whereNotNull('supplier_id')
+            ->whereNotNull('ocr_text')
+            ->latest('id')
+            ->limit(100)
+            ->get(['supplier_id', 'ocr_text']);
+
+        foreach ($documents as $document) {
+            $guessed = $this->guessSupplierName((string) $document->ocr_text);
+            if ($this->normalizeSupplierValue($guessed) === $normalized) {
+                return (int) $document->supplier_id;
+            }
+        }
+
+        return null;
+    }
+
+    private function looksLikeAddressOrContact(string $normalized): bool
+    {
+        return str_contains($normalized, 'adresse')
+            || str_contains($normalized, 'contact')
+            || str_contains($normalized, 'email')
+            || str_contains($normalized, 'mail')
+            || preg_match('/\d{6,}/', $normalized) === 1;
+    }
+
+    private function looksLikeClientField(string $normalized): bool
+    {
+        return str_contains($normalized, 'client')
+            || str_contains($normalized, 'destinataire')
+            || str_contains($normalized, 'livraison');
+    }
 }
-
-

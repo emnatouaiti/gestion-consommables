@@ -1,0 +1,54 @@
+.mt-root {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  height: 100%;
+}
+.mt-sidebar {
+  border-right: 1px solid #e2e8f0;
+  background: #f8fafc;
+  display: flex;
+  flex-direction: column;
+}
+.mt-title {
+  padding: 10px;
+  font-weight: 700;
+  font-size: 13px;
+  color: #0f172a;
+}
+.mt-list {
+  flex: 1;
+  overflow-y: auto;
+}
+.mt-item {
+  padding: 8px 10px;
+  border-bottom: 1px solid #e5e7eb;
+  cursor: pointer;
+}
+.mt-item.active {
+  background: #e0ecff;
+}
+.mt-name {
+  font-weight: 600;
+  font-size: 13px;
+}
+.mt-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #64748b;
+}
+.mt-unread {
+  background: #ef4444;
+  color: white;
+  border-radius: 10px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+.mt-empty {
+  padding: 12px;
+  color: #475569;
+  font-size: 13px;
+}
+.mt-thread {
+  min-width: 0;
+}

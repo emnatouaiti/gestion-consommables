@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Models\WarehouseCabinet;
 
 class ProductStock extends Model
 {
@@ -13,6 +14,7 @@ class ProductStock extends Model
     protected $fillable = [
         'product_id',
         'warehouse_location_id',
+        'cabinet_id',
         'supplier_id',
         'quantity',
         'notes',
@@ -36,5 +38,10 @@ class ProductStock extends Model
     public function warehouseLocation(): BelongsTo
     {
         return $this->belongsTo(WarehouseLocation::class , 'warehouse_location_id');
+    }
+
+    public function warehouseCabinet(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseCabinet::class, 'cabinet_id');
     }
 }

@@ -11,6 +11,7 @@ use App\Http\Controllers\API\SupplierContactController;
 use App\Http\Controllers\API\SupplierController;
 use App\Http\Controllers\API\UnitController;
 use App\Http\Controllers\API\DocumentController;
+use App\Http\Controllers\API\MessageController;
 use App\Http\Controllers\API\UserManagementController;
 use App\Http\Controllers\API\WarehouseCabinetController;
 use App\Http\Controllers\API\WarehouseController;
@@ -39,6 +40,34 @@ Route::prefix('api')->group(function () {
         ]);
     });
 
+    Route::get('debug/stocks', function () {
+        $stocks = \App\Models\ProductStock::with('warehouseLocation', 'warehouseCabinet')->limit(5)->get();
+
+        $result = [];
+        foreach ($stocks as $stock) {
+            $result[] = [
+                'id' => $stock->id,
+                'warehouse_location_id' => $stock->warehouse_location_id,
+                'cabinet_id' => $stock->cabinet_id,
+                'warehouseLocation' => $stock->warehouseLocation ? [
+                    'id' => $stock->warehouseLocation->id,
+                    'code' => $stock->warehouseLocation->code,
+                    'name' => $stock->warehouseLocation->name,
+                ] : null,
+                'warehouseCabinet' => $stock->warehouseCabinet ? [
+                    'id' => $stock->warehouseCabinet->id,
+                    'code' => $stock->warehouseCabinet->code,
+                    'name' => $stock->warehouseCabinet->name,
+                ] : null,
+            ];
+        }
+
+        return response()->json($result);
+    });
+
+    // PUBLIC AUDIT LOG - Accessible without authentication
+    Route::get('audit-logs/public', [AdminController::class, 'publicAuditLogs']);
+
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
     Route::get('auth/google', [SocialAuthController::class, 'redirectToGoogle']);
@@ -47,7 +76,7 @@ Route::prefix('api')->group(function () {
     Route::post('verify-code', [PasswordResetController::class, 'verifyCode']);
     Route::post('reset-password', [PasswordResetController::class, 'reset']);
 
-    Route::middleware('auth:sanctum')->group(function () {
+    Route::middleware(['auth:sanctum', 'lastseen'])->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('user', [AuthController::class, 'user']);
         Route::put('user/profile', [AuthController::class, 'updateProfile']);
@@ -76,6 +105,15 @@ Route::prefix('api')->group(function () {
             Route::delete('/{id}', [\App\Http\Controllers\StockMovementController::class, 'destroy']);
             Route::put('/{id}/validate', [\App\Http\Controllers\StockMovementController::class, 'validateMovement']);
             Route::put('/{id}/cancel', [\App\Http\Controllers\StockMovementController::class, 'cancelMovement']);
+        });
+
+        // Chat
+        Route::prefix('chat')->group(function () {
+            Route::get('users', [MessageController::class, 'listUsers']);
+            Route::get('conversations', [MessageController::class, 'getConversations']);
+            Route::get('messages/{user}', [MessageController::class, 'getMessages'])->middleware('chat.access');
+            Route::post('messages', [MessageController::class, 'sendMessage'])->middleware('chat.access');
+            Route::get('unread-count', [MessageController::class, 'unreadCount']);
         });
     });
 
