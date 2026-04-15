@@ -561,7 +561,6 @@ export class ConsumableRequestComponent implements OnInit {
 
     // Load real lists from DB
     this.loadDepots();
-    }
   }
 
   closeExitModal(): void {
