@@ -104,12 +104,19 @@ class StockMovementController extends Controller
 
                 $qty = (int) $line->quantity;
 
-                // Source deduction (out/transfer)
-                if ($movement->movement_type === 'out' && $movement->source_warehouse_location_id) {
-                    $sourceStock = ProductStock::where('product_id', $product->id)
-                        ->where('warehouse_location_id', $movement->source_warehouse_location_id)
-                        ->lockForUpdate()
-                        ->first();
+                // Source deduction (out/transfer) - support warehouse locations and cabinets
+                if ($movement->movement_type === 'out' && ($movement->source_warehouse_location_id || $movement->source_cabinet_id)) {
+                    if ($movement->source_warehouse_location_id) {
+                        $sourceStock = ProductStock::where('product_id', $product->id)
+                            ->where('warehouse_location_id', $movement->source_warehouse_location_id)
+                            ->lockForUpdate()
+                            ->first();
+                    } else {
+                        $sourceStock = ProductStock::where('product_id', $product->id)
+                            ->where('cabinet_id', $movement->source_cabinet_id)
+                            ->lockForUpdate()
+                            ->first();
+                    }
 
                     $available = (int) ($sourceStock?->quantity ?? 0);
                     if ($qty > $available) {
@@ -125,22 +132,35 @@ class StockMovementController extends Controller
                     }
                 }
 
-                // Destination add (in/transfer)
-                if ($movement->destination_warehouse_location_id) {
-                    $destStock = ProductStock::where('product_id', $product->id)
-                        ->where('warehouse_location_id', $movement->destination_warehouse_location_id)
-                        ->lockForUpdate()
-                        ->first();
+                // Destination add (in/transfer) - support warehouse locations and cabinets
+                if ($movement->destination_warehouse_location_id || $movement->destination_cabinet_id) {
+                    if ($movement->destination_warehouse_location_id) {
+                        $destStock = ProductStock::where('product_id', $product->id)
+                            ->where('warehouse_location_id', $movement->destination_warehouse_location_id)
+                            ->lockForUpdate()
+                            ->first();
+                    } else {
+                        $destStock = ProductStock::where('product_id', $product->id)
+                            ->where('cabinet_id', $movement->destination_cabinet_id)
+                            ->lockForUpdate()
+                            ->first();
+                    }
 
                     if (!$destStock) {
-                        $destStock = ProductStock::create([
+                        $createData = [
                             'product_id' => $product->id,
-                            'warehouse_location_id' => $movement->destination_warehouse_location_id,
                             'supplier_id' => $movement->supplier_id,
                             'quantity' => 0,
                             'notes' => null,
                             'last_updated' => now(),
-                        ]);
+                        ];
+                        if ($movement->destination_warehouse_location_id) {
+                            $createData['warehouse_location_id'] = $movement->destination_warehouse_location_id;
+                        } else {
+                            $createData['cabinet_id'] = $movement->destination_cabinet_id;
+                        }
+
+                        $destStock = ProductStock::create($createData);
                         // Lock the created row for consistent update within the txn.
                         $destStock = ProductStock::where('id', $destStock->id)->lockForUpdate()->first();
                     }
@@ -205,25 +225,50 @@ class StockMovementController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'movement_type' => 'required_without:type|in:in,out',
-            'type' => 'nullable|in:in,out',
-            'reference' => 'nullable|string',
-            'notes' => 'nullable|string',
-            'supplier_id' => 'required_if:movement_type,in|nullable|exists:suppliers,id',
-            'source_warehouse_location_id' => 'required_if:movement_type,out|nullable|exists:warehouse_locations,id',
-            'destination_warehouse_location_id' => 'required|exists:warehouse_locations,id',
-            'document_id' => 'nullable|exists:documents,id',
-            'in_image' => 'nullable|file|image|max:10240',
-            'out_image' => 'nullable|file|image|max:10240',
-            'lines' => 'required|array|min:1',
+            'movement_type' => 'required_without:type|in:in,out,transfer',
+            'type'          => 'nullable|in:in,out,transfer',
+            'reference'     => 'nullable|string',
+            'notes'         => 'nullable|string',
+            'motif'         => 'nullable|string|max:500',
+            'destination_text' => 'nullable|string|max:500',
+            'supplier_id'   => 'nullable|exists:suppliers,id',
+            'supplier_contact_id' => 'nullable|integer',
+            'source_warehouse_location_id'      => 'nullable|exists:warehouse_locations,id',
+            'source_cabinet_id'                 => 'nullable|exists:warehouse_cabinets,id',
+            'destination_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'destination_cabinet_id'            => 'nullable|exists:warehouse_cabinets,id',
+            'document_id'   => 'nullable|exists:documents,id',
+            'in_image'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'out_image'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
+            'lines'         => 'required|array|min:1',
             'lines.*.product_id' => 'required|exists:products,id',
-            'lines.*.quantity' => 'required|integer|min:1',
+            'lines.*.quantity'   => 'required|integer|min:1',
         ]);
 
+        // For entrée: supplier required. For sortie: source location required. For transfer: both required.
+        $movementType = $request->input('movement_type', $request->input('type'));
+        if ($movementType === 'in' && !$request->filled('supplier_id')) {
+            throw ValidationException::withMessages(['supplier_id' => ['Le fournisseur est requis pour une entrée.']]);
+        }
+        // For source/destination allow either a location or a cabinet id.
+        if (in_array($movementType, ['out', 'transfer']) && !$request->filled('source_warehouse_location_id') && !$request->filled('source_cabinet_id')) {
+            throw ValidationException::withMessages(['source_warehouse_location_id' => ['L\'emplacement source ou l\'armoire source est requis.']]);
+        }
+        if (in_array($movementType, ['in', 'transfer']) && !$request->filled('destination_warehouse_location_id') && !$request->filled('destination_cabinet_id')) {
+            throw ValidationException::withMessages(['destination_warehouse_location_id' => ['L\'emplacement destination ou l\'armoire destination est requis.']]);
+        }
+
+        // Prevent source == destination when both refer to the same exact location/cabinet
         if (
-            $request->filled('source_warehouse_location_id')
-            && $request->filled('destination_warehouse_location_id')
-            && (int) $request->input('source_warehouse_location_id') === (int) $request->input('destination_warehouse_location_id')
+            (
+                $request->filled('source_warehouse_location_id')
+                && $request->filled('destination_warehouse_location_id')
+                && (int) $request->input('source_warehouse_location_id') === (int) $request->input('destination_warehouse_location_id')
+            ) || (
+                $request->filled('source_cabinet_id')
+                && $request->filled('destination_cabinet_id')
+                && (int) $request->input('source_cabinet_id') === (int) $request->input('destination_cabinet_id')
+            )
         ) {
             throw ValidationException::withMessages([
                 'destination_warehouse_location_id' => ['La destination doit etre differente de la source.'],
@@ -239,16 +284,21 @@ class StockMovementController extends Controller
         $movement = DB::transaction(function () use ($request, $user, $movementType, $reference) {
             $movementData = [
                 'movement_type' => $movementType,
-                'reference' => $reference,
-                'created_by' => $user ? $user->id : null,
+                'reference'     => $reference,
+                'created_by'    => $user ? $user->id : null,
                 'related_request_id' => $request->input('related_request_id'),
-                'notes' => $request->input('notes'),
-                'status' => 'draft',
-                'planned_at' => Schema::hasColumn('stock_movements', 'planned_at') ? now() : null,
-                'supplier_id' => $request->input('supplier_id'),
-                'source_warehouse_location_id' => $request->input('source_warehouse_location_id'),
+                'notes'         => $request->input('notes'),
+                'motif'         => $request->input('motif'),
+                'destination_text' => $request->input('destination_text'),
+                'status'        => 'draft',
+                'planned_at'    => Schema::hasColumn('stock_movements', 'planned_at') ? now() : null,
+                'supplier_id'   => $request->input('supplier_id'),
+                'supplier_contact_id' => $request->input('supplier_contact_id'),
+                'source_warehouse_location_id'      => $request->input('source_warehouse_location_id'),
+                'source_cabinet_id'                 => $request->input('source_cabinet_id'),
                 'destination_warehouse_location_id' => $request->input('destination_warehouse_location_id'),
-                'document_id' => $request->input('document_id'),
+                'destination_cabinet_id'            => $request->input('destination_cabinet_id'),
+                'document_id'   => $request->input('document_id'),
             ];
 
             if ($request->hasFile('in_image')) {
@@ -266,6 +316,25 @@ class StockMovementController extends Controller
             ])->all();
 
             $movement->lines()->createMany($lines);
+
+            // Associer automatiquement les documents aux produits
+            $imagePath = $movement->in_image_path ?: $movement->out_image_path;
+            if ($imagePath) {
+                $uniqueProductIds = collect($lines)->pluck('product_id')->unique();
+                foreach ($uniqueProductIds as $pid) {
+                    \App\Models\Document::create([
+                        'user_id'      => $user ? $user->id : null,
+                        'product_id'   => $pid,
+                        'supplier_id'  => $movement->supplier_id,
+                        'title'        => ($movement->movement_type === 'in' ? 'Bon d\'entrée - ' : 'Bon de sortie - ') . $movement->reference,
+                        'type'         => $movement->movement_type === 'in' ? 'bon_livraison' : 'bon_sortie',
+                        'direction'    => in_array($movement->movement_type, ['in', 'out']) ? $movement->movement_type : 'unknown',
+                        'status'       => 'applied',
+                        'path'         => $imagePath,
+                    ]);
+                }
+            }
+
             return $movement;
         });
 

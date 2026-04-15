@@ -1,4 +1,4 @@
-﻿import { NgModule } from '@angular/core';
+import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { UsersListComponent } from './users-list/users-list.component';
 import { UserFormComponent } from './user-form/user-form.component';
@@ -25,9 +25,15 @@ import { DocumentsComponent } from './documents/documents.component';
 import { ChatComponent } from './chat/chat.component';
 
 const adminRoles = ['Administrateur'];
-const directorRoles = ['Directeur', 'Validateur'];
-const agentManagerRoles = ['Agent', 'Responsable', 'Gestionnaire'];
-const requesterRoles = ['Utilisateur', 'Agent', 'Responsable', 'Gestionnaire', 'PDG'];
+const directorRoles = ['Directeur'];
+const managerRoles = ['Responsable de stock'];
+const agentRoles = ['Agent de stock'];
+const userRoles = ['Utilisateur', 'Employé'];
+
+const adminAndDirector = [...adminRoles, ...directorRoles];
+const managerAndAgent = [...managerRoles, ...agentRoles];
+const directorAndManager = [...directorRoles, ...managerRoles];
+const adminAndManagerAndAgent = [...adminRoles, ...managerRoles, ...agentRoles]; // Only for suppliers which is shared
 
 const routes: Routes = [
   {
@@ -44,10 +50,10 @@ const routes: Routes = [
         path: 'documents-ocr',
         component: DocumentsComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
-      { path: 'dashboard', component: DashboardComponent },
+      { path: 'dashboard', component: DashboardComponent, canActivate: [RoleGuard], data: { roles: adminAndDirector } },
       { path: 'profile', component: ProfileComponent },
 
       { path: 'users', component: UsersListComponent, canActivate: [RoleGuard], data: { roles: adminRoles } },
@@ -58,7 +64,7 @@ const routes: Routes = [
         path: 'validation-demandes',
         component: ConsumableRequestComponent,
         canActivate: [RoleGuard],
-        data: { roles: directorRoles, mode: 'validation' }
+        data: { roles: directorAndManager, mode: 'validation' }
       },
       {
         path: 'anomalies-critiques',
@@ -77,40 +83,40 @@ const routes: Routes = [
         path: 'gerer-categories',
         component: CategoriesComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerRoles }
       },
       {
         path: 'gerer-produits',
         component: ProductsComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'gerer-depots',
         component: WarehousesComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
       {
         path: 'gerer-locaux',
         component: WarehousesComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'produit/:productId/stocks',
         component: ProductStocksComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'mouvements-stock',
         component: StockMovementsComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
@@ -122,34 +128,34 @@ const routes: Routes = [
         path: 'location/:locationId/products',
         component: ProductsByLocationComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'room/:roomId/products',
         component: ProductsByRoomComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'warehouse/:warehouseId/products',
         component: ProductsByWarehouseComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerAndAgent }
       },
 
       {
         path: 'gerer-fournisseurs',
         component: SuppliersComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: adminAndManagerAndAgent }
       },
       {
         path: 'gerer-unites',
         component: UnitsComponent,
         canActivate: [RoleGuard],
-        data: { roles: adminRoles }
+        data: { roles: managerRoles }
       },
       {
         path: 'journal-audit',
@@ -162,7 +168,7 @@ const routes: Routes = [
         path: 'demandes-consommables',
         component: ConsumableRequestComponent,
         canActivate: [RoleGuard],
-        data: { roles: requesterRoles, mode: 'request' }
+        data: { roles: userRoles, mode: 'request' }
       },
 
       // Keep this dynamic route last to avoid matching static admin paths (ex: gerer-categories).

@@ -78,11 +78,88 @@
             >
               Voir details
             </button>
-            <span *ngIf="request.status !== 'pending' && !canApprove" class="no-action">Pas d'action</span>
+            <button
+              *ngIf="request.status === 'approved_pending_exit' && isResponsable"
+              class="btn-confirm"
+              (click)="$event.stopPropagation(); openExitModal(request)"
+              title="Confirmer la remise physique et mise à jour du stock"
+            >
+              Confirmer sortie
+            </button>
+            <span *ngIf="request.status !== 'pending' && request.status !== 'approved_pending_exit' && !canApprove" class="no-action">Pas d'action</span>
           </td>
         </tr>
       </tbody>
     </table>
+  </div>
+</div>
+
+<!-- Modal Confirmation de Sortie (Responsable de stock) -->
+<div class="approval-modal-overlay" *ngIf="selectedRequestForExit" (click)="closeExitModal()">
+  <div class="approval-modal" (click)="$event.stopPropagation()">
+    <h3>Confirmation de remise physique</h3>
+    <p class="modal-intro">
+      Vous confirmez la sortie de : <strong>{{ selectedRequestForExit.item_name }}</strong> (Qté : {{ selectedRequestForExit.approved_quantity }})
+    </p>
+
+    <div class="form-group" style="margin-top: 1.5rem;">
+      <label for="exit_depot">Dépôt source :</label>
+      <select id="exit_depot" [(ngModel)]="selectedDepot" (change)="onDepotChange()" class="modern-select">
+        <option [ngValue]="null" disabled>Sélectionner le dépôt...</option>
+        <option *ngFor="let depot of depotsList" [ngValue]="depot">
+          {{ depot.name }}
+        </option>
+      </select>
+    </div>
+
+    <div class="form-group" *ngIf="selectedDepot">
+      <label for="exit_salle">Salle :</label>
+      <select id="exit_salle" [(ngModel)]="selectedSalle" (change)="onSalleChange()" class="modern-select">
+        <option [ngValue]="null" disabled>Sélectionner la salle...</option>
+        <option *ngFor="let salle of sallesList" [ngValue]="salle">
+          {{ salle.name }}
+        </option>
+      </select>
+    </div>
+
+    <div class="form-group" *ngIf="selectedSalle">
+      <label for="exit_emplacement">Emplacement / Armoire précis :</label>
+      <select id="exit_emplacement" [(ngModel)]="selectedEmplacement" (change)="onEmplacementChange()" class="modern-select">
+        <option [ngValue]="null" disabled>Choisir l'emplacement/armoire...</option>
+        <optgroup label="Emplacements">
+          <option *ngFor="let loc of locationsList" [ngValue]="loc">{{ loc.code || loc.name }}</option>
+        </optgroup>
+        <optgroup label="Armoires">
+          <option *ngFor="let cab of cabinetsList" [ngValue]="cab">{{ cab.code || cab.name }}</option>
+        </optgroup>
+      </select>
+    </div>
+    
+    <div *ngIf="exitSourceStocks.length === 0" class="form-group">
+      <small class="error-text">Aucun stock disponible pour ce produit.</small>
+    </div>
+
+    <div class="form-group readonly-group">
+      <label>Demandeur :</label>
+      <div class="readonly-value">{{ exitRequesterName }}</div>
+    </div>
+
+    <div class="form-group">
+      <label for="exit_local">Local / Société (Destination finale) :</label>
+      <input id="exit_local" type="text" [(ngModel)]="exitLocalText" placeholder="Ex: Bureau 102, Société ABC...">
+    </div>
+
+    <div class="form-group">
+      <label for="exit_motif">Observations (facultatif) :</label>
+      <input id="exit_motif" type="text" [(ngModel)]="exitMotif" placeholder="Notes additionnelles...">
+    </div>
+
+    <div class="modal-actions">
+      <button type="button" class="btn-confirm" [disabled]="confirmingExit || !exitSourceLocationId" (click)="confirmExitAction()">
+        {{ confirmingExit ? 'Mise à jour stock...' : 'Valider la sortie' }}
+      </button>
+      <button type="button" class="btn-cancel" (click)="closeExitModal()">Annuler</button>
+    </div>
   </div>
 </div>
 
@@ -227,6 +304,7 @@
         <div><strong>Reference:</strong> {{ selectedRequestDetails?.product?.reference || 'N/A' }}</div>
         <div><strong>Quantite demandee:</strong> {{ selectedRequestDetails?.requested_quantity }}</div>
         <div><strong>Statut:</strong> {{ selectedRequestDetails?.status }}</div>
+        <div *ngIf="selectedRequestDetails?.reject_reason"><strong>Motif de refus:</strong> <span style="color:var(--danger-color)">{{ selectedRequestDetails?.reject_reason }}</span></div>
       </div>
       <div class="item-actions" *ngIf="canEditFromDetails(selectedRequestDetails)">
         <button class="btn-edit" (click)="editItemFromDetails(selectedRequestDetails)">Modifier</button>

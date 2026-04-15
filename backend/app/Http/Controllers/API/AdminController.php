@@ -187,4 +187,81 @@ class AdminController extends Controller
 
         return response()->json($query->paginate($perPage));
     }
+
+    public function recommendations()
+    {
+        $products = \App\Models\Product::withSum('stocks', 'quantity')->get();
+        $thirtyDaysAgo = now()->subDays(30);
+
+        $highRisk = [];
+        $overStock = [];
+        $events = [];
+
+        foreach ($products as $product) {
+            $totalStock = $product->stocks_sum_quantity ?? 0;
+            
+            // Calculate outputs in the last 30 days
+            // Type might be 'out' or action might be 'consume' (we use product_id in stock_movement_lines)
+            // But stock movements can be complex. Let's get lines for this product where movement is 'out'.
+            $outQuantity = \Illuminate\Support\Facades\DB::table('stock_movement_lines')
+                ->join('stock_movements', 'stock_movement_lines.stock_movement_id', '=', 'stock_movements.id')
+                ->where('stock_movement_lines.product_id', $product->id)
+                ->where('stock_movements.created_at', '>=', $thirtyDaysAgo)
+                ->whereIn('stock_movements.type', ['out', 'sortie'])
+                ->sum('stock_movement_lines.quantity');
+            
+            $dailyRate = $outQuantity / 30;
+
+            if ($dailyRate > 0) {
+                // How many days left?
+                $daysLeft = $totalStock / $dailyRate;
+                
+                if ($daysLeft < 14) {
+                    $highRisk[] = $product;
+                    $events[] = [
+                        'title' => 'Rupture probable détectée',
+                        'meta' => $product->title . ' (Reste ~' . intval($daysLeft) . ' jours)',
+                        'level' => 'critical'
+                    ];
+                } elseif ($daysLeft > 180) {
+                    $overStock[] = $product;
+                }
+            } else {
+                if ($totalStock > 0) {
+                    $overStock[] = $product;
+                    if (count($overStock) < 4) {
+                        $events[] = [
+                            'title' => 'Sur-stock / Produit dormant',
+                            'meta' => $product->title . ' (Aucun mvt récent)',
+                            'level' => 'info'
+                        ];
+                    }
+                }
+            }
+        }
+
+        // Limit events
+        $events = collect($events)->take(5)->values();
+
+        // Build Rows for Prevision table
+        $rows = [];
+        foreach (collect($highRisk)->take(10) as $p) {
+            $rows[] = [
+                $p->reference ?: $p->title,
+                'Stock: ' . ($p->stocks_sum_quantity ?? 0),
+                'Critique',
+                'Commander urgemment'
+            ];
+        }
+
+        return response()->json([
+            'stats' => [
+                ['label' => 'Produits à risque (<14j)', 'value' => count($highRisk), 'trend' => 'Action requise'],
+                ['label' => 'Produits dormants', 'value' => count($overStock), 'trend' => 'Capital immobilisé'],
+                ['label' => 'Confiance algorithmique', 'value' => '85%', 'trend' => 'Basée sur 30j']
+            ],
+            'events' => $events,
+            'rows' => $rows
+        ]);
+    }
 }

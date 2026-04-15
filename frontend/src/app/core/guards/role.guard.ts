@@ -11,6 +11,27 @@ export class RoleGuard implements CanActivate {
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
     const expected = route.data['roles'] as string[] | undefined;
 
+    // If there's no token, redirect to login immediately
+    if (!this.auth.isAuthenticated()) {
+      this.router.navigate(['/login']);
+      return of(false);
+    }
+
+    // If we already have the current user in memory, use it synchronously
+    const cachedUser = this.auth.getCurrentUserSnapshot();
+    if (cachedUser) {
+      if (!expected || expected.length === 0) {
+        return of(true);
+      }
+
+      const ok = this.auth.userHasAnyRole(cachedUser, expected);
+      if (!ok) {
+        this.router.navigate(['/admin']);
+      }
+      return of(ok);
+    }
+
+    // Fallback: call API to get current user (may still redirect on error)
     return this.auth.getCurrentUser().pipe(
       map(user => {
         if (!user) {
@@ -23,7 +44,6 @@ export class RoleGuard implements CanActivate {
         }
 
         const ok = this.auth.userHasAnyRole(user, expected);
-
         if (!ok) {
           this.router.navigate(['/admin']);
         }

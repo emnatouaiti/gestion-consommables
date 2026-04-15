@@ -36,7 +36,15 @@ export class ConsumableRequestService {
     return this.apiService.put(`${this.apiPath}/${id}/approve`, payload);
   }
 
-  rejectRequest(id: number): Observable<any> {
-    return this.apiService.put(`${this.apiPath}/${id}/reject`, {});
+  rejectRequest(id: number, reason?: string): Observable<any> {
+    return this.apiService.put(`${this.apiPath}/${id}/reject`, { reason });
+  }
+
+  confirmExit(id: number, data: any): Observable<any> {
+    return this.apiService.put(`${this.apiPath}/${id}/confirm-exit`, data);
+  }
+
+  getProductStocks(productId: number): Observable<any> {
+    return this.apiService.get(`admin/products/${productId}/stocks`);
   }
 }

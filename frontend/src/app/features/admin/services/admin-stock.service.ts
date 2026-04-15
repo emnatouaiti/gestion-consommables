@@ -108,6 +108,16 @@ export class AdminStockService {
     return this.api.get('admin/dashboard');
   }
 
+  getRecommendations(): Observable<any> {
+    return this.api.get('admin/recommendations');
+  }
+
+  downloadReport(type: 'stock' | 'movements'): Observable<Blob> {
+    return this.http.get(`${this.apiBase}/admin/reports/${type}`, {
+      responseType: 'blob'
+    });
+  }
+
   private toFormData(payload: any): FormData {
     const formData = new FormData();
 

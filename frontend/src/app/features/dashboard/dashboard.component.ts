@@ -12,6 +12,7 @@ import { AdminStockService } from '../admin/services/admin-stock.service';
 })
 export class DashboardComponent implements OnInit {
   isLoading = true;
+  isDownloadingReport = false;
   isBrowser: boolean;
   user: any = null;
 
@@ -220,5 +221,27 @@ export class DashboardComponent implements OnInit {
   logout() {
     this.authService.logout();
     this.router.navigate(['/login']);
+  }
+
+  downloadReport(type: 'stock' | 'movements') {
+    this.isDownloadingReport = true;
+    this.adminStockService.downloadReport(type).subscribe({
+      next: (blob: Blob) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `rapport_${type}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        this.isDownloadingReport = false;
+      },
+      error: (err) => {
+        console.error('Erreur tel', err);
+        this.isDownloadingReport = false;
+        alert('Erreur lors du telechargement du rapport.');
+      }
+    });
   }
 }

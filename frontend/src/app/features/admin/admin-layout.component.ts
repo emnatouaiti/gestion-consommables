@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
@@ -40,38 +40,16 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
     {
       title: 'Pilotage',
       items: [
-        { label: 'Tableau de bord', route: '/admin/dashboard', exact: true, badge: 'Live' }
+        { label: 'Tableau de bord', route: '/admin/dashboard', exact: true }
       ]
     },
     {
       title: 'Administration',
       items: [
-        { label: 'Utilisateurs', route: '/admin/users', exact: true },
-          { label: 'Mouvements de stock', route: '/admin/mouvements-stock' },
-        { label: 'Archives', route: '/admin/archived' },
-        { label: 'Gerer categories', route: '/admin/gerer-categories' },
-        { label: 'Gerer unites', route: '/admin/gerer-unites' },
-        { label: 'Gerer produits', route: '/admin/gerer-produits' },
-        { label: 'Gerer depots', route: '/admin/gerer-depots' },
-        { label: 'Gerer locaux', route: '/admin/gerer-locaux' },
-        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
-        { label: 'Consulter le journal d audit', route: '/admin/journal-audit' },
-        { label: 'Documents OCR', route: '/admin/documents-ocr' },
-        { label: 'Chat interne', route: '/admin/chat' },
-        { label: 'Mon Profil', route: '/admin/profile' }
-      ]
-    }
-  ];
-
-  private readonly directorSections: NavSection[] = [
-    {
-      title: 'Direction',
-      items: [
-        { label: 'Validation des demandes', route: '/admin/validation-demandes', exact: true, badge: 'Priorite' },
-        { label: 'Consulter tableaux de bord', route: '/admin/dashboard' },
-        { label: 'Consulter anomalies critiques', route: '/admin/anomalies-critiques' },
-        { label: 'Consulter previsions', route: '/admin/previsions' },
-        { label: 'Chat interne', route: '/admin/chat' }
+        { label: 'Utilisateurs', route: '/admin/users' },
+        { label: 'Archives Utilisateurs', route: '/admin/archived' },
+        { label: 'Gérer fournisseurs', route: '/admin/gerer-fournisseurs' },
+        { label: 'Journal d\'audit', route: '/admin/journal-audit' }
       ]
     },
     {
@@ -82,15 +60,61 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   ];
 
-  private readonly agentManagerSections: NavSection[] = [
+  private readonly managerSections: NavSection[] = [
     {
-      title: 'Operations',
+      title: 'Catalogue & Dépôts',
       items: [
-        { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
-        { label: 'Mouvements de stock', route: '/admin/mouvements-stock' },
-        { label: 'Gerer produits', route: '/admin/gerer-produits' },
-        { label: 'Gerer fournisseurs', route: '/admin/gerer-fournisseurs' },
-        { label: 'Chat interne', route: '/admin/chat' }
+        { label: 'Catégories', route: '/admin/gerer-categories' },
+        { label: 'Unités', route: '/admin/gerer-unites' },
+        { label: 'Produits', route: '/admin/gerer-produits' },
+        { label: 'Dépôts', route: '/admin/gerer-depots' },
+        // 'Locaux' hidden for Responsable de stock
+      ]
+    },
+    {
+      title: 'Opérations',
+      items: [
+        { label: 'Valider demandes', route: '/admin/validation-demandes' },
+        { label: 'Mouvements Stock', route: '/admin/mouvements-stock' },
+        { label: 'Import OCR', route: '/admin/documents-ocr' },
+        { label: 'Fournisseurs (Avis)', route: '/admin/gerer-fournisseurs' }
+      ]
+    },
+    {
+      title: 'Compte',
+      items: [
+        { label: 'Mon Profil', route: '/admin/profile' }
+      ]
+    }
+  ];
+
+  private readonly agentSections: NavSection[] = [
+    {
+      title: 'Opérations',
+      items: [
+        { label: 'Catalogue', route: '/admin/gerer-produits' },
+        { label: 'Dépôts', route: '/admin/gerer-depots' },
+        { label: 'Mouvements Stock', route: '/admin/mouvements-stock' },
+        { label: 'Import OCR', route: '/admin/documents-ocr' },
+        { label: 'Fournisseurs (Avis)', route: '/admin/gerer-fournisseurs' }
+      ]
+    },
+    {
+      title: 'Compte',
+      items: [
+        { label: 'Mon Profil', route: '/admin/profile' }
+      ]
+    }
+  ];
+
+  private readonly directorSections: NavSection[] = [
+    {
+      title: 'Direction',
+      items: [
+        { label: 'Tableau de bord', route: '/admin/dashboard' },
+        { label: 'Valider demandes', route: '/admin/validation-demandes', badge: 'Action' },
+        { label: 'Prévisions (IA)', route: '/admin/previsions' },
+        { label: 'Anomalies', route: '/admin/anomalies-critiques' }
       ]
     },
     {
@@ -103,11 +127,9 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly userSections: NavSection[] = [
     {
-      title: 'Espace utilisateur',
+      title: 'Espace Employé',
       items: [
-        { label: 'Demandes consommables', route: '/admin/demandes-consommables', exact: true },
-        { label: 'Tableau de bord', route: '/admin/dashboard' },
-        { label: 'Chat interne', route: '/admin/chat' }
+        { label: 'Mes Demandes', route: '/admin/demandes-consommables', exact: true }
       ]
     },
     {
@@ -122,7 +144,6 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
     {
       title: 'Navigation',
       items: [
-        { label: 'Tableau de bord', route: '/admin/dashboard', exact: true },
         { label: 'Mon Profil', route: '/admin/profile' }
       ]
     }
@@ -180,11 +201,15 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
       return this.directorSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Agent', 'Responsable', 'Gestionnaire'])) {
-      return this.agentManagerSections;
+    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock'])) {
+      return this.managerSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Agent de stock'])) {
+      return this.agentSections;
+    }
+
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
       return this.userSections;
     }
 
@@ -192,19 +217,27 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   get pageBreadcrumb(): string {
+    if (this.authService.userHasAnyRole(this.user, ['Administrateur'])) {
+      return 'Administration';
+    }
+
     if (this.authService.userHasAnyRole(this.user, ['Directeur', 'Validateur'])) {
       return 'Direction';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Agent', 'Responsable', 'Gestionnaire'])) {
-      return 'Operations';
+    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock'])) {
+      return 'Gestion de Stock';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur'])) {
-      return 'Espace Utilisateur';
+    if (this.authService.userHasAnyRole(this.user, ['Agent de stock'])) {
+      return 'Opérations Stock';
     }
 
-    return 'Administration';
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
+      return 'Espace Employé';
+    }
+
+    return 'Portail';
   }
 
   get userDisplayName(): string {

@@ -23,6 +23,7 @@ class Product extends Model
         'model',
         'marque',
         'seuil_min',
+        'seuil_max',
         'reference',
         'categorie_id',
         'stock_quantity',

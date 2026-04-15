@@ -24,7 +24,7 @@ class ConsumableRequestController extends Controller
     {
         $user = Auth::user();
 
-        if ($this->isDirectorUser($user)) {
+        if ($this->isDirectorUser($user) || $this->isStockManager($user)) {
             $requests = ConsumableRequest::with('user.roles', 'product')->latest()->get()
                 ->map(function (ConsumableRequest $request) {
                     $availableStock = $this->getAvailableStock($request);
@@ -276,77 +276,150 @@ class ConsumableRequestController extends Controller
         }
 
         DB::transaction(function () use ($consumableRequest, $approvedQuantity) {
-            $hasProductIdColumn = Schema::hasColumn('consumable_requests', 'product_id');
-            $productId = $hasProductIdColumn ? $consumableRequest->product_id : null;
-
-            if ($productId && $approvedQuantity > 0) {
-                $product = Product::findOrFail($productId);
-                $this->deductStock($product, $approvedQuantity);
-            }
-
             $consumableRequest->approved_quantity = $approvedQuantity;
-            $consumableRequest->status = 'approved';
+            $consumableRequest->status = 'approved_pending_exit';
             $consumableRequest->save();
 
-            // Create an outgoing stock movement representing this approval
-            if ($approvedQuantity > 0) {
-                $movement = \App\Models\StockMovement::create([
-                    'type' => 'out',
-                    'reference' => 'REQ-' . $consumableRequest->id,
-                    'created_by' => Auth::id(),
-                    'related_request_id' => $consumableRequest->id,
-                    'notes' => 'Sortie suite a approbation de demande',
-                ]);
+            // Notify responsables that this item awaits physical confirmation
+            try {
+                $responsables = User::query()
+                    ->where(function ($q) {
+                        $q->whereHas('roles', function ($rq) {
+                            $rq->whereRaw("LOWER(name) IN (?, ?)", ['responsable de stock', 'responsable']);
+                        })
+                        ->orWhereRaw("LOWER(role) IN (?, ?)", ['responsable de stock', 'responsable']);
+                    })
+                    ->get();
 
-                \App\Models\StockMovementLine::create([
-                    'stock_movement_id' => $movement->id,
-                    'product_id' => $productId,
-                    'quantity' => $approvedQuantity,
-                ]);
-                // Audit log for movement
-                try {
-                    AuditLog::create([
-                        'user_id' => Auth::id(),
-                        'action' => 'stock_movement.create',
-                        'description' => "Mouvement {$movement->id} cree suite approbation demande {$consumableRequest->id}",
-                        'ip_address' => request()->ip(),
-                        'user_agent' => request()->userAgent(),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('Failed to create audit log for stock movement (approve)', ['err' => $e->getMessage()]);
+                foreach ($responsables as $responsable) {
+                    $responsable->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest));
                 }
-
-                // Notify admins and request owner
-                try {
-                    $admins = User::whereHas('roles', function ($q) { $q->whereRaw("LOWER(name) = 'administrateur'"); })->get();
-                    foreach ($admins as $admin) {
-                        $admin->notify(new StockMovementNotification($movement));
-                    }
-
-                    if ($consumableRequest->user_id) {
-                        $owner = User::find($consumableRequest->user_id);
-                        if ($owner) {
-                            $owner->notify(new StockMovementNotification($movement));
-                        }
-                    }
-                } catch (\Throwable $e) {
-                    Log::error('Failed to send stock movement notifications (approve)', ['err' => $e->getMessage()]);
-                }
+            } catch (\Throwable $e) {
+                Log::error('Failed to notify responsables on approve', ['err' => $e->getMessage()]);
             }
         });
 
         return response()->json([
-            'message' => 'Request approved successfully.',
+            'message' => 'Demande approuvée. En attente de confirmation de sortie par le Responsable.',
             'request' => $consumableRequest->fresh(['user.roles', 'product']),
             'approved_quantity' => $approvedQuantity,
-            'max_allowed' => $maxAllowed,
             'suggested_approved_quantity' => $suggestion['quantity'],
             'suggestion_reason' => $suggestion['reason'],
         ]);
     }
 
+    // Confirmer la sortie (Responsable de stock uniquement)
+    public function confirmExit($id, Request $request)
+    {
+        $consumableRequest = ConsumableRequest::findOrFail($id);
+        $user = Auth::user();
+
+        if (!$this->isStockManager($user)) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
+        if ($consumableRequest->status !== 'approved_pending_exit') {
+            return response()->json(['message' => 'Cette demande n\'est pas en attente de sortie.'], 422);
+        }
+
+        $request->validate([
+            'source_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'source_cabinet_id' => 'nullable|exists:warehouse_cabinets,id',
+            'destination_text' => 'nullable|string|max:255',
+            'motif' => 'nullable|string|max:500',
+        ]);
+
+        $sourceLocationId = $request->input('source_warehouse_location_id');
+        $sourceCabinetId = $request->input('source_cabinet_id');
+        $destinationText = $request->input('destination_text') ?: $this->getRequesterName($consumableRequest->user);
+        $motif = $request->input('motif', 'Sortie confirmee suite validation Direction');
+
+        if (!$sourceLocationId && !$sourceCabinetId) {
+            return response()->json(['message' => 'Veuillez specifier un emplacement ou une armoire de sortie.'], 422);
+        }
+
+        DB::transaction(function () use ($consumableRequest, $user, $sourceLocationId, $sourceCabinetId, $destinationText, $motif) {
+            $productId = $consumableRequest->product_id;
+            $approvedQuantity = (int) $consumableRequest->approved_quantity;
+
+            if ($productId && $approvedQuantity > 0) {
+                $query = \App\Models\ProductStock::where('product_id', $productId);
+                
+                if ($sourceLocationId) {
+                    $query->where('warehouse_location_id', $sourceLocationId);
+                } else {
+                    $query->where('cabinet_id', $sourceCabinetId);
+                }
+
+                $stockRecord = $query->first();
+
+                if (!$stockRecord || (int)$stockRecord->quantity < $approvedQuantity) {
+                    throw ValidationException::withMessages([
+                        'source' => 'Stock insuffisant a la source selectionnee.'
+                    ]);
+                }
+
+                $stockRecord->quantity = (int)$stockRecord->quantity - $approvedQuantity;
+                $stockRecord->save();
+            }
+
+            $consumableRequest->status = 'approved';
+            $consumableRequest->save();
+
+            // Create the outgoing stock movement
+            if ($approvedQuantity > 0) {
+                $movement = StockMovement::create([
+                    'movement_type'     => 'out',
+                    'reference'        => 'REQ-' . $consumableRequest->id,
+                    'created_by'       => $user->id,
+                    'related_request_id' => $consumableRequest->id,
+                    'source_warehouse_location_id' => $sourceLocationId,
+                    'source_cabinet_id' => $sourceCabinetId,
+                    'motif'            => $motif,
+                    'destination_text' => $destinationText,
+                    'status'           => 'validated',
+                ]);
+
+                StockMovementLine::create([
+                    'stock_movement_id' => $movement->id,
+                    'product_id'        => $productId,
+                    'quantity'          => $approvedQuantity,
+                ]);
+
+                try {
+                    AuditLog::create([
+                        'user_id'    => $user->id,
+                        'action'     => 'stock_movement.create',
+                        'description' => "Sortie confirmee par responsable. Mouvement {$movement->id} pour demande {$consumableRequest->id}. Destination: {$destinationText}",
+                        'ip_address' => request()->ip(),
+                        'user_agent' => request()->userAgent(),
+                    ]);
+                } catch (\Throwable $e) {
+                    Log::error('Failed to create audit log for confirmExit', ['err' => $e->getMessage()]);
+                }
+
+                // Notify the requesting employee
+                try {
+                    if ($consumableRequest->user_id) {
+                        $owner = User::find($consumableRequest->user_id);
+                        if ($owner) {
+                            $owner->notify(new \App\Notifications\StockMovementNotification($movement));
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to notify owner on confirmExit', ['err' => $e->getMessage()]);
+                }
+            }
+        });
+
+        return response()->json([
+            'message' => 'Sortie confirmee. Stock mis a jour.',
+            'request' => $consumableRequest->fresh(['user.roles', 'product']),
+        ]);
+    }
+
     // Rejeter une demande (directeur uniquement)
-    public function reject($id)
+    public function reject($id, Request $request)
     {
         $consumableRequest = ConsumableRequest::findOrFail($id);
         $approver = Auth::user();
@@ -355,7 +428,14 @@ class ConsumableRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
+        $request->validate([
+            'reason' => 'nullable|string|max:1000'
+        ]);
+
         $consumableRequest->status = 'rejected';
+        if (Schema::hasColumn('consumable_requests', 'reject_reason')) {
+            $consumableRequest->reject_reason = $request->input('reason');
+        }
         $consumableRequest->save();
 
         return response()->json(['message' => 'Request rejected successfully.']);
@@ -612,6 +692,12 @@ class ConsumableRequestController extends Controller
             || in_array(Str::lower((string) ($user?->role ?? '')), ['directeur', 'durecteur', 'director'], true);
     }
 
+    private function isStockManager(?User $user): bool
+    {
+        return $this->userHasAnyRole($user, ['responsable de stock', 'responsable', 'agent de stock', 'agent'])
+            || in_array(Str::lower((string) ($user?->role ?? '')), ['responsable de stock', 'responsable', 'agent de stock', 'agent'], true);
+    }
+
     private function isStockBelowThreshold(?int $availableStock, ?int $threshold, int $requested): bool
     {
         if ($availableStock === null) {
@@ -635,6 +721,10 @@ class ConsumableRequestController extends Controller
 
         if ($statuses->contains('rejected')) {
             return 'rejected';
+        }
+
+        if ($statuses->contains('approved_pending_exit')) {
+            return 'approved_pending_exit';
         }
 
         if ($statuses->every(fn ($s) => $s === 'approved')) {

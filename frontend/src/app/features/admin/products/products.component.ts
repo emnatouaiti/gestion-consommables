@@ -5,6 +5,7 @@ import { AdminStockService } from '../services/admin-stock.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { UnitService } from '../../../core/services/unit.service';
+import { AuthService } from '../../../core/services/auth.service';
 import JsBarcode from 'jsbarcode';
 
 @Component({
@@ -68,8 +69,15 @@ export class ProductsComponent implements OnInit {
     private readonly unitService: UnitService,
     private readonly cdr: ChangeDetectorRef,
     private readonly router: Router,
+    private readonly authService: AuthService,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) { }
+
+  /** Responsable de stock can write (create/update/delete). Agent can only read. */
+  get canWrite(): boolean {
+    const user = this.authService.getCurrentUserSnapshot();
+    return this.authService.userHasAnyRole(user, ['Responsable de stock', 'Administrateur']);
+  }
 
   ngOnInit(): void {
     this.loadWarehouses();
@@ -165,6 +173,7 @@ export class ProductsComponent implements OnInit {
       model: '',
       marque: '',
       seuil_min: 0,
+      seuil_max: null as number | null,
       reference: '',
       categorie_id: null as number | null,
       // Kept for compatibility with existing product listing & stock/location features.
@@ -186,11 +195,16 @@ export class ProductsComponent implements OnInit {
     this.isLoading = true;
     this.errorMessage = '';
 
+    if (!this.canWrite) {
+      // Agent can only read products - skip the categories API which is restricted to Responsable
+      this.loadProducts();
+      return;
+    }
+
     this.stockService.listCategories({ tree: true }).subscribe({
       next: (cats) => {
         this.categories = Array.isArray(cats) ? cats : [];
         this.flatCategories = this.flattenTree(this.categories);
-        // this.loadOverview(); // Route n'existe pas dans l'API
         this.loadProducts();
         this.cdr.detectChanges();
       },
@@ -270,6 +284,7 @@ export class ProductsComponent implements OnInit {
       model: item.model || '',
       marque: item.marque || '',
       seuil_min: item.seuil_min || 0,
+      seuil_max: item.seuil_max || null,
       reference: item.reference || '',
       categorie_id: item.categorie_id ?? null,
       stock_quantity: null,
@@ -327,6 +342,7 @@ export class ProductsComponent implements OnInit {
       model: (this.form.model || '').trim(),
       marque: (this.form.marque || '').trim(),
       seuil_min: Number(this.form.seuil_min || 0),
+      seuil_max: this.form.seuil_max ? Number(this.form.seuil_max) : null,
       reference: (this.form.reference || '').trim(),
       categorie_id: Number(this.form.categorie_id),
       purchase_price: this.form.purchase_price === null ? null : Number(this.form.purchase_price),
@@ -502,7 +518,7 @@ export class ProductsComponent implements OnInit {
     if (!path) return 'assets/default-avatar.svg';
     if (path.startsWith('http')) return path;
     const cleanPath = path.replace(/^\/+/, '');
-    return `http://localhost:8000/storage/${cleanPath}`;
+    return `/storage/${cleanPath}`;
   }
 
   productThumb(product: any): string {

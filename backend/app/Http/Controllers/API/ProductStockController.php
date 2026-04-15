@@ -81,7 +81,7 @@ class ProductStockController extends Controller
             $locationName = null;
             $storageType = 'location';
 
-            if ($stock->warehouseLocation_id && $stock->warehouseLocation) {
+            if ($stock->warehouse_location_id && $stock->warehouseLocation) {
                 $locationCode = $stock->warehouseLocation->code;
                 $locationName = $stock->warehouseLocation->name;
                 $storageType = 'location';

@@ -212,7 +212,7 @@ export class ProductStocksComponent implements OnInit {
         const arr = Array.isArray(docs) ? docs : [];
         const title = (this.product?.title || '').toString().toLowerCase();
         this.productDocuments = arr.filter((d: any) => {
-          if (this.productId && d.product_id === this.productId) return true;
+          if (this.productId && d.product_id == this.productId) return true;
           const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
           return title && lines.some((l: any) => (l.title || '').toString().toLowerCase().includes(title));
         });
@@ -225,7 +225,8 @@ export class ProductStocksComponent implements OnInit {
   downloadDoc(doc: any): void {
     const path = doc?.path;
     if (!path) return;
-    const url = 'http://localhost:8000/storage/' + path;
+    const clean = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
+    const url = `/api/docs/${clean}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = doc?.title || 'document';

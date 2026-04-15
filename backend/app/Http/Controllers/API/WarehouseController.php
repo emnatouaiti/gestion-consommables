@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Warehouse;
+use App\Models\ProductStock;
 use Illuminate\Http\Request;
 
 class WarehouseController extends Controller
@@ -80,29 +81,71 @@ class WarehouseController extends Controller
 
     public function getProducts(Warehouse $warehouse)
     {
-        // Get all products in this warehouse through warehouse locations
-        return $warehouse->load([
+        // 1) Products directly assigned to locations (legacy behaviour)
+        $locationProducts = $warehouse->load([
             'rooms' => function ($q) {
-            $q->with([
+                $q->with([
                     'locations' => function ($l) {
-                $l->with('products.category');
-            }
+                        $l->with('products.category');
+                    }
                 ]);
-        }
+            }
         ])->rooms->flatMap(function ($room) {
             return $room->locations->flatMap(function ($location) {
-                    return $location->products->map(function ($product) use ($location) {
-                            return array_merge($product->toArray(), [
-                                'location_id' => $location->id,
-                                'location_code' => $location->code,
-                                'location_name' => $location->name,
-                                'room_id' => $location->warehouse_room_id,
-                                'room_name' => $location->warehouse_room ? $location->warehouse_room->name : ''
-                            ]);
-                        }
-                        );
-                    }
-                    );
-                })->values();
+                return $location->products->map(function ($product) use ($location) {
+                    return array_merge($product->toArray(), [
+                        'location_id' => $location->id,
+                        'location_code' => $location->code,
+                        'location_name' => $location->name,
+                        'room_id' => $location->warehouse_room_id,
+                        'room_name' => $location->warehouse_room ? $location->warehouse_room->name : ''
+                    ]);
+                });
+            });
+        })->values();
+
+        // 2) Products present in product_stocks tied to this warehouse (locations or cabinets)
+        $stockEntries = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse')
+            ->get()
+            ->filter(function ($s) use ($warehouse) {
+                $room = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
+                $wh = $room?->warehouse ?? null;
+                return $wh && $wh->id === $warehouse->id;
+            });
+
+        $stockProducts = $stockEntries->map(function ($s) {
+            $product = $s->product;
+            $room = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
+            $location = $s->warehouseLocation ?? $s->warehouseCabinet ?? null;
+
+            return array_merge($product->toArray(), [
+                'location_id' => $location?->id,
+                'location_code' => $location?->code,
+                'location_name' => $location?->name,
+                'room_id' => $room?->id,
+                'room_name' => $room?->name,
+                'stock_quantity' => $s->quantity,
+            ]);
+        })->values();
+
+        // Merge both lists keyed by product id to avoid duplicates, prefer locationProducts data
+        $merged = collect([]);
+        foreach ($locationProducts as $p) {
+            $merged->put($p['id'], $p);
+        }
+        foreach ($stockProducts as $p) {
+            if (!$merged->has($p['id'])) {
+                $merged->put($p['id'], $p);
+            } else {
+                // ensure stock_quantity is present
+                $existing = $merged->get($p['id']);
+                if (empty($existing['stock_quantity']) && !empty($p['stock_quantity'])) {
+                    $existing['stock_quantity'] = $p['stock_quantity'];
+                    $merged->put($p['id'], $existing);
+                }
+            }
+        }
+
+        return $merged->values();
     }
 }

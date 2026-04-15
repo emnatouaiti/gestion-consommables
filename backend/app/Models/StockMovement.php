@@ -21,8 +21,13 @@ class StockMovement extends Model
         'validated_by',
         'cancel_reason',
         'source_warehouse_location_id',
+        'source_cabinet_id',
         'destination_warehouse_location_id',
+        'destination_cabinet_id',
         'supplier_id',
+        'supplier_contact_id',
+        'motif',
+        'destination_text',
         'document_id',
         'in_image_path',
         'out_image_path',
@@ -61,6 +66,11 @@ class StockMovement extends Model
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');
+    }
+
+    public function supplierContact(): BelongsTo
+    {
+        return $this->belongsTo(SupplierContact::class, 'supplier_contact_id');
     }
 
     public function document(): BelongsTo

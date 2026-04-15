@@ -27,10 +27,14 @@ export class AuthService {
         }
 
         const token = localStorage.getItem(this.TOKEN_KEY);
+        try { console.debug('[AuthService] loadUser token:', token); } catch (e) {}
         if (token) {
             this.apiService.get('user').subscribe({
                 next: (user) => this.currentUser.set(user),
-                error: () => this.logout()
+                error: () => {
+                    try { console.debug('[AuthService] loadUser failed, logging out'); } catch (e) {}
+                    this.logout();
+                }
             });
         }
     }
@@ -70,8 +74,17 @@ export class AuthService {
     handleGoogleCallback(token: string) {
         if (isPlatformBrowser(this.platformId)) {
             localStorage.setItem(this.TOKEN_KEY, token);
-            this.loadUser();
-            this.router.navigate(['/admin']);
+            // fetch user immediately then navigate according to role
+            this.apiService.get('user').subscribe({
+                next: (user) => {
+                    this.currentUser.set(user);
+                    this.router.navigate([this.resolvePostLoginRoute(user)]);
+                },
+                error: () => {
+                    // if fetching user fails, fallback to admin root
+                    this.router.navigate(['/login']);
+                }
+            });
         }
     }
 
@@ -106,7 +119,22 @@ export class AuthService {
     }
 
     private resolvePostLoginRoute(user: any): string {
-        return '/admin';
+        if (!user) return '/login';
+
+        if (this.userHasAnyRole(user, ['Administrateur'])) {
+            return '/admin/dashboard';
+        }
+
+        if (this.userHasAnyRole(user, ['Directeur', 'Validateur'])) {
+            return '/admin/validation-demandes';
+        }
+
+        if (this.userHasAnyRole(user, ['Agent', 'Responsable', 'Gestionnaire'])) {
+            return '/admin/demandes-consommables';
+        }
+
+        // Default for plain users
+        return '/admin/demandes-consommables';
     }
 
     private setSession(authResult: any) {
@@ -114,6 +142,7 @@ export class AuthService {
             localStorage.setItem(this.TOKEN_KEY, authResult.token);
         }
 
+        try { console.debug('[AuthService] setSession token:', authResult.token, 'user:', authResult.user); } catch (e) {}
         this.currentUser.set(authResult.user);
         this.router.navigate([this.resolvePostLoginRoute(authResult.user)]);
     }

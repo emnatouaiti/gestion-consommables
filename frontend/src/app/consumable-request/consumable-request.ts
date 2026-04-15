@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } 
 import { ActivatedRoute } from '@angular/router';
 import { ConsumableRequestService } from '../services/consumable-request.service';
 import { AuthService } from '../core/services/auth.service';
+import { AdminWarehouseService } from '../features/admin/services/admin-warehouse.service';
 
 @Component({
   selector: 'app-consumable-request',
@@ -29,6 +30,22 @@ export class ConsumableRequestComponent implements OnInit {
   modalApprovedQuantity = 0;
   approving = false;
   canEditDeleteOwnRequests = false;
+  isResponsable = false;
+  selectedRequestForExit: any = null;
+  exitSourceStocks: any[] = [];
+  exitSourceLocationId: number | null = null;
+  exitMotif = '';
+  exitRequesterName = '';
+  exitLocalText = '';
+  confirmingExit = false;
+
+  selectedDepot: any = null;
+  selectedSalle: any = null;
+  selectedEmplacement: any = null;
+  depotsList: any[] = [];
+  sallesList: any[] = [];
+  locationsList: any[] = [];
+  cabinetsList: any[] = [];
   requestModalOpen = false;
   requestModalEditMode = false;
   editingRequestId: number | null = null;
@@ -45,6 +62,7 @@ export class ConsumableRequestComponent implements OnInit {
     private authService: AuthService,
     private route: ActivatedRoute,
     private readonly cdr: ChangeDetectorRef,
+    private readonly adminWarehouseService: AdminWarehouseService,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) {
     this.form = this.formBuilder.group({
@@ -452,7 +470,12 @@ export class ConsumableRequestComponent implements OnInit {
       return;
     }
 
-    this.consumableRequestService.rejectRequest(id).subscribe({
+    const reason = prompt('Saisissez le motif du refus (optionnel mais recommande) :');
+    if (reason === null) {
+      return; // cancelled
+    }
+
+    this.consumableRequestService.rejectRequest(id, reason).subscribe({
       next: () => {
         this.message = 'Demande rejetee.';
         this.loadRequests();
@@ -484,9 +507,10 @@ export class ConsumableRequestComponent implements OnInit {
 
   private resolveAccessRights(user: any): void {
     const isDirector = this.isDirectorUser(user);
+    this.isResponsable = this.authService.userHasAnyRole(user, ['Responsable de stock', 'Responsable', 'Agent de stock', 'Agent', 'Administrateur']);
     this.canApprove = this.viewMode === 'validation' && isDirector;
     this.canCreateRequest = this.viewMode === 'request';
-    this.canEditDeleteOwnRequests = this.viewMode === 'request' && !isDirector;
+    this.canEditDeleteOwnRequests = this.viewMode === 'request';
   }
 
   private isDirectorUser(user: any): boolean {
@@ -504,4 +528,200 @@ export class ConsumableRequestComponent implements OnInit {
     return byRoleRelation || aliases.includes(poste) || aliases.includes(legacyRole);
   }
 
+  openExitModal(request: any): void {
+    const item = (request.items && request.items.length === 1) ? request.items[0] : request;
+    this.selectedRequestForExit = item;
+    this.exitSourceLocationId = null; // This will hold the stock record ID or we can use it for location_id
+    this.selectedDepot = null;
+    this.selectedSalle = null;
+    this.selectedEmplacement = null;
+    this.exitMotif = 'Sortie confirmée suite validation Direction';
+    this.exitRequesterName = request.requester_name || (request.user?.nomprenom || request.user?.name || '');
+    this.exitLocalText = '';
+    this.exitSourceStocks = [];
+    this.depotsList = [];
+    this.sallesList = [];
+    this.locationsList = [];
+    this.cabinetsList = [];
+    if (item.product_id) {
+      this.consumableRequestService.getProductStocks(item.product_id).subscribe({
+        next: (res: any) => {
+          this.exitSourceStocks = (res || []).filter((s: any) => s.quantity > 0);
+          // Debug: log the stocks payload to help diagnose missing depot data
+          // (remove or guard in production).
+          // eslint-disable-next-line no-console
+          console.debug('getProductStocks -> exitSourceStocks', this.exitSourceStocks);
+          // Do not auto-select the location even if there's only one option.
+          // The responsable must explicitly choose depot -> salle -> emplacement/armoire.
+          this.cdr.detectChanges();
+        },
+        error: () => { this.message = 'Erreur lors du chargement des stocks par emplacement.'; }
+      });
+    }
+
+    // Load real lists from DB
+    this.loadDepots();
+    }
+  }
+
+  closeExitModal(): void {
+    this.selectedRequestForExit = null;
+    this.exitSourceStocks = [];
+  }
+
+  confirmExitAction(): void {
+    if (!this.selectedRequestForExit || !this.selectedDepot || !this.selectedSalle || !this.selectedEmplacement) {
+      this.message = "Erreur : Sélectionnez le dépôt, la salle et l'emplacement/armoire."; return;
+    }
+    this.confirmingExit = true;
+    
+    // Determine if it's a location or cabinet
+    const selectedStock = this.exitSourceStocks.find(s => s.warehouse_location_id === this.exitSourceLocationId || s.cabinet_id === this.exitSourceLocationId);
+    
+    const payload: any = {
+      motif: this.exitMotif,
+      destination_text: this.exitRequesterName + (this.exitLocalText ? ' - ' + this.exitLocalText : '')
+    };
+
+    if (selectedStock?.warehouse_location_id) {
+      payload.source_warehouse_location_id = selectedStock.warehouse_location_id;
+    } else if (selectedStock?.cabinet_id) {
+      payload.source_cabinet_id = selectedStock.cabinet_id;
+    }
+
+    this.consumableRequestService.confirmExit(this.selectedRequestForExit.id, payload).subscribe({
+      next: () => {
+        this.message = 'Sortie confirmée avec succès !';
+        this.confirmingExit = false;
+        this.closeExitModal();
+        this.loadRequests();
+      },
+      error: (err) => {
+        this.message = 'Erreur lors de la confirmation : ' + (err.error?.message || 'Inconnue');
+        this.confirmingExit = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getLocationName(s: any): string {
+    const room = s.warehouseLocation?.room || s.warehouseCabinet?.room || {};
+    const wh = room.warehouse || {};
+    const whName = wh.name || 'Dépôt';
+    const roomName = room.name || 'Salle';
+    
+    if (s.cabinet_id) {
+      return `Armoire: ${s.warehouseCabinet?.code || s.cabinet_id} (Dispo: ${s.quantity})`;
+    }
+    return `${s.warehouseLocation?.name || s.warehouseLocation?.code || 'Emplacement'} (Dispo: ${s.quantity})`;
+  }
+
+  get availableDepots() {
+    const depotsMap = new Map<number, any>();
+    for (const s of this.exitSourceStocks) {
+      // Support multiple possible response shapes from the API
+      let wh: any = null;
+
+      const room = s.warehouseLocation?.room || s.warehouseCabinet?.room || null;
+      if (room && room.warehouse) wh = room.warehouse;
+
+      // fallback: direct warehouse object on stock
+      if (!wh && s.warehouse) wh = s.warehouse;
+
+      // fallback: id + optional name
+      if (!wh && (s.warehouse_id || s.warehouseId)) {
+        wh = { id: s.warehouse_id || s.warehouseId, name: s.warehouse_name || s.warehouseName || `Dépôt ${s.warehouse_id || s.warehouseId}` };
+      }
+
+      if (!wh && s.warehouseLocation?.warehouse) wh = s.warehouseLocation.warehouse;
+
+      if (wh && wh.id && !depotsMap.has(Number(wh.id))) {
+        depotsMap.set(Number(wh.id), wh);
+      }
+    }
+    return Array.from(depotsMap.values());
+  }
+
+  get availableSalles() {
+    if (!this.selectedDepot) return [];
+    const sallesMap = new Map();
+    for (const s of this.exitSourceStocks) {
+      const room = s.warehouseLocation?.room || s.warehouseCabinet?.room || {};
+      const wh = room.warehouse;
+      if (wh && wh.id === this.selectedDepot.id && room.id && !sallesMap.has(room.id)) {
+        sallesMap.set(room.id, room);
+      }
+    }
+    return Array.from(sallesMap.values());
+  }
+
+  get availableEmplacements() {
+    if (!this.selectedSalle) return [];
+    return this.exitSourceStocks.filter(s => {
+      const room = s.warehouseLocation?.room || s.warehouseCabinet?.room || {};
+      return room.id === this.selectedSalle.id;
+    });
+  }
+
+  onDepotChange() {
+    this.selectedSalle = null;
+    this.selectedEmplacement = null;
+    this.exitSourceLocationId = null;
+    this.sallesList = [];
+    this.locationsList = [];
+    this.cabinetsList = [];
+    if (this.selectedDepot && this.selectedDepot.id) {
+      this.adminWarehouseService.listRooms(this.selectedDepot.id).subscribe({
+        next: (res: any) => {
+          this.sallesList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+          this.cdr.detectChanges();
+        },
+        error: () => { this.sallesList = []; }
+      });
+    }
+  }
+
+  onSalleChange() {
+    this.selectedEmplacement = null;
+    this.exitSourceLocationId = null;
+    this.locationsList = [];
+    this.cabinetsList = [];
+    if (this.selectedSalle && this.selectedSalle.id) {
+      this.adminWarehouseService.listLocations(this.selectedSalle.id).subscribe({
+        next: (res: any) => {
+          this.locationsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+          this.cdr.detectChanges();
+        },
+        error: () => { this.locationsList = []; }
+      });
+      this.adminWarehouseService.listCabinets(this.selectedSalle.id).subscribe({
+        next: (res: any) => {
+          this.cabinetsList = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+          this.cdr.detectChanges();
+        },
+        error: () => { this.cabinetsList = []; }
+      });
+    }
+  }
+
+  onEmplacementChange() {
+    if (!this.selectedEmplacement) { this.exitSourceLocationId = null; return; }
+    // selectedEmplacement may be a location or a cabinet
+    this.exitSourceLocationId = this.selectedEmplacement.warehouse_location_id || this.selectedEmplacement.cabinet_id || this.selectedEmplacement.id || null;
+  }
+
+  loadDepots() {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.adminWarehouseService.listWarehouses().subscribe({
+      next: (res: any) => {
+        // Debug response shape
+        // eslint-disable-next-line no-console
+        console.debug('listWarehouses response', res);
+        const data = Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []);
+        this.depotsList = data;
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => { this.depotsList = []; /* eslint-disable-next-line no-console */ console.error('Error loading depots', err); }
+    });
+  }
 }

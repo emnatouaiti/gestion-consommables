@@ -1,4 +1,4 @@
-﻿<div class="products-page">
+<div class="products-page">
   <!-- Header -->
   <div class="page-header">
     <div class="header-left">
@@ -139,7 +139,8 @@
             <th>Fournisseur</th>
             <th>Emplacement</th>
             <th>Stock</th>
-            <th>Seuil</th>
+            <th>Seuil Min</th>
+            <th>Seuil Max</th>
             <th>Code-barres</th>
             <th>Statut</th>
             <th>Actions</th>
@@ -176,6 +177,7 @@
             </td>
             <td><span class="stock-badge" [ngClass]="getStockStatus(p)">{{ p.stock_quantity }}</span></td>
             <td>{{ p.seuil_min }}</td>
+            <td>{{ p.seuil_max || '-' }}</td>
             <td><img class="barcode-img" [src]="barcodeImage(p.barcode_value || p.reference)" alt="" /></td>
             <td><span class="status-badge" [ngClass]="p.status">{{ p.status }}</span></td>
             <td>
@@ -231,10 +233,8 @@
           </div>
         </div>
         <div class="form-row triple">
-          <div class="field"><label>Seuil min</label><input type="number" [(ngModel)]="form.seuil_min"
-              placeholder="0" /></div>
-          <div class="field"><label>Prix d'achat</label><input type="number" [(ngModel)]="form.purchase_price"
-              placeholder="0.00" /></div>
+          <div class="field"><label>Seuil min *</label><input type="number" [(ngModel)]="form.seuil_min" placeholder="0" /></div>
+          <div class="field"><label>Seuil max</label><input type="number" [(ngModel)]="form.seuil_max" placeholder="0" /></div>
           <div class="field"><label>Unité</label>
             <select [(ngModel)]="form.unit_id">
               <option [ngValue]="null">Sélectionner...</option>

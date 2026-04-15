@@ -36,6 +36,15 @@ export class StockMovementService {
   }
 
   create(payload: any): Observable<any> {
+    // If this is an entry movement, ask the API to create missing warehouse product records.
+    try {
+      const type = payload?.movement_type || payload?.type || '';
+      if (String(type).toLowerCase() === 'entry') {
+        payload.create_if_missing = true;
+      }
+    } catch (e) {
+      // ignore
+    }
     return this.api.post(this.apiPath, payload);
   }
 

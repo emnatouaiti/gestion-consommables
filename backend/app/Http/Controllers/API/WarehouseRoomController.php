@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\WarehouseRoom;
 use App\Models\Warehouse;
 use App\Models\WarehouseLocation;
+use App\Models\ProductStock;
 use Illuminate\Http\Request;
 
 class WarehouseRoomController extends Controller
@@ -78,9 +79,10 @@ class WarehouseRoomController extends Controller
             'locations.products.category',
         ]);
 
-        $products = $room->locations->flatMap(function ($location) use ($room) {
+        // 1) Products directly assigned to locations (legacy)
+        $locationProducts = $room->locations->flatMap(function ($location) use ($room) {
             return $location->products->map(function ($product) use ($location, $room) {
-                    return array_merge($product->toArray(), [
+                return array_merge($product->toArray(), [
                     'location_id' => $location->id,
                     'location_code' => $location->code,
                     'location_name' => $location->name,
@@ -88,15 +90,56 @@ class WarehouseRoomController extends Controller
                     'room_name' => $room->name,
                     'warehouse_id' => $room->warehouse_id,
                     'warehouse_name' => $room->warehouse ? $room->warehouse->name : '',
-                    ]);
+                ]);
+            });
+        })->values();
+
+        // 2) Products present in product_stocks tied to this room (locations or cabinets)
+        $stockEntries = ProductStock::with('product', 'warehouseLocation.room', 'warehouseCabinet.room')
+            ->get()
+            ->filter(function ($s) use ($room) {
+                $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
+                return $roomRef && $roomRef->id === $room->id;
+            });
+
+        $stockProducts = $stockEntries->map(function ($s) use ($room) {
+            $product = $s->product;
+            $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
+            $location = $s->warehouseLocation ?? $s->warehouseCabinet ?? null;
+
+            return array_merge($product->toArray(), [
+                'location_id' => $location?->id,
+                'location_code' => $location?->code,
+                'location_name' => $location?->name,
+                'room_id' => $room->id,
+                'room_name' => $room->name,
+                'warehouse_id' => $room->warehouse_id,
+                'warehouse_name' => $room->warehouse ? $room->warehouse->name : '',
+                'stock_quantity' => $s->quantity,
+            ]);
+        })->values();
+
+        // Merge both lists keyed by product id to avoid duplicates
+        $merged = collect([]);
+        foreach ($locationProducts as $p) {
+            $merged->put($p['id'], $p);
+        }
+        foreach ($stockProducts as $p) {
+            if (!$merged->has($p['id'])) {
+                $merged->put($p['id'], $p);
+            } else {
+                $existing = $merged->get($p['id']);
+                if (empty($existing['stock_quantity']) && !empty($p['stock_quantity'])) {
+                    $existing['stock_quantity'] = $p['stock_quantity'];
+                    $merged->put($p['id'], $existing);
                 }
-                );
-            })->values();
+            }
+        }
 
         return response()->json([
             'room' => $room->only('id', 'name', 'type'),
             'warehouse' => $room->warehouse ? $room->warehouse->only('id', 'name', 'city') : null,
-            'products' => $products,
+            'products' => $merged->values(),
         ]);
     }
 }

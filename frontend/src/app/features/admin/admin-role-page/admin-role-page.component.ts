@@ -1,5 +1,6 @@
-﻿import { Component, OnInit } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
+import { AdminStockService } from '../services/admin-stock.service';
 
 interface StatItem {
   label: string;
@@ -204,12 +205,25 @@ export class AdminRolePageComponent implements OnInit {
 
   config: WorkspaceConfig = this.configMap['welcome'];
 
-  constructor(private route: ActivatedRoute) {}
+  constructor(private route: ActivatedRoute, private adminStockService: AdminStockService) {}
 
   ngOnInit(): void {
     this.route.data.subscribe((data) => {
       this.view = data['view'] || 'welcome';
       this.config = this.configMap[this.view] || this.configMap['welcome'];
+
+      if (this.view === 'previsions') {
+        this.adminStockService.getRecommendations().subscribe({
+          next: (res: any) => {
+            this.configMap['previsions'].stats = res.stats;
+            this.configMap['previsions'].events = res.events;
+            this.configMap['previsions'].rows = res.rows;
+            // Trigger UI update
+            this.config = this.configMap['previsions'];
+          },
+          error: (err) => console.error('Erreur previsions', err)
+        });
+      }
     });
   }
 

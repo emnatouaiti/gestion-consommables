@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\API\AdminController;
+use App\Http\Controllers\API\ReportController;
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\CategoryController;
 use App\Http\Controllers\API\PasswordResetController;
@@ -95,9 +96,10 @@ Route::prefix('api')->group(function () {
             Route::delete('/{id}', [ConsumableRequestController::class, 'destroy']);
             Route::put('/{id}/approve', [ConsumableRequestController::class, 'approve']);
             Route::put('/{id}/reject', [ConsumableRequestController::class, 'reject']);
+            Route::put('/{id}/confirm-exit', [ConsumableRequestController::class, 'confirmExit']);
         });
         // Stock movements endpoints
-        Route::prefix('stock-movements')->middleware('role:Administrateur')->group(function () {
+        Route::prefix('stock-movements')->middleware('role:Agent de stock|Responsable de stock')->group(function () {
             Route::get('/', [\App\Http\Controllers\StockMovementController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\StockMovementController::class, 'store']);
             Route::get('/{id}', [\App\Http\Controllers\StockMovementController::class, 'show']);
@@ -117,105 +119,133 @@ Route::prefix('api')->group(function () {
         });
     });
 
-    Route::middleware(['auth:sanctum', 'role:Administrateur'])->group(function () {
-        Route::get('admin/dashboard', [AdminController::class, 'dashboard']);
-        Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
+    Route::middleware(['auth:sanctum'])->group(function () {
+        // Section: ADMIN ONLY
+        Route::middleware('role:Administrateur')->group(function () {
+            Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
+            
+            Route::get('admin/users', [UserManagementController::class, 'index']);
+            Route::post('admin/users', [UserManagementController::class, 'store']);
+            Route::get('admin/users/{id}', [UserManagementController::class, 'show']);
+            Route::put('admin/users/{id}', [UserManagementController::class, 'update']);
+            Route::delete('admin/users/{id}', [UserManagementController::class, 'destroy']);
+            Route::post('admin/users/{id}/restore', [UserManagementController::class, 'restore']);
+            Route::delete('admin/users/{id}/force', [UserManagementController::class, 'forceDestroy']);
+            Route::get('admin/roles', [UserManagementController::class, 'roles']);
+            Route::get('admin/reports/stock', [ReportController::class, 'exportStock']);
+            Route::get('admin/reports/movements', [ReportController::class, 'exportMovements']);
+        });
 
-        Route::get('admin/users', [UserManagementController::class, 'index']);
-        Route::post('admin/users', [UserManagementController::class, 'store']);
-        Route::get('admin/users/{id}', [UserManagementController::class, 'show']);
-        Route::put('admin/users/{id}', [UserManagementController::class, 'update']);
-        Route::delete('admin/users/{id}', [UserManagementController::class, 'destroy']);
-        Route::post('admin/users/{id}/restore', [UserManagementController::class, 'restore']);
-        Route::delete('admin/users/{id}/force', [UserManagementController::class, 'forceDestroy']);
-        Route::get('admin/roles', [UserManagementController::class, 'roles']);
+        // Section: ADMIN & DIRECTEUR
+        Route::middleware('role:Administrateur|Directeur|Validateur')->group(function () {
+            Route::get('admin/dashboard', [AdminController::class, 'dashboard']);
+            Route::get('admin/recommendations', [AdminController::class, 'recommendations']);
+        });
 
-        Route::get('admin/categories', [CategoryController::class, 'index']);
-        Route::post('admin/categories', [CategoryController::class, 'store']);
-        Route::get('admin/categories/{id}', [CategoryController::class, 'show']);
-        Route::put('admin/categories/{id}', [CategoryController::class, 'update']);
-        Route::delete('admin/categories/{id}', [CategoryController::class, 'destroy']);
+        // Section: REDUCED ADMIN & RESPONSABLE
+        Route::middleware('role:Responsable de stock')->group(function () {
+            Route::get('admin/categories', [CategoryController::class, 'index']);
+            Route::post('admin/categories', [CategoryController::class, 'store']);
+            Route::get('admin/categories/{id}', [CategoryController::class, 'show']);
+            Route::put('admin/categories/{id}', [CategoryController::class, 'update']);
+            Route::delete('admin/categories/{id}', [CategoryController::class, 'destroy']);
 
-        Route::get('admin/products', [ProductController::class, 'index']);
-        Route::post('admin/products', [ProductController::class, 'store']);
-        Route::get('admin/products/{id}', [ProductController::class, 'show']);
-        Route::put('admin/products/{id}', [ProductController::class, 'update']);
-        Route::delete('admin/products/{id}', [ProductController::class, 'destroy']);
-        Route::get('admin/products/{id}/barcode', [ProductController::class, 'downloadBarcode']);
+            Route::get('admin/units', [UnitController::class, 'index']);
+            Route::post('admin/units', [UnitController::class, 'store']);
+            Route::put('admin/units/{unit}', [UnitController::class, 'update']);
+            Route::delete('admin/units/{unit}', [UnitController::class, 'destroy']);
+        });
 
-        Route::get('admin/warehouses', [WarehouseController::class, 'index']);
-        Route::post('admin/warehouses', [WarehouseController::class, 'store']);
-        Route::get('admin/warehouses/{warehouse}', [WarehouseController::class, 'show']);
-        Route::put('admin/warehouses/{warehouse}', [WarehouseController::class, 'update']);
-        Route::delete('admin/warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
-        Route::get('admin/warehouses/{warehouse}/products', [WarehouseController::class, 'getProducts']);
+        // Section: RESPONSABLE & AGENT
+        Route::middleware('role:Responsable de stock|Agent de stock')->group(function () {
+            Route::get('admin/products', [ProductController::class, 'index']);
+            Route::post('admin/products', [ProductController::class, 'store']);
+            Route::get('admin/products/{id}', [ProductController::class, 'show']);
+            Route::put('admin/products/{id}', [ProductController::class, 'update']);
+            Route::delete('admin/products/{id}', [ProductController::class, 'destroy']);
+            Route::get('admin/products/{id}/barcode', [ProductController::class, 'downloadBarcode']);
 
-        Route::get('admin/warehouse-rooms', [WarehouseRoomController::class, 'index']);
-        Route::post('admin/warehouse-rooms', [WarehouseRoomController::class, 'store']);
-        Route::get('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'show']);
-        Route::put('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'update']);
-        Route::delete('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'destroy']);
-        Route::get('admin/warehouse-rooms/{room}/products', [WarehouseRoomController::class, 'getProducts']);
+            Route::get('admin/warehouses', [WarehouseController::class, 'index']);
+            Route::post('admin/warehouses', [WarehouseController::class, 'store']);
+            Route::get('admin/warehouses/{warehouse}', [WarehouseController::class, 'show']);
+            Route::put('admin/warehouses/{warehouse}', [WarehouseController::class, 'update']);
+            Route::delete('admin/warehouses/{warehouse}', [WarehouseController::class, 'destroy']);
+            Route::get('admin/warehouses/{warehouse}/products', [WarehouseController::class, 'getProducts']);
 
-        Route::get('admin/warehouse-locations', [WarehouseLocationController::class, 'index']);
-        Route::post('admin/warehouse-locations', [WarehouseLocationController::class, 'store']);
-        Route::get('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'show']);
-        Route::put('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'update']);
-        Route::delete('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'destroy']);
-        Route::get('admin/warehouse-locations/{location}/products', [WarehouseLocationController::class, 'getProducts']);
+            Route::get('admin/warehouse-rooms', [WarehouseRoomController::class, 'index']);
+            Route::post('admin/warehouse-rooms', [WarehouseRoomController::class, 'store']);
+            Route::get('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'show']);
+            Route::put('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'update']);
+            Route::delete('admin/warehouse-rooms/{room}', [WarehouseRoomController::class, 'destroy']);
+            Route::get('admin/warehouse-rooms/{room}/products', [WarehouseRoomController::class, 'getProducts']);
 
-        Route::get('admin/warehouse-cabinets', [WarehouseCabinetController::class, 'index']);
-        Route::post('admin/warehouse-cabinets', [WarehouseCabinetController::class, 'store']);
-        Route::get('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'show']);
-        Route::put('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'update']);
-        Route::delete('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'destroy']);
+            Route::get('admin/warehouse-locations', [WarehouseLocationController::class, 'index']);
+            Route::post('admin/warehouse-locations', [WarehouseLocationController::class, 'store']);
+            Route::get('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'show']);
+            Route::put('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'update']);
+            Route::delete('admin/warehouse-locations/{location}', [WarehouseLocationController::class, 'destroy']);
+            Route::get('admin/warehouse-locations/{location}/products', [WarehouseLocationController::class, 'getProducts']);
 
-        // Locaux (sites) -> etages -> salles
-        Route::get('admin/sites', [SiteController::class, 'index']);
-        Route::post('admin/sites', [SiteController::class, 'store']);
-        Route::get('admin/sites/{site}', [SiteController::class, 'show']);
-        Route::put('admin/sites/{site}', [SiteController::class, 'update']);
-        Route::delete('admin/sites/{site}', [SiteController::class, 'destroy']);
+            Route::get('admin/warehouse-cabinets', [WarehouseCabinetController::class, 'index']);
+            Route::post('admin/warehouse-cabinets', [WarehouseCabinetController::class, 'store']);
+            Route::get('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'show']);
+            Route::put('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'update']);
+            Route::delete('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'destroy']);
 
-        Route::get('admin/site-floors', [SiteFloorController::class, 'index']);
-        Route::post('admin/site-floors', [SiteFloorController::class, 'store']);
-        Route::get('admin/site-floors/{floor}', [SiteFloorController::class, 'show']);
-        Route::put('admin/site-floors/{floor}', [SiteFloorController::class, 'update']);
-        Route::delete('admin/site-floors/{floor}', [SiteFloorController::class, 'destroy']);
+            Route::get('admin/sites', [SiteController::class, 'index']);
+            Route::post('admin/sites', [SiteController::class, 'store']);
+            Route::get('admin/sites/{site}', [SiteController::class, 'show']);
+            Route::put('admin/sites/{site}', [SiteController::class, 'update']);
+            Route::delete('admin/sites/{site}', [SiteController::class, 'destroy']);
 
-        Route::get('admin/site-rooms', [SiteRoomController::class, 'index']);
-        Route::post('admin/site-rooms', [SiteRoomController::class, 'store']);
-        Route::get('admin/site-rooms/{room}', [SiteRoomController::class, 'show']);
-        Route::put('admin/site-rooms/{room}', [SiteRoomController::class, 'update']);
-        Route::delete('admin/site-rooms/{room}', [SiteRoomController::class, 'destroy']);
+            Route::get('admin/site-floors', [SiteFloorController::class, 'index']);
+            Route::post('admin/site-floors', [SiteFloorController::class, 'store']);
+            Route::get('admin/site-floors/{floor}', [SiteFloorController::class, 'show']);
+            Route::put('admin/site-floors/{floor}', [SiteFloorController::class, 'update']);
+            Route::delete('admin/site-floors/{floor}', [SiteFloorController::class, 'destroy']);
 
-        Route::get('admin/products/{product}/stocks', [ProductStockController::class, 'getProductStocks']);
-        Route::get('admin/products/{product}/total-stock', [ProductStockController::class, 'getTotalStock']);
-        Route::post('admin/products/{product}/stocks', [ProductStockController::class, 'addStock']);
-        Route::put('admin/product-stocks/{stock}', [ProductStockController::class, 'updateStock']);
-        Route::delete('admin/product-stocks/{stock}', [ProductStockController::class, 'removeStock']);
-        Route::get('admin/product-stocks/search', [ProductStockController::class, 'searchStocks']);
-        Route::get('admin/documents', [DocumentController::class, 'index']);
-        Route::post('admin/documents', [DocumentController::class, 'store']);
-        Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
-        Route::post('admin/documents/{id}/apply', [DocumentController::class, 'apply']);
-        Route::post('admin/documents/diagnostic', [DocumentController::class, 'diagnostic']);
+            Route::get('admin/site-rooms', [SiteRoomController::class, 'index']);
+            Route::post('admin/site-rooms', [SiteRoomController::class, 'store']);
+            Route::get('admin/site-rooms/{room}', [SiteRoomController::class, 'show']);
+            Route::put('admin/site-rooms/{room}', [SiteRoomController::class, 'update']);
+            Route::delete('admin/site-rooms/{room}', [SiteRoomController::class, 'destroy']);
 
-        Route::get('admin/suppliers', [SupplierController::class, 'index']);
-        Route::post('admin/suppliers', [SupplierController::class, 'store']);
-        Route::get('admin/suppliers/{supplier}', [SupplierController::class, 'show']);
-        Route::put('admin/suppliers/{supplier}', [SupplierController::class, 'update']);
-        Route::delete('admin/suppliers/{supplier}', [SupplierController::class, 'destroy']);
-        Route::post('admin/suppliers/{supplier}/reviews', [SupplierController::class, 'addReview']);
+            Route::get('admin/products/{product}/stocks', [ProductStockController::class, 'getProductStocks']);
+            Route::get('admin/products/{product}/total-stock', [ProductStockController::class, 'getTotalStock']);
+            Route::post('admin/products/{product}/stocks', [ProductStockController::class, 'addStock']);
+            Route::put('admin/product-stocks/{stock}', [ProductStockController::class, 'updateStock']);
+            Route::delete('admin/product-stocks/{stock}', [ProductStockController::class, 'removeStock']);
+            Route::get('admin/product-stocks/search', [ProductStockController::class, 'searchStocks']);
+        });
+            
+        // OCR specific to Agent & Responsable
+        Route::middleware('role:Agent de stock|Responsable de stock')->group(function () {
+            Route::get('admin/documents', [DocumentController::class, 'index']);
+            Route::post('admin/documents', [DocumentController::class, 'store']);
+            Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
+            Route::post('admin/documents/{id}/apply', [DocumentController::class, 'apply']);
+            Route::post('admin/documents/diagnostic', [DocumentController::class, 'diagnostic']);
+        });
 
-        Route::get('admin/units', [UnitController::class, 'index']);
-        Route::post('admin/units', [UnitController::class, 'store']);
-        Route::put('admin/units/{unit}', [UnitController::class, 'update']);
-        Route::delete('admin/units/{unit}', [UnitController::class, 'destroy']);
+        // Shared across Admin, Responsable, Agent
+        Route::middleware('role:Administrateur|Responsable de stock|Agent de stock')->group(function () {
+            Route::get('admin/suppliers', [SupplierController::class, 'index']);
+            Route::post('admin/suppliers', [SupplierController::class, 'store']);
+            Route::get('admin/suppliers/{supplier}', [SupplierController::class, 'show']);
+            Route::put('admin/suppliers/{supplier}', [SupplierController::class, 'update']);
+            Route::delete('admin/suppliers/{supplier}', [SupplierController::class, 'destroy']);
+            Route::post('admin/suppliers/{supplier}/reviews', [SupplierController::class, 'addReview']);
 
-        Route::get('admin/suppliers/{supplier}/contacts', [SupplierContactController::class, 'index']);
-        Route::post('admin/suppliers/{supplier}/contacts', [SupplierContactController::class, 'store']);
-        Route::put('admin/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'update']);
-        Route::delete('admin/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'destroy']);
+            Route::get('admin/suppliers/{supplier}/contacts', [SupplierContactController::class, 'index']);
+            Route::post('admin/suppliers/{supplier}/contacts', [SupplierContactController::class, 'store']);
+            Route::put('admin/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'update']);
+            Route::delete('admin/suppliers/{supplier}/contacts/{contact}', [SupplierContactController::class, 'destroy']);
+        });
     });
+
+    // Proxy simplifié pour les documents
+    Route::get('docs/{path}', function($path) {
+        if (!\Storage::disk('public')->exists($path)) abort(404);
+        return \Storage::disk('public')->response($path);
+    })->where('path', '.*');
 });

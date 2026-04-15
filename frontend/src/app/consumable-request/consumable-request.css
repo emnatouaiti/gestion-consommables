@@ -617,6 +617,18 @@
   color: var(--text-muted);
 }
 
+.readonly-group .readonly-value {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--etap-50);
+  color: var(--text-secondary);
+  font-family: 'DM Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  border: 1px dashed var(--etap-200);
+}
+
 /* ---------- Lignes de demande multi-produit ---------- */
 .request-lines {
   display: flex;
