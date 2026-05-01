@@ -43,6 +43,7 @@ class AdminController extends Controller
 
         // Real Recent activities (from ProductStock)
         $recentActivities = \App\Models\ProductStock::with(['product', 'warehouseLocation'])
+            ->whereHas('product', fn ($q) => $q->where('status', 'active'))
             ->orderBy('created_at', 'desc')
             ->take(8)
             ->get()
@@ -115,7 +116,7 @@ class AdminController extends Controller
         $perPage = max(5, min($perPage, 100));
 
         $query = AuditLog::query()
-            ->with('user:id,nomprenom,email,service,poste')
+            ->with('user:id,nomprenom,email,service,poste,siege')
             ->latest();
 
         $search = trim((string) $request->query('q', ''));
@@ -156,7 +157,7 @@ class AdminController extends Controller
         $perPage = max(5, min($perPage, 100));
 
         $query = AuditLog::query()
-            ->with('user:id,nomprenom,email,service,poste')
+            ->with('user:id,nomprenom,email,service,poste,siege')
             ->latest();
 
         $search = trim((string) $request->query('q', ''));
@@ -190,7 +191,9 @@ class AdminController extends Controller
 
     public function recommendations()
     {
-        $products = \App\Models\Product::withSum('stocks', 'quantity')->get();
+        $products = \App\Models\Product::withSum('stocks', 'quantity')
+            ->where('status', 'active')
+            ->get();
         $thirtyDaysAgo = now()->subDays(30);
 
         $highRisk = [];

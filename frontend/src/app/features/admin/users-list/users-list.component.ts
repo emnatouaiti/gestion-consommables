@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AdminUsersService } from '../services/admin-users.service';
@@ -22,6 +22,12 @@ export class UsersListComponent implements OnInit {
   roles: any[] = [];
   selectedServiceFilter = '';
   selectedRoleFilter = '';
+  selectedSiegeFilter = '';
+  siegeOptions: string[] = [
+    'Charguia_II_Ariana',
+    'Mohamed_V_Tunis',
+    'Kheireddine_Pacha_Tunis'
+  ];
   serviceOptions: string[] = [
     'Direction Financiere',
     'Direction Informatique',
@@ -54,14 +60,6 @@ export class UsersListComponent implements OnInit {
     ]
   };
 
-  private readonly serviceRoleMap: Record<string, string[]> = {
-    'Direction Financiere': ['Responsable', 'Utilisateur', 'Agent'],
-    'Direction Informatique': ['Responsable', 'Utilisateur', 'Agent'],
-    'Direction Operations': ['Responsable', 'Utilisateur', 'Agent'],
-    'Direction RH': ['Responsable', 'Utilisateur', 'Agent'],
-    'Direction Logistique': ['Responsable', 'Utilisateur', 'Agent']
-  };
-
   form = {
     nomprenom: '',
     email: '',
@@ -69,7 +67,8 @@ export class UsersListComponent implements OnInit {
     telephone: '',
     service: '',
     poste: '',
-    roles: ''
+    roles: '',
+    siege: ''
   };
 
   // Avatar modal
@@ -110,7 +109,7 @@ export class UsersListComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        console.error('Erreur chargement rôles:', err);
+        console.error('Erreur chargement roles:', err);
       }
     });
   }
@@ -153,7 +152,7 @@ export class UsersListComponent implements OnInit {
     this.load();
   }
 
-  /* ─── Modal Utilisateur ─── */
+  /* --- Modal Utilisateur --- */
 
   openAddModal(): void {
     this.resetForm();
@@ -170,6 +169,7 @@ export class UsersListComponent implements OnInit {
       telephone: user.telephone || '',
       service: user.service || '',
       poste: user.poste || '',
+      siege: user.siege || '',
       roles: user.roles?.[0]?.name || user.role || ''
     };
     this.showModal = true;
@@ -189,20 +189,12 @@ export class UsersListComponent implements OnInit {
 
   resetForm(): void {
     this.editingId = null;
-    this.form = { nomprenom: '', email: '', adresse: '', telephone: '', service: '', poste: '', roles: '' };
+    this.form = { nomprenom: '', email: '', adresse: '', telephone: '', service: '', poste: '', siege: '', roles: '' };
     this.errorMessage = '';
   }
 
   get filteredRoles(): string[] {
-    const allRoles = this.roles.map((r: any) => String(r?.name || r)).filter(Boolean);
-    const allowed = this.serviceRoleMap[this.form.service];
-    if (!allowed || allowed.length === 0) {
-      return allRoles;
-    }
-
-    return allRoles.filter((role) =>
-      allowed.some((a) => a.toLowerCase() === role.toLowerCase())
-    );
+    return this.roles.map((r: any) => String(r?.name || r)).filter(Boolean);
   }
 
   get availablePostes(): string[] {
@@ -227,10 +219,21 @@ export class UsersListComponent implements OnInit {
     return Array.from(new Set([...base, ...fromData, ...fromLegacy]));
   }
 
+  get siegeFilterOptions(): string[] {
+    const fromData = this.users
+      .map((u) => String(u?.siege || '').trim())
+      .filter(Boolean);
+    return Array.from(new Set(fromData));
+  }
   get displayedUsers(): any[] {
     return this.users.filter((u) => {
       const serviceOk = !this.selectedServiceFilter || String(u?.service || '').toLowerCase() === this.selectedServiceFilter.toLowerCase();
       if (!serviceOk) {
+        return false;
+      }
+
+      const siegeOk = !this.selectedSiegeFilter || String(u?.siege || '').toLowerCase() === this.selectedSiegeFilter.toLowerCase();
+      if (!siegeOk) {
         return false;
       }
 
@@ -253,24 +256,14 @@ export class UsersListComponent implements OnInit {
   }
 
   private ensureRoleMatchesService(): void {
-    if (!this.form.roles) {
-      return;
-    }
-
-    const isAllowed = this.filteredRoles.some(
-      (role) => role.toLowerCase() === String(this.form.roles).toLowerCase()
-    );
-
-    if (!isAllowed) {
-      this.form.roles = '';
-    }
+    // Tous les rôles sont permis
   }
 
 
 
   save(): void {
     if (!this.form.nomprenom || !this.form.email || !this.form.roles) {
-      this.errorMessage = 'Nom, email et rôle sont obligatoires.';
+      this.errorMessage = 'Nom, email et role sont obligatoires.';
       return;
     }
 
@@ -281,6 +274,7 @@ export class UsersListComponent implements OnInit {
       telephone: (this.form.telephone || '').trim(),
       service: (this.form.service || '').trim(),
       poste: (this.form.poste || '').trim(),
+      siege: (this.form.siege || '').trim(),
       roles: [this.form.roles]
     };
 
@@ -292,7 +286,7 @@ export class UsersListComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingId ? 'Utilisateur mis à jour !' : 'Utilisateur créé !';
+        this.successMessage = this.editingId ? 'Utilisateur mis a jour !' : 'Utilisateur cree !';
         this.closeModal();
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
@@ -309,7 +303,7 @@ export class UsersListComponent implements OnInit {
 
     this.usersService.delete(id).subscribe({
       next: () => {
-        this.successMessage = 'Utilisateur archivé !';
+        this.successMessage = 'Utilisateur archive !';
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
       },
@@ -320,11 +314,18 @@ export class UsersListComponent implements OnInit {
     });
   }
 
+  resetFilters(): void {
+    this.selectedServiceFilter = '';
+    this.selectedRoleFilter = '';
+    this.selectedSiegeFilter = '';
+    this.cdr.detectChanges();
+  }
+
   roleNames(u: any): string {
     return (u.roles || []).map((r: any) => r.name).join(', ');
   }
 
-  /* ─── Avatar Modal ─── */
+  /* --- Avatar Modal --- */
 
   openAvatarModal(u: any): void {
     this.avatarModalUrl = this.photoUrl(u.photo || u.avatar);

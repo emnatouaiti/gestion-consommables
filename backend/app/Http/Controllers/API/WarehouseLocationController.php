@@ -47,7 +47,7 @@ class WarehouseLocationController extends Controller
 
     public function show(WarehouseLocation $location)
     {
-        return $location->load('room', 'products');
+        return $location->load('room', ['products' => fn ($q) => $q->where('status', 'active')]);
     }
 
     public function update(Request $request, WarehouseLocation $location)
@@ -75,7 +75,7 @@ class WarehouseLocationController extends Controller
     public function getProducts(WarehouseLocation $location)
     {
         return $location->load(['products' => function ($query) {
-            $query->with(['category', 'stocks']);
+            $query->where('status', 'active')->with(['category', 'stocks']);
         }])->products;
     }
 }

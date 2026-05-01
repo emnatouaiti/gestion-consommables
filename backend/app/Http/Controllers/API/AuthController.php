@@ -19,6 +19,9 @@ class AuthController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:6',
+            'service' => 'nullable|string|max:255',
+            'poste' => 'nullable|string|max:255',
+            'siege' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -31,6 +34,7 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
             'service' => $request->input('service', 'Non defini'),
             'poste' => $request->input('poste', 'Non defini'),
+            'siege' => $request->input('siege', 'Non defini'),
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -115,6 +119,7 @@ class AuthController extends Controller
             'telephone' => 'nullable|string|max:50',
             'service' => 'nullable|string|max:255',
             'poste' => 'nullable|string|max:255',
+            'siege' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -131,7 +136,7 @@ class AuthController extends Controller
             }
         }
 
-        $data = $request->only(['email', 'adresse', 'telephone', 'service', 'poste']);
+        $data = $request->only(['email', 'adresse', 'telephone', 'service', 'poste', 'siege']);
         $data['nomprenom'] = $request->input('nomprenom', $request->input('name', $user->nomprenom));
 
         if ($request->hasFile('photo')) {

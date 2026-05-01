@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\StockMovement;
 use App\Models\StockMovementLine;
 use App\Models\AuditLog;
+use App\Models\Product;
 use App\Models\ProductStock;
 use App\Models\User;
 use App\Notifications\StockMovementNotification;
@@ -245,6 +246,27 @@ class StockMovementController extends Controller
             'lines.*.quantity'   => 'required|integer|min:1',
         ]);
 
+        $productIds = collect((array) $request->input('lines'))
+            ->pluck('product_id')
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values()
+            ->all();
+
+        $inactive = Product::query()
+            ->whereIn('id', $productIds)
+            ->where('status', '!=', 'active')
+            ->pluck('title')
+            ->values()
+            ->all();
+
+        if (count($inactive) > 0) {
+            $list = implode(', ', $inactive);
+            throw ValidationException::withMessages([
+                'lines' => ["Impossible d'utiliser des produits inactifs: {$list}. Activez-les pour continuer."],
+            ]);
+        }
+
         // For entrée: supplier required. For sortie: source location required. For transfer: both required.
         $movementType = $request->input('movement_type', $request->input('type'));
         if ($movementType === 'in' && !$request->filled('supplier_id')) {
@@ -397,6 +419,27 @@ class StockMovementController extends Controller
             'lines.*.product_id' => 'required_with:lines|exists:products,id',
             'lines.*.quantity' => 'required_with:lines|integer|min:1',
         ]);
+
+        $productIds = collect((array) $request->input('lines'))
+            ->pluck('product_id')
+            ->map(fn ($v) => (int) $v)
+            ->unique()
+            ->values()
+            ->all();
+
+        $inactive = Product::query()
+            ->whereIn('id', $productIds)
+            ->where('status', '!=', 'active')
+            ->pluck('title')
+            ->values()
+            ->all();
+
+        if (count($inactive) > 0) {
+            $list = implode(', ', $inactive);
+            throw ValidationException::withMessages([
+                'lines' => ["Impossible d'utiliser des produits inactifs: {$list}. Activez-les pour continuer."],
+            ]);
+        }
 
         DB::transaction(function () use ($movement, $request) {
             if ($request->has('reference')) {

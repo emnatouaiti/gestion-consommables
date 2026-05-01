@@ -1,0 +1,28 @@
+<div class="refs-page" style="display:flex;gap:16px">
+  <div style="flex:1;border:1px solid #e6e9ef;padding:12px;border-radius:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong>Marques</strong><button class="btn-primary" (click)="addMarque()">+ Ajouter</button></div>
+    <ul>
+      <li *ngFor="let m of marques" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f3f5;">
+        <div style="cursor:pointer" (click)="selectMarque(m)">{{ m.name }}</div>
+        <div>
+          <button (click)="editMarque(m)">✏️</button>
+          <button (click)="deleteMarque(m)">🗑️</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+
+  <div style="flex:1;border:1px solid #e6e9ef;padding:12px;border-radius:8px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><strong>Modèles</strong><button class="btn-primary" (click)="addModele()">+ Ajouter</button></div>
+    <div *ngIf="selectedMarque" style="margin-bottom:8px;color:#666">Filtre: <strong>{{ selectedMarque?.name || '-' }}</strong></div>
+    <ul>
+      <li *ngFor="let mo of modeles" style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid #f1f3f5;">
+        <div>{{ mo.name }}</div>
+        <div>
+          <button (click)="editModele(mo)">✏️</button>
+          <button (click)="deleteModele(mo)">🗑️</button>
+        </div>
+      </li>
+    </ul>
+  </div>
+</div>

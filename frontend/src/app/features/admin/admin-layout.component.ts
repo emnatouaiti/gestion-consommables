@@ -36,6 +36,41 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private chatSub?: Subscription;
   miniChatOpen = false;
 
+    get userPhotoUrl(): string | null {
+    const raw = this.user?.photo || this.user?.avatar;
+    if (!raw || typeof raw !== 'string') {
+      return null;
+    }
+
+    const photo = raw.trim();
+    if (!photo) {
+      return null;
+    }
+
+    if (photo.startsWith('http://') || photo.startsWith('https://')) {
+      return photo;
+    }
+
+    if (photo.startsWith('/')) {
+      return photo;
+    }
+
+    return `/storage/${photo}`;
+  }
+get userInitials(): string {
+    const name = (this.userDisplayName || '').trim();
+    if (!name) {
+      return 'U';
+    }
+
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
   private readonly adminSections: NavSection[] = [
     {
       title: 'Pilotage',
@@ -48,8 +83,6 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
       items: [
         { label: 'Utilisateurs', route: '/admin/users' },
         { label: 'Archives Utilisateurs', route: '/admin/archived' },
-        { label: 'Gérer fournisseurs', route: '/admin/gerer-fournisseurs' },
-        { label: 'Journal d\'audit', route: '/admin/journal-audit' }
       ]
     },
     {
@@ -62,11 +95,12 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private readonly managerSections: NavSection[] = [
     {
-      title: 'Catalogue & Dépôts',
+        title: 'Catalogue & Dépôts',
       items: [
         { label: 'Catégories', route: '/admin/gerer-categories' },
         { label: 'Unités', route: '/admin/gerer-unites' },
         { label: 'Produits', route: '/admin/gerer-produits' },
+        { label: 'Références', route: '/admin/gerer-references' },
         { label: 'Dépôts', route: '/admin/gerer-depots' },
         // 'Locaux' hidden for Responsable de stock
       ]
@@ -94,6 +128,7 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
       items: [
         { label: 'Catalogue', route: '/admin/gerer-produits' },
         { label: 'Dépôts', route: '/admin/gerer-depots' },
+        { label: 'Références', route: '/admin/gerer-references' },
         { label: 'Mouvements Stock', route: '/admin/mouvements-stock' },
         { label: 'Import OCR', route: '/admin/documents-ocr' },
         { label: 'Fournisseurs (Avis)', route: '/admin/gerer-fournisseurs' }

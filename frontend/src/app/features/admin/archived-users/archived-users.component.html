@@ -1,4 +1,4 @@
-﻿<div class="page-header">
+<div class="page-header">
   <h1 class="page-title">Utilisateurs archivés</h1>
   <span class="page-count" *ngIf="!isLoading">{{ users.length }} archivé(s)</span>
 </div>
@@ -46,9 +46,15 @@
     <table class="users-table">
       <thead>
         <tr>
+          <th>Photo</th>
           <th>Nom</th>
           <th>Email</th>
           <th>Rôles</th>
+          <th>Service</th>
+          <th>Poste</th>
+          <th>Siège</th>
+          <th>Adresse</th>
+          <th>Téléphone</th>
           <th>Archivé le</th>
           <th class="actions">Actions</th>
         </tr>
@@ -56,6 +62,16 @@
       <tbody>
 
         <tr *ngFor="let u of users">
+          <!-- Avatar cliquable pour zoom -->
+          <td class="photo-cell">
+            <img
+              [src]="photoUrl(u.photo || u.avatar)"
+              alt="avatar"
+              class="avatar-sm"
+              (click)="openAvatarModal(u)"
+              title="Cliquer pour agrandir"
+            />
+          </td>
           <td>
             <div class="user-name">{{ u.nomprenom || '—' }}</div>
           </td>
@@ -66,6 +82,11 @@
               {{ roleNames(u) || '—' }}
             </span>
           </td>
+          <td>{{ u.service || '—' }}</td>
+          <td>{{ u.poste || '—' }}</td>
+          <td>{{ u.siege || '—' }}</td>
+          <td>{{ u.adresse || '—' }}</td>
+          <td>{{ u.telephone || '—' }}</td>
           <td>
             <span class="archive-date">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
@@ -109,7 +130,7 @@
 
         <!-- État vide -->
         <tr *ngIf="users.length === 0" class="state-row">
-          <td colspan="5">
+          <td colspan="11">
             <div class="empty-state">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="1.5">
@@ -128,4 +149,15 @@
     </table>
   </div>
 
+</div>
+
+<!-- --- Modal zoom avatar --------------------------------------------- -->
+<div class="avatar-modal-overlay"
+     *ngIf="avatarModalOpen"
+     (click)="closeAvatarModal()">
+  <div class="avatar-modal-box" (click)="$event.stopPropagation()">
+    <button class="avatar-modal-close" (click)="closeAvatarModal()">&times;</button>
+    <img [src]="avatarModalUrl" alt="avatar agrandi" class="avatar-modal-img" />
+    <div class="avatar-modal-name">{{ avatarModalName }}</div>
+  </div>
 </div>

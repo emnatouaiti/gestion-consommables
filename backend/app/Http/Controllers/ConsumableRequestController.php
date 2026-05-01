@@ -492,6 +492,32 @@ class ConsumableRequestController extends Controller
         $itemName = trim((string) ($validated['item_name'] ?? ''));
         $productId = $hasProductIdColumn ? ($validated['product_id'] ?? null) : null;
 
+        if ($productId) {
+            $product = Product::query()->select(['id', 'title', 'status'])->find($productId);
+            if ($product && Str::lower((string) $product->status) !== 'active') {
+                throw ValidationException::withMessages([
+                    'product_id' => ["Le produit \"{$product->title}\" est inactif. Changez son statut en active pour l'utiliser."],
+                ]);
+            }
+        }
+
+        // If user typed the product name/reference manually and it matches an inactive product,
+        // block it and ask to activate instead of creating a "free text" request line.
+        if (!$productId && $itemName !== '') {
+            $matched = Product::query()
+                ->select(['id', 'title', 'reference', 'status'])
+                ->whereRaw('LOWER(title) = ?', [Str::lower($itemName)])
+                ->orWhereRaw('LOWER(reference) = ?', [Str::lower($itemName)])
+                ->first();
+
+            if ($matched && Str::lower((string) $matched->status) !== 'active') {
+                $label = $matched->reference ? ($matched->title . ' (' . $matched->reference . ')') : $matched->title;
+                throw ValidationException::withMessages([
+                    'item_name' => ["Le produit \"{$label}\" existe mais il est inactif. Activez-le pour pouvoir l'ajouter."],
+                ]);
+            }
+        }
+
         if ($productId && $itemName === '') {
             $productTitle = Product::query()->whereKey($productId)->value('title');
             $itemName = (string) ($productTitle ?? '');
@@ -524,6 +550,21 @@ class ConsumableRequestController extends Controller
                 'items.*.product_id' => 'required|exists:products,id',
                 'items.*.requested_quantity' => 'required|integer|min:1',
             ]);
+
+            $productIds = collect($items)->pluck('product_id')->map(fn ($v) => (int) $v)->unique()->values()->all();
+            $inactive = Product::query()
+                ->whereIn('id', $productIds)
+                ->where('status', '!=', 'active')
+                ->pluck('title')
+                ->values()
+                ->all();
+
+            if (count($inactive) > 0) {
+                $list = implode(', ', $inactive);
+                throw ValidationException::withMessages([
+                    'items' => ["Impossible d'ajouter des produits inactifs: {$list}. Activez-les pour continuer."],
+                ]);
+            }
 
             $hasProductIdColumn = Schema::hasColumn('consumable_requests', 'product_id');
             $payloads = [];

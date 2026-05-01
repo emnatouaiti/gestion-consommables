@@ -1,5 +1,5 @@
-﻿<div class="page-header">
-  <h1 class="page-title">Gestion des utilisateurs</h1>
+<div class="page-header">
+  <h1 class="page-title">Utilisateurs</h1>
   <span class="page-count" *ngIf="!isLoading">{{ displayedUsers.length }} utilisateur(s)</span>
 </div>
 
@@ -42,10 +42,17 @@
       </div>
       <div class="select-wrapper">
         <select class="form-control" [(ngModel)]="selectedRoleFilter">
-          <option value="">Tous les rôles</option>
+          <option value="">Tous les roles</option>
           <option *ngFor="let r of roleFilterOptions" [value]="r">{{ r }}</option>
         </select>
       </div>
+      <div class="select-wrapper">
+        <select class="form-control" [(ngModel)]="selectedSiegeFilter">
+          <option value="">Tous les sieges</option>
+          <option *ngFor="let s of siegeFilterOptions" [value]="s">{{ s }}</option>
+        </select>
+      </div>
+      <button class="btn small" (click)="resetFilters()">Reinitialiser</button>
     </div>
   </div>
 
@@ -66,7 +73,7 @@
     {{ errorMessage }}
   </div>
 
-  <!-- Succès -->
+  <!-- Succ�s -->
   <div class="success-msg" *ngIf="successMessage">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="2">
@@ -83,11 +90,12 @@
           <th>Photo</th>
           <th>Nom</th>
           <th>Email</th>
-          <th>Rôles</th>
+          <th>Roles</th>
           <th>Service</th>
           <th>Poste</th>
+          <th>Siege</th>
           <th>Adresse</th>
-          <th>Téléphone</th>
+          <th>Telephone</th>
           <th class="actions">Actions</th>
         </tr>
       </thead>
@@ -106,26 +114,27 @@
             />
           </td>
 
-          <td><div class="user-name">{{ u.nomprenom || '—' }}</div></td>
+          <td><div class="user-name">{{ u.nomprenom || '�' }}</div></td>
           <td>{{ u.email }}</td>
           <td>
             <span class="role-badge"
               [class.admin]="roleNames(u).toLowerCase().includes('admin')">
-              {{ roleNames(u) || '—' }}
+              {{ roleNames(u) || '�' }}
             </span>
           </td>
-          <td>{{ u.service || '—' }}</td>
-          <td>{{ u.poste || '—' }}</td>
-          <td>{{ u.adresse || '—' }}</td>
-          <td>{{ u.telephone || '—' }}</td>
+          <td>{{ u.service || '�' }}</td>
+          <td>{{ u.poste || '�' }}</td>
+          <td>{{ u.siege || '�' }}</td>
+          <td>{{ u.adresse || '�' }}</td>
+          <td>{{ u.telephone || '�' }}</td>
           <td class="actions">
-            <button class="btn small" (click)="openEditModal(u)">Éditer</button>
-            <button class="btn danger small" (click)="remove(u.id)">Supprimer</button>
+            <button class="btn small" (click)="openEditModal(u)">Editer</button>
+            <button class="btn danger small" (click)="remove(u.id)">Archiver</button>
           </td>
         </tr>
 
         <tr *ngIf="users.length === 0" class="state-row">
-          <td colspan="9">
+          <td colspan="10">
             <div class="empty-state">
               <svg width="52" height="52" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="1.5">
@@ -134,7 +143,7 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <p>Aucun utilisateur trouvé.</p>
+              <p>Aucun utilisateur trouv�.</p>
             </div>
           </td>
         </tr>
@@ -145,23 +154,23 @@
 
 </div>
 
-<!-- ═══ Modal zoom avatar ═════════════════════════════════════════════ -->
+<!-- --- Modal zoom avatar --------------------------------------------- -->
 <div class="avatar-modal-overlay"
      *ngIf="avatarModalOpen"
      (click)="closeAvatarModal()">
   <div class="avatar-modal-box" (click)="$event.stopPropagation()">
-    <button class="avatar-modal-close" (click)="closeAvatarModal()">✕</button>
+    <button class="avatar-modal-close" (click)="closeAvatarModal()">&times;</button>
     <img [src]="avatarModalUrl" alt="avatar agrandi" class="avatar-modal-img" />
     <div class="avatar-modal-name">{{ avatarModalName }}</div>
   </div>
 </div>
 
-<!-- ═══ Modal Ajouter/Éditer Utilisateur ═════════════════════════════ -->
+<!-- --- Modal Ajouter/�diter Utilisateur ----------------------------- -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
   <div class="modal-box">
     <div class="modal-header">
       <h2>{{ editingId ? 'Modifier utilisateur' : 'Ajouter utilisateur' }}</h2>
-      <button class="modal-close" (click)="closeModal()">✕</button>
+      <button class="modal-close" (click)="closeModal()">&times;</button>
     </div>
 
     <div class="modal-content">
@@ -209,7 +218,7 @@
               name="service"
               class="form-control"
             >
-              <option value="">-- Sélectionner un service --</option>
+              <option value="">-- Selectionner un service --</option>
               <option *ngFor="let service of serviceOptions" [value]="service">
                 {{ service }}
               </option>
@@ -225,21 +234,35 @@
               name="poste"
               class="form-control"
             >
-              <option value="">-- Sélectionner un poste --</option>
+              <option value="">-- Selectionner un poste --</option>
               <option *ngFor="let poste of availablePostes" [value]="poste">{{ poste }}</option>
             </select>
           </div>
+
+        <div class="form-group">
+          <label>Siege</label>
+          <div class="select-wrapper">
+            <select
+              [(ngModel)]="form.siege"
+              name="siege"
+              class="form-control"
+            >
+              <option value="">-- Selectionner un siege --</option>
+              <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
+            </select>
+          </div>
+        </div>
         </div>
 
         <div class="form-group">
-          <label>Rôle *</label>
+          <label>Role *</label>
           <div class="select-wrapper">
             <select
               [(ngModel)]="form.roles"
               name="roles"
               class="form-control"
             >
-              <option value="">-- Sélectionner un rôle --</option>
+              <option value="">-- Selectionner un role --</option>
               <option *ngFor="let role of filteredRoles" [value]="role">
                 {{ role }}
               </option>
@@ -259,7 +282,7 @@
         </div>
 
         <div class="form-group">
-          <label>Téléphone</label>
+          <label>Telephone</label>
           <input
             type="tel"
             [(ngModel)]="form.telephone"
@@ -272,7 +295,7 @@
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeModal()">Annuler</button>
           <button type="submit" class="btn primary">
-            {{ editingId ? 'Mettre à jour' : 'Créer' }}
+            {{ editingId ? 'Mettre a jour' : 'Creer' }}
           </button>
         </div>
       </form>

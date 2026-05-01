@@ -101,6 +101,7 @@
       <div class="scan-row inline">
         <input [(ngModel)]="scanCode" (keyup.enter)="onScanSubmit()" placeholder="Scanner ou saisir le code..." />
         <button class="btn-primary sm" (click)="onScanSubmit()">Rechercher</button>
+        <button class="btn-outline sm" (click)="openScanner()">Scanner caméra</button>
         <button class="btn-outline sm" (click)="clearScan()">Vider</button>
       </div>
       <p class="scan-msg" *ngIf="scanMessage">{{ scanMessage }}</p>
@@ -214,9 +215,12 @@
       </div>
       <div class="modal-body">
         <div class="form-row">
-          <div class="field"><label>Titre *</label><input [(ngModel)]="form.title" placeholder="Nom du produit" /></div>
-          <div class="field"><label>Référence *</label><input [(ngModel)]="form.reference" placeholder="REF-001" />
+          <div class="field"><label>Nom *</label><input [(ngModel)]="form.title" placeholder="Nom du produit" /></div>
+          <div class="field" *ngIf="editingId">
+            <label>Référence *</label>
+            <input [(ngModel)]="form.reference" placeholder="REF-001" />
           </div>
+          <!-- Reference is hidden on create; generated server-side. (no user hint shown) -->
         </div>
         <div class="form-row">
           <div class="field"><label>Catégorie *</label>
@@ -243,16 +247,24 @@
           </div>
         </div>
 
-        <div class="form-row triple">
-          <div class="field"><label>Fabricant</label><input [(ngModel)]="form.fabricant" placeholder="Ex: HP" /></div>
-          <div class="field"><label>Marque</label><input [(ngModel)]="form.marque" placeholder="Ex: LaserJet" /></div>
-          <div class="field"><label>Modèle</label><input [(ngModel)]="form.model" placeholder="Ex: M404dn" /></div>
+        <div class="form-row">
+          <div class="field"><label>Marque</label>
+            <select [(ngModel)]="selectedMarqueId" (change)="onMarqueSelect()">
+              <option [ngValue]="null">Sélectionner...</option>
+              <option *ngFor="let b of brands" [ngValue]="b.id">{{ b.name }}</option>
+            </select>
+          </div>
+          <div class="field"><label>Modèle</label>
+            <select [(ngModel)]="form.model">
+              <option value="">Sélectionner...</option>
+              <option *ngFor="let m of modelsList" [value]="m.name">{{ m.name }}</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-row triple">
           <div class="field"><label>N° Série</label><input [(ngModel)]="form.num_serie" placeholder="SN..." /></div>
           <div class="field"><label>N° Inventaire</label><input [(ngModel)]="form.num_inventaire" placeholder="INV..." /></div>
-          <div class="field"><label>Short description</label><input [(ngModel)]="form.short_description" placeholder="Résumé court..." /></div>
         </div>
 
         <div class="form-row">
@@ -272,10 +284,16 @@
             </div>
           </div>
         </div>
-        <div class="field"><label>Description</label><textarea [(ngModel)]="form.description"
-            placeholder="Description..." rows="3"></textarea></div>
-        <div class="field"><label>Commentaire</label><textarea [(ngModel)]="form.commentaire"
-            placeholder="Commentaire..." rows="3"></textarea></div>
+        <div class="field"><label>Description</label>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+            <button class="btn-outline sm" (click)="generateDescriptions()">Générer description</button>
+          </div>
+          <textarea [(ngModel)]="form.description" placeholder="Description..." rows="4"></textarea>
+        </div>
+        <div class="field"><label>Short description</label>
+          <textarea [(ngModel)]="form.short_description" placeholder="Résumé court..." rows="2"></textarea>
+        </div>
+        <div class="field"><label>Commentaire</label><textarea [(ngModel)]="form.commentaire" placeholder="Commentaire..." rows="3"></textarea></div>
         <div class="modal-error" *ngIf="errorMessage">{{ errorMessage }}</div>
       </div>
       <div class="modal-footer">
@@ -285,6 +303,18 @@
     </div>
   </div>
 </div>
+  <!-- Scanner modal -->
+  <div class="modal-backdrop" *ngIf="showScannerModal" (click)="closeScanner()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Scanner (Caméra)</h3>
+        <button class="modal-close" (click)="closeScanner()">✕</button>
+      </div>
+      <div class="modal-body">
+        <app-barcode-scanner (codeDetected)="onCodeDetected($event)"></app-barcode-scanner>
+      </div>
+    </div>
+  </div>
 
 
 <!-- Modal Détails Fournisseur (Avis + Produits) -->

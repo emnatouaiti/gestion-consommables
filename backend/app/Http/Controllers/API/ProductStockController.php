@@ -189,12 +189,16 @@ class ProductStockController extends Controller
         $search = $request->get('q', '');
         $perPage = $request->get('per_page', 20);
 
-        $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier');
+        $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
+            ->whereHas('product', fn ($q) => $q->where('status', 'active'));
 
         if ($search) {
             $query->whereHas('product', function ($q) use ($search) {
-                $q->where('title', 'like', "%{$search}%")
+                $q->where('status', 'active')
+                    ->where(function ($sub) use ($search) {
+                        $sub->where('title', 'like', "%{$search}%")
                     ->orWhere('reference', 'like', "%{$search}%");
+                    });
             })->orWhereHas('warehouseLocation', function ($q) use ($search) {
                 $q->where('code', 'like', "%{$search}%");
             })->orWhereHas('warehouseCabinet', function ($q) use ($search) {

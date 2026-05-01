@@ -4,17 +4,27 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\Supplier;
+use App\Models\Product;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class SupplierController extends Controller
 {
     public function index()
     {
-        return Supplier::with('products', 'reviews.user', 'contacts')
-            ->withCount('products')
+        return Supplier::with([
+            'products' => function ($q) {
+                $q->where('status', 'active');
+            },
+            'reviews.user',
+            'contacts'
+        ])
+            ->withCount(['products as products_count' => function ($q) {
+                $q->where('status', 'active');
+            }])
             ->get();
     }
 
@@ -38,19 +48,35 @@ class SupplierController extends Controller
         $productIds = $validated['product_ids'] ?? [];
         unset($validated['product_ids']);
 
+        if (!empty($productIds)) {
+            $inactive = Product::query()
+                ->whereIn('id', $productIds)
+                ->where('status', '!=', 'active')
+                ->pluck('title')
+                ->values()
+                ->all();
+
+            if (count($inactive) > 0) {
+                $list = implode(', ', $inactive);
+                throw ValidationException::withMessages([
+                    'product_ids' => ["Impossible d'associer des produits inactifs: {$list}. Activez-les pour continuer."],
+                ]);
+            }
+        }
+
         $supplier = Supplier::create($validated);
         if (!empty($productIds)) {
             $supplier->products()->sync($productIds);
         }
 
-        return $supplier->load('products');
+        return $supplier->load(['products' => fn ($q) => $q->where('status', 'active')]);
     }
 
     public function show(Supplier $supplier)
     {
         try {
             // Charger les produits
-            $supplier->load('products');
+            $supplier->load(['products' => fn ($q) => $q->where('status', 'active')]);
             $supplier->load('reviews.user');
             $supplier->load('contacts');
             // Trier les avis
@@ -64,6 +90,7 @@ class SupplierController extends Controller
             });
 
             $supplyHistory = \App\Models\ProductStock::where('supplier_id', $supplier->id)
+                ->whereHas('product', fn ($q) => $q->where('status', 'active'))
                 ->with('product:id,title,reference')
                 ->select('product_id', DB::raw('SUM(quantity) as total_quantity'))
                 ->groupBy('product_id')
@@ -134,12 +161,28 @@ class SupplierController extends Controller
         $productIds = $validated['product_ids'] ?? [];
         unset($validated['product_ids']);
 
+        if (!empty($productIds)) {
+            $inactive = Product::query()
+                ->whereIn('id', $productIds)
+                ->where('status', '!=', 'active')
+                ->pluck('title')
+                ->values()
+                ->all();
+
+            if (count($inactive) > 0) {
+                $list = implode(', ', $inactive);
+                throw ValidationException::withMessages([
+                    'product_ids' => ["Impossible d'associer des produits inactifs: {$list}. Activez-les pour continuer."],
+                ]);
+            }
+        }
+
         $supplier->update($validated);
         if (!empty($productIds)) {
             $supplier->products()->sync($productIds);
         }
 
-        return $supplier->load('products');
+        return $supplier->load(['products' => fn ($q) => $q->where('status', 'active')]);
     }
 
     public function destroy(Supplier $supplier)

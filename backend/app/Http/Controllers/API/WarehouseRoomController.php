@@ -76,7 +76,11 @@ class WarehouseRoomController extends Controller
     {
         $room->load([
             'warehouse',
-            'locations.products.category',
+            'locations' => function ($l) {
+                $l->with(['products' => function ($p) {
+                    $p->where('status', 'active')->with('category');
+                }]);
+            },
         ]);
 
         // 1) Products directly assigned to locations (legacy)
@@ -96,6 +100,7 @@ class WarehouseRoomController extends Controller
 
         // 2) Products present in product_stocks tied to this room (locations or cabinets)
         $stockEntries = ProductStock::with('product', 'warehouseLocation.room', 'warehouseCabinet.room')
+            ->whereHas('product', fn ($q) => $q->where('status', 'active'))
             ->get()
             ->filter(function ($s) use ($room) {
                 $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
@@ -107,6 +112,10 @@ class WarehouseRoomController extends Controller
             $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
             $location = $s->warehouseLocation ?? $s->warehouseCabinet ?? null;
 
+            if (!$product) {
+                return null;
+            }
+
             return array_merge($product->toArray(), [
                 'location_id' => $location?->id,
                 'location_code' => $location?->code,
@@ -117,7 +126,7 @@ class WarehouseRoomController extends Controller
                 'warehouse_name' => $room->warehouse ? $room->warehouse->name : '',
                 'stock_quantity' => $s->quantity,
             ]);
-        })->values();
+        })->filter()->values();
 
         // Merge both lists keyed by product id to avoid duplicates
         $merged = collect([]);

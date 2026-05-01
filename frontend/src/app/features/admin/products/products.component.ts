@@ -1,12 +1,14 @@
-import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject, ViewChild } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminStockService } from '../services/admin-stock.service';
+import { AdminRefService } from '../services/admin-ref.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { UnitService } from '../../../core/services/unit.service';
 import { AuthService } from '../../../core/services/auth.service';
 import JsBarcode from 'jsbarcode';
+import { BarcodeScannerComponent } from '../../../shared/barcode-scanner/barcode-scanner.component';
 
 @Component({
   selector: 'app-products',
@@ -19,6 +21,10 @@ export class ProductsComponent implements OnInit {
   categories: any[] = [];
   suppliers: any[] = [];
   units: any[] = [];
+  brands: any[] = [];
+  modelsList: any[] = [];
+  selectedMarqueId: number | null = null;
+  showScannerModal = false;
   flatCategories: { id: number; title: string; level: number; displayTitle: string }[] = [];
   overview: any = null;
   isLoading = false;
@@ -64,6 +70,7 @@ export class ProductsComponent implements OnInit {
 
   constructor(
     private readonly stockService: AdminStockService,
+    private readonly refService: AdminRefService,
     private readonly warehouseService: AdminWarehouseService,
     private readonly supplierService: SupplierService,
     private readonly unitService: UnitService,
@@ -80,10 +87,52 @@ export class ProductsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.loadWarehouses();
-    this.loadSuppliers();
     this.loadUnits();
+    this.loadBrands();
     this.loadAll();
+  }
+
+  private loadBrands(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.refService.listMarques({}).subscribe({
+         next: (res: any) => { this.brands = Array.isArray(res) ? res : []; this.cdr.detectChanges(); },
+         error: () => this.brands = []
+    });
+  }
+
+  onMarqueSelect(): void {
+    const id = this.selectedMarqueId;
+    this.modelsList = [];
+    this.form.model = '';
+    if (!id) return;
+    const mar = this.brands.find((x: any) => x.id === id);
+    this.form.marque = mar ? mar.name : '';
+    this.refService.listModeles({ marque_id: id }).subscribe({ next: (res: any) => { this.modelsList = Array.isArray(res) ? res : []; this.cdr.detectChanges(); }, error: () => this.modelsList = [] });
+  }
+
+
+
+  generateDescriptions(): void {
+    if (!this.form.title || !this.form.title.trim()) {
+      this.errorMessage = 'Titre requis pour générer la description.';
+      return;
+    }
+    this.errorMessage = '';
+    const payload = {
+      title: this.form.title,
+      marque: this.form.marque || undefined,
+      model: this.form.model || undefined
+    };
+    this.stockService.generateDescriptions(payload).subscribe({
+      next: (res: any) => {
+        this.form.short_description = res?.short_description || this.form.short_description;
+        this.form.description = res?.description || this.form.description;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.errorMessage = this.extractApiError(err, 'Impossible de générer la description.');
+      }
+    });
   }
 
   private loadWarehouses(): void {
@@ -167,7 +216,6 @@ export class ProductsComponent implements OnInit {
       short_description: '',
       description: '',
       commentaire: '',
-      fabricant: '',
       num_serie: '',
       num_inventaire: '',
       model: '',
@@ -267,7 +315,27 @@ export class ProductsComponent implements OnInit {
 
   openAddModal(): void {
     this.resetForm();
+    if (this.brands.length === 0) {
+      this.loadBrands();
+    }
     this.showModal = true;
+  }
+
+  openScanner(): void {
+    this.showScannerModal = true;
+    // allow view to render
+    setTimeout(() => { try { this.scanner?.start(); } catch (e) { /* ignore */ } }, 150);
+  }
+
+  closeScanner(): void {
+    try { this.scanner?.stop(); } catch (e) { /* ignore */ }
+    this.showScannerModal = false;
+  }
+
+  onCodeDetected(code: string): void {
+    this.scanCode = code;
+    this.closeScanner();
+    setTimeout(() => this.onScanSubmit(), 50);
   }
 
   openEditModal(item: any): void {
@@ -278,7 +346,6 @@ export class ProductsComponent implements OnInit {
       short_description: item.short_description || '',
       description: item.description || '',
       commentaire: item.commentaire || '',
-      fabricant: item.fabricant || '',
       num_serie: item.num_serie || '',
       num_inventaire: item.num_inventaire || '',
       model: item.model || '',
@@ -303,12 +370,40 @@ export class ProductsComponent implements OnInit {
       .map((p: any) => this.photoUrl(p?.path || p?.photo || p))
       .filter(Boolean);
 
+    // Populate dependent selects
     this.showModal = true;
+    // Load marques list for editing mode
+    setTimeout(() => {
+        if (this.brands.length === 0) {
+            this.refService.listMarques({}).subscribe({
+                next: (res: any) => {
+                    this.brands = Array.isArray(res) ? res : [];
+                    this.cdr.detectChanges();
+                    this.selectMarqueIfAny();
+                },
+                error: () => this.brands = []
+            });
+        } else {
+            this.selectMarqueIfAny();
+        }
+    }, 0);
+  }
+
+  private selectMarqueIfAny(): void {
+    setTimeout(() => {
+        const b = this.brands.find((x:any) => x.name === this.form.marque);
+        if (b) {
+            this.selectedMarqueId = b.id;
+            this.onMarqueSelect();
+        }
+    }, 200);
   }
 
   manageProductStocks(product: any): void {
     this.router.navigate(['/admin/produit', product.id, 'stocks']);
   }
+
+  @ViewChild(BarcodeScannerComponent) scanner?: BarcodeScannerComponent;
 
   closeModal(): void {
     this.showModal = false;
@@ -330,13 +425,17 @@ export class ProductsComponent implements OnInit {
     const unitId = this.form.unit_id ? Number(this.form.unit_id) : null;
     const selectedUnit = this.units.find((u: any) => u.id === unitId);
 
+    // Allow short_description to be slightly more developed (up to 2 sentences)
+    if (this.form.short_description) {
+      this.form.short_description = this.extractFirstTwoSentences(this.form.short_description);
+    }
+
     const payload = {
       status: this.form.status,
       title: (this.form.title || '').trim(),
       short_description: (this.form.short_description || '').trim(),
       description: (this.form.description || '').trim(),
       commentaire: (this.form.commentaire || '').trim(),
-      fabricant: (this.form.fabricant || '').trim(),
       num_serie: (this.form.num_serie || '').trim(),
       num_inventaire: (this.form.num_inventaire || '').trim(),
       model: (this.form.model || '').trim(),
@@ -352,8 +451,17 @@ export class ProductsComponent implements OnInit {
       photos: this.selectedPhotoFiles
     };
 
-    if (!payload.title || !payload.reference) {
-      this.errorMessage = 'Titre et référence sont obligatoires.';
+    if (!payload.title) {
+      this.errorMessage = 'Titre est obligatoire.';
+      return;
+    }
+    // When creating a product, allow backend to auto-generate the reference.
+    if (!this.editingId && (!payload.reference || payload.reference === '')) {
+      (payload as any).reference = undefined;
+    }
+    // When editing, reference is required (backend validation expects it)
+    if (this.editingId && (!payload.reference || payload.reference === '')) {
+      this.errorMessage = 'Référence est obligatoire lors de la modification.';
       return;
     }
     this.errorMessage = '';
@@ -363,17 +471,43 @@ export class ProductsComponent implements OnInit {
       : this.stockService.createProduct(payload);
 
     req$.subscribe({
-      next: () => {
-        this.successMessage = this.editingId ? 'Produit mis à jour !' : 'Produit créé !';
+      next: (res: any) => {
+        const created = res?.product || res?.data || null;
+        if (this.editingId) {
+          this.successMessage = 'Produit mis à jour !';
+        } else if (created && created.reference) {
+          this.successMessage = 'Produit créé ! Réf: ' + created.reference;
+          this.highlightedProductId = created.id || null;
+        } else {
+          this.successMessage = 'Produit créé !';
+        }
         this.closeModal();
-        // this.loadOverview(); // Route n'existe pas dans l'API
         this.loadProducts();
-        setTimeout(() => this.successMessage = '', 3000);
+        setTimeout(() => this.successMessage = '', 5000);
       },
       error: (err) => {
         this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
       }
     });
+  }
+
+  private extractFirstTwoSentences(text: string): string {
+    if (!text) return '';
+    const s = text.trim();
+    // Capture up to two sentences (ending with . ! ?)
+    const regex = /([^\.\!\?]+[\.\!\?])(\s*([^\.\!\?]+[\.\!\?]))?/;
+    const match = s.match(regex);
+    if (match && match[1]) {
+      let result = match[1].trim();
+      if (match[3]) {
+        result += ' ' + match[3].trim();
+      }
+      // limit length to ~240 chars
+      if (result.length > 240) return result.slice(0, 237).trim() + '...';
+      return result;
+    }
+    // fallback: take up to 160 chars
+    return s.length > 160 ? s.slice(0, 157).trim() + '...' : s;
   }
 
   remove(id: number): void {

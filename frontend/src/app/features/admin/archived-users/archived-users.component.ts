@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AdminUsersService } from '../services/admin-users.service';
 
@@ -14,6 +14,11 @@ export class ArchivedUsersComponent implements OnInit {
   isLoading = false;
   errorMessage = '';
   isBrowser: boolean;  // ← Ajout d'une propriété
+
+  // Avatar modal
+  avatarModalOpen = false;
+  avatarModalUrl = '';
+  avatarModalName = '';
 
   constructor(
     private svc: AdminUsersService,
@@ -130,5 +135,27 @@ export class ArchivedUsersComponent implements OnInit {
 
   roleNames(u: any): string {
     return (u.roles || []).map((r: any) => r.name).join(', ');
+  }
+
+  photoUrl(path: string | null | undefined): string {
+    if (!path) return 'assets/default-avatar.svg';
+    if (path.startsWith('http')) return path;
+    const cleanPath = path.replace(/^\/+/, '');
+    return `http://localhost:8000/storage/${cleanPath}`;
+  }
+
+  /* --- Avatar Modal --- */
+  openAvatarModal(u: any): void {
+    if (!this.isBrowser) return;
+    this.avatarModalUrl = this.photoUrl(u.photo || u.avatar);
+    this.avatarModalName = u.nomprenom || '';
+    this.avatarModalOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeAvatarModal(): void {
+    if (!this.isBrowser) return;
+    this.avatarModalOpen = false;
+    this.cdr.detectChanges();
   }
 }

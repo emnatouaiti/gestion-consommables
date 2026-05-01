@@ -1,4 +1,4 @@
-﻿import {
+import {
   Component,
   OnInit,
   ChangeDetectorRef,
@@ -22,6 +22,11 @@ export class UserFormComponent implements OnInit {
   roles: any[] = [];
   isLoading = false;
   errorMessage = '';
+  siegeOptions: string[] = [
+    'Charguia_II_Ariana',
+    'Mohamed_V_Tunis',
+    'Kheireddine_Pacha_Tunis'
+  ];
 
   private readonly apiBase = '/api';
 
@@ -37,6 +42,7 @@ export class UserFormComponent implements OnInit {
       email:     ['', [Validators.required, Validators.email]],
       adresse:   [''],
       telephone: [''],
+      siege:     [''],
       roles:     ['', Validators.required]
     });
   }
@@ -90,6 +96,7 @@ export class UserFormComponent implements OnInit {
           email:     u.email     || '',
           adresse:   u.adresse   || '',
           telephone: u.telephone || '',
+          siege:     u.siege     || '',
           roles:     currentRole
         });
 
@@ -118,6 +125,7 @@ export class UserFormComponent implements OnInit {
       email:     raw.email,
       adresse:   raw.adresse,
       telephone: raw.telephone,
+      siege:     raw.siege,
       roles:     [raw.roles]  // ex: ["Administrateur"]
     };
 

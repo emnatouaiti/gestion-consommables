@@ -13,6 +13,10 @@ import { AdminRolePageComponent } from './admin-role-page/admin-role-page.compon
 import { CategoriesComponent } from './categories/categories.component';
 import { ProductsComponent } from './products/products.component';
 import { WarehousesComponent } from './warehouses/warehouses.component';
+import { FabricantsComponent } from './fabricants/fabricants.component';
+import { MarquesComponent } from './marques/marques.component';
+import { ModelesComponent } from './modeles/modeles.component';
+import { ReferencesComponent } from './references/references.component';
 import { ProductStocksComponent } from './product-stocks/product-stocks.component';
 import { ProductsByLocationComponent } from './products-by-location/products-by-location.component';
 import { ProductsByWarehouseComponent } from './products-by-warehouse/products-by-warehouse.component';
@@ -26,6 +30,7 @@ import { DocumentsComponent } from './documents/documents.component';
 import { ChatComponent } from './chat/chat.component';
 import { ThreadWidgetComponent } from './chat/thread-widget.component';
 import { MiniThreadsComponent } from './chat/mini-threads.component';
+import { BarcodeScannerComponent } from '../../shared/barcode-scanner/barcode-scanner.component';
 
 @NgModule({
   declarations: [
@@ -50,6 +55,12 @@ import { MiniThreadsComponent } from './chat/mini-threads.component';
     ReactiveFormsModule,
     FormsModule,
     RouterModule,
+    FabricantsComponent,
+    MarquesComponent,
+    ModelesComponent,
+    // Barcode scanner (standalone)
+    BarcodeScannerComponent,
+    ReferencesComponent,
     SuppliersComponent,
     UnitsComponent,
     StockMovementsComponent,

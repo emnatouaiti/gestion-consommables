@@ -162,8 +162,29 @@ Route::prefix('api')->group(function () {
             Route::post('admin/products', [ProductController::class, 'store']);
             Route::get('admin/products/{id}', [ProductController::class, 'show']);
             Route::put('admin/products/{id}', [ProductController::class, 'update']);
+            Route::put('admin/products/{id}/activate', [ProductController::class, 'activate']);
             Route::delete('admin/products/{id}', [ProductController::class, 'destroy']);
             Route::get('admin/products/{id}/barcode', [ProductController::class, 'downloadBarcode']);
+            Route::get('admin/manufacturers', [ProductController::class, 'manufacturers']);
+            Route::get('admin/brands', [ProductController::class, 'brands']);
+            Route::get('admin/models', [ProductController::class, 'models']);
+            Route::post('admin/products/generate-descriptions', [ProductController::class, 'generateDescriptions']);
+
+            // References CRUD endpoints (fabricants, marques, modeles)
+            Route::get('admin/fabricants', [\App\Http\Controllers\API\ReferencesController::class, 'listFabricants']);
+            Route::post('admin/fabricants', [\App\Http\Controllers\API\ReferencesController::class, 'storeFabricant']);
+            Route::put('admin/fabricants/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'updateFabricant']);
+            Route::delete('admin/fabricants/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'deleteFabricant']);
+
+            Route::get('admin/marques', [\App\Http\Controllers\API\ReferencesController::class, 'listMarques']);
+            Route::post('admin/marques', [\App\Http\Controllers\API\ReferencesController::class, 'storeMarque']);
+            Route::put('admin/marques/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'updateMarque']);
+            Route::delete('admin/marques/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'deleteMarque']);
+
+            Route::get('admin/modeles', [\App\Http\Controllers\API\ReferencesController::class, 'listModeles']);
+            Route::post('admin/modeles', [\App\Http\Controllers\API\ReferencesController::class, 'storeModele']);
+            Route::put('admin/modeles/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'updateModele']);
+            Route::delete('admin/modeles/{id}', [\App\Http\Controllers\API\ReferencesController::class, 'deleteModele']);
 
             Route::get('admin/warehouses', [WarehouseController::class, 'index']);
             Route::post('admin/warehouses', [WarehouseController::class, 'store']);

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Product;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 
@@ -45,8 +46,10 @@ class ProductController extends Controller
         ]);
         $perPage = max(1, min(100, (int) $request->get('per_page', 20)));
 
-        if ($request->filled('status') && $request->status !== 'all') {
-            $query->where('status', $request->status);
+        // Default: only active products everywhere, unless the products list explicitly asks otherwise.
+        $status = $request->get('status', 'active');
+        if ($status && $status !== 'all') {
+            $query->where('status', $status);
         }
 
         if ($request->filled('categorie_id')) {
@@ -92,6 +95,7 @@ class ProductController extends Controller
         $inventoryValue = (float) Product::selectRaw('COALESCE(SUM(stock_quantity * COALESCE(purchase_price, 0)), 0) as total')->value('total');
 
         $topLowStock = Product::with('category:id,title')
+            ->where('status', 'active')
             ->whereColumn('stock_quantity', '<=', 'seuil_min')
             ->orderByRaw('(seuil_min - stock_quantity) DESC')
             ->limit(8)
@@ -123,7 +127,7 @@ class ProductController extends Controller
             'marque' => 'nullable|string|max:255',
             'seuil_min' => 'required|integer|min:0',
             'seuil_max' => 'nullable|integer|gt:seuil_min',
-            'reference' => 'required|string|max:120|unique:products,reference',
+            'reference' => 'nullable|string|max:120',
             'categorie_id' => 'required|exists:categories,id',
             'stock_quantity' => 'nullable|integer|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
@@ -144,6 +148,75 @@ class ProductController extends Controller
         }
 
         $data = $validator->validated();
+
+        // If the user tries to create a product that already exists but is inactive,
+        // return it and suggest re-activating instead of creating a duplicate.
+        $incomingTitle = trim((string) ($data['title'] ?? ''));
+        if ($incomingTitle !== '') {
+            $existingInactive = Product::query()
+                ->select(['id', 'title', 'reference', 'status'])
+                ->where('status', 'inactive')
+                ->whereRaw('LOWER(title) = ?', [Str::lower($incomingTitle)])
+                ->first();
+
+            if ($existingInactive) {
+                $activatePath = '/api/admin/products/' . $existingInactive->id . '/activate';
+                return response()->json([
+                    'message' => 'Ce produit existe deja mais il est inactif. Voulez-vous le reactiver (status=active) ?',
+                    'errors' => [
+                        'status' => ["Produit inactif: activez-le au lieu de creer un doublon (PUT {$activatePath})."],
+                    ],
+                    'existing_product' => $existingInactive,
+                    'suggested_update' => [
+                        'method' => 'PUT',
+                        'path' => $activatePath,
+                        'body' => [],
+                    ],
+                ], 422);
+            }
+        }
+
+        if (!empty($data['reference'])) {
+            $incomingRef = trim((string) $data['reference']);
+            $existingRef = Product::query()
+                ->select(['id', 'title', 'reference', 'status'])
+                ->whereRaw('LOWER(reference) = ?', [Str::lower($incomingRef)])
+                ->first();
+
+            if ($existingRef) {
+                if (Str::lower((string) $existingRef->status) !== 'active') {
+                    $activatePath = '/api/admin/products/' . $existingRef->id . '/activate';
+                    return response()->json([
+                        'message' => 'Ce produit existe deja mais il est inactif. Voulez-vous le reactiver (status=active) ?',
+                        'errors' => [
+                            'status' => ["Produit inactif: activez-le au lieu de creer un doublon (PUT {$activatePath})."],
+                        ],
+                        'existing_product' => $existingRef,
+                        'suggested_update' => [
+                            'method' => 'PUT',
+                            'path' => $activatePath,
+                            'body' => [],
+                        ],
+                    ], 422);
+                }
+
+                return response()->json([
+                    'reference' => ['Cette reference existe deja.'],
+                ], 422);
+            }
+        }
+
+        // If no reference provided, generate a unique one automatically
+        if (empty($data['reference'])) {
+            $base = isset($data['title']) ? preg_replace('/[^A-Za-z0-9]/', '', strtoupper($data['title'])) : 'PRD';
+            $base = substr($base, 0, 10) ?: 'PRD';
+            do {
+                $suffix = strtoupper(substr(uniqid(), -6));
+                $candidate = $base . '-' . $suffix;
+            } while (Product::where('reference', $candidate)->exists());
+
+            $data['reference'] = $candidate;
+        }
         $supplierIds = $data['supplier_ids'] ?? [];
         unset($data['supplier_ids']);
 
@@ -295,6 +368,21 @@ class ProductController extends Controller
         ]);
     }
 
+    /**
+     * Reactivate a product without requiring the full update payload.
+     */
+    public function activate(int $id)
+    {
+        $product = Product::findOrFail($id);
+        $product->status = 'active';
+        $product->save();
+
+        return response()->json([
+            'message' => 'Produit reactive',
+            'product' => $product->fresh(),
+        ]);
+    }
+
     public function destroy(int $id)
     {
         $product = Product::findOrFail($id);
@@ -365,5 +453,119 @@ class ProductController extends Controller
             . $bars
             . '<text x="20" y="125" font-size="14" font-family="Arial, sans-serif" fill="#111">' . htmlspecialchars($cleanValue, ENT_QUOTES, 'UTF-8') . '</text>'
             . '</svg>';
+    }
+
+    /**
+     * Return list of distinct fabricants (manufacturers) from products.
+     */
+    public function manufacturers()
+    {
+        $list = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('fabricant')
+            ->where('fabricant', '!=', '')
+            ->distinct()
+            ->pluck('fabricant')
+            ->values();
+
+        return response()->json($list);
+    }
+
+    /**
+     * Return list of distinct marques (brands), optionally filtered by fabricant.
+     */
+    public function brands(Request $request)
+    {
+        $fabricant = $request->get('fabricant');
+
+        $q = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('marque')
+            ->where('marque', '!=', '');
+
+        if (!empty($fabricant)) {
+            $q->where('fabricant', $fabricant);
+        }
+
+        $list = $q->distinct()->pluck('marque')->values();
+
+        return response()->json($list);
+    }
+
+    /**
+     * Return list of distinct models, optionally filtered by fabricant and marque.
+     */
+    public function models(Request $request)
+    {
+        $fabricant = $request->get('fabricant');
+        $marque = $request->get('marque');
+
+        $q = Product::query()
+            ->where('status', 'active')
+            ->whereNotNull('model')
+            ->where('model', '!=', '');
+
+        if (!empty($fabricant)) {
+            $q->where('fabricant', $fabricant);
+        }
+        if (!empty($marque)) {
+            $q->where('marque', $marque);
+        }
+
+        $list = $q->distinct()->pluck('model')->values();
+
+        return response()->json($list);
+    }
+
+    /**
+     * Generate short and full descriptions for a product title.
+     * This is a simple local generator; replace with an external AI service if desired.
+     */
+    public function generateDescriptions(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'fabricant' => 'nullable|string|max:255',
+            'marque' => 'nullable|string|max:255',
+            'model' => 'nullable|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json($validator->errors(), 422);
+        }
+
+        $title = trim($request->get('title'));
+        $fabricant = trim((string)$request->get('fabricant', ''));
+        $marque = trim((string)$request->get('marque', ''));
+        $model = trim((string)$request->get('model', ''));
+
+        // Build a slightly more developed short description (1-2 sentences)
+        $parts = [];
+        $main = $title;
+        if ($marque) $main .= ' — ' . $marque;
+        if ($model) $main .= ' ' . $model;
+        if ($fabricant) $main .= ' (' . $fabricant . ')';
+
+        $sentence1 = $main . '.';
+        $sentence2 = 'Idéal pour un usage professionnel, il offre robustesse et une prise en main simple.';
+
+        $short = $sentence1 . ' ' . $sentence2;
+
+        $description = "Le produit \"" . $title . "\"";
+        if ($fabricant) {
+            $description .= " fabriqué par " . $fabricant . ",";
+        }
+        if ($marque) {
+            $description .= " de la marque " . $marque . ",";
+        }
+        if ($model) {
+            $description .= " modèle " . $model . ".";
+        }
+        $description .= " Ce produit est conçu pour répondre aux besoins de vos opérations de stock: robustesse, facilité d'utilisation et maintenance réduite. Il convient pour une utilisation en environnement professionnel et peut être stocké facilement. Personnalisez la description selon les spécifications techniques si nécessaire.";
+
+        return response()->json([
+            'short_description' => $short,
+            'description' => $description,
+        ]);
     }
 }

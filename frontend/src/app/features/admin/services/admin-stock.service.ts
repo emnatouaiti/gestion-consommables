@@ -104,6 +104,31 @@ export class AdminStockService {
     return this.api.get(`admin/warehouse-locations/${locationId}/products`);
   }
 
+  getManufacturers(): Observable<any> {
+    return this.api.get('admin/manufacturers');
+  }
+
+  getBrands(fabricant?: string): Observable<any> {
+    let path = 'admin/brands';
+    if (fabricant) {
+      path += `?fabricant=${encodeURIComponent(fabricant)}`;
+    }
+    return this.api.get(path);
+  }
+
+  getModels(fabricant?: string, marque?: string): Observable<any> {
+    let path = 'admin/models';
+    const q: string[] = [];
+    if (fabricant) q.push(`fabricant=${encodeURIComponent(fabricant)}`);
+    if (marque) q.push(`marque=${encodeURIComponent(marque)}`);
+    if (q.length) path += `?${q.join('&')}`;
+    return this.api.get(path);
+  }
+
+  generateDescriptions(payload: any): Observable<any> {
+    return this.api.post('admin/products/generate-descriptions', payload);
+  }
+
   getDashboardStats(): Observable<any> {
     return this.api.get('admin/dashboard');
   }

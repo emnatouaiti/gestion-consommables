@@ -43,6 +43,16 @@ class DocumentController extends Controller
             'supplier_email'=> 'nullable|email|max:255',
         ]);
 
+        if ($request->filled('product_id')) {
+            $product = Product::query()->select(['id', 'title', 'status'])->find((int) $request->input('product_id'));
+            if ($product && Str::lower((string) $product->status) !== 'active') {
+                return response()->json([
+                    'message' => "Le produit \"{$product->title}\" est inactif. Changez son statut en active pour l'utiliser.",
+                    'product' => $product,
+                ], 422);
+            }
+        }
+
         $path       = $request->file('file')->store('documents', 'public');
         $ocrText    = $this->runTesseract(Storage::disk('public')->path($path));
         $parsed     = $ocrText !== '' ? $this->parseLines($ocrText) : [];
@@ -193,6 +203,7 @@ class DocumentController extends Controller
         }
 
         $missingProducts = [];
+        $inactiveProducts = [];
         $prepareActions = [];
 
         foreach ($items as $item) {
@@ -221,6 +232,16 @@ class DocumentController extends Controller
                 if (!$product && $title !== '') {
                     $product = Product::where('title', 'like', $title)->first();
                 }
+            }
+
+            if ($product && Str::lower((string) $product->status) !== 'active') {
+                $inactiveProducts[] = [
+                    'id' => (int) $product->id,
+                    'title' => $product->title,
+                    'reference' => $product->reference,
+                    'status' => $product->status,
+                ];
+                continue;
             }
 
             if (!$product && $title !== '') {
@@ -259,6 +280,13 @@ class DocumentController extends Controller
                 'cabinet_id' => $cabinetId,
                 'product' => $product,
             ];
+        }
+
+        if (count($inactiveProducts) > 0) {
+            return response()->json([
+                'message' => 'Certains produits existent mais sont inactifs. Activez-les pour pouvoir les ajouter.',
+                'inactive_products' => $inactiveProducts,
+            ], 409);
         }
 
         if (count($missingProducts) > 0) {

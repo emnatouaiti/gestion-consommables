@@ -12,6 +12,10 @@ import { AdminRolePageComponent } from './admin-role-page/admin-role-page.compon
 import { CategoriesComponent } from './categories/categories.component';
 import { ProductsComponent } from './products/products.component';
 import { WarehousesComponent } from './warehouses/warehouses.component';
+import { FabricantsComponent } from './fabricants/fabricants.component';
+import { MarquesComponent } from './marques/marques.component';
+import { ModelesComponent } from './modeles/modeles.component';
+import { ReferencesComponent } from './references/references.component';
 import { ProductStocksComponent } from './product-stocks/product-stocks.component';
 import { ProductsByLocationComponent } from './products-by-location/products-by-location.component';
 import { ProductsByWarehouseComponent } from './products-by-warehouse/products-by-warehouse.component';
@@ -84,6 +88,30 @@ const routes: Routes = [
         component: CategoriesComponent,
         canActivate: [RoleGuard],
         data: { roles: managerRoles }
+      },
+      {
+        path: 'gerer-references',
+        component: ReferencesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerAndAgent }
+      },
+      {
+        path: 'gerer-fabricants',
+        component: FabricantsComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerAndAgent }
+      },
+      {
+        path: 'gerer-marques',
+        component: MarquesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerAndAgent }
+      },
+      {
+        path: 'gerer-modeles',
+        component: ModelesComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerAndAgent }
       },
       {
         path: 'gerer-produits',

@@ -73,6 +73,7 @@ class UserManagementController extends Controller
             'email' => 'required|email|unique:users,email',
             'service' => 'nullable|string|max:255',
             'poste' => 'nullable|string|max:255',
+            'siege' => 'nullable|string|max:255',
             'roles' => 'nullable',
         ]);
 
@@ -98,6 +99,7 @@ class UserManagementController extends Controller
             'password' => Hash::make($plain),
             'service' => $request->input('service', 'Non defini'),
             'poste' => $request->input('poste', 'Non defini'),
+            'siege' => $request->input('siege', 'Non defini'),
             'role' => $validRoleNames[0],
         ]);
 
@@ -125,7 +127,7 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste']);
+        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste', 'siege']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);

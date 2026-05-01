@@ -45,6 +45,7 @@ class SocialAuthController extends Controller
                         'photo' => $googleUser->avatar,
                         'service' => 'Non defini',
                         'poste' => 'Non defini',
+                        'siege' => 'Non defini',
                     ]);
 
                     $user->assignRole('Utilisateur');

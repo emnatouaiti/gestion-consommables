@@ -12,7 +12,10 @@ class ReportController extends Controller
 {
     public function exportStock(Request $request)
     {
-        $products = Product::with(['category', 'unit'])->get();
+        $products = Product::query()
+            ->where('status', 'active')
+            ->with(['category', 'unit'])
+            ->get();
 
         $response = new StreamedResponse(function () use ($products) {
             $handle = fopen('php://output', 'w');

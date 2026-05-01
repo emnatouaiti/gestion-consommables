@@ -1,0 +1,23 @@
+<div class="page">
+  <div class="page-header">
+    <h3>Gestion des marques</h3>
+    <div class="actions"><button class="btn-primary" (click)="add()">+ Ajouter</button></div>
+  </div>
+
+  <div style="margin-bottom:8px;">
+    <label>Filtrer par fabricant: </label>
+    <select [(ngModel)]="selectedFabricant" (change)="load()">
+      <option [ngValue]="null">Tous</option>
+      <option *ngFor="let f of fabricants" [ngValue]="f.id">{{ f.name }}</option>
+    </select>
+  </div>
+
+  <div *ngIf="marques.length === 0">Aucune marque trouvée.</div>
+  <ul>
+    <li *ngFor="let m of marques">
+      {{ m.name }} <small *ngIf="m.fabricant_id">(fab: {{ m.fabricant_id }})</small>
+      <button (click)="edit(m)">✏️</button>
+      <button (click)="remove(m)">🗑️</button>
+    </li>
+  </ul>
+</div>
