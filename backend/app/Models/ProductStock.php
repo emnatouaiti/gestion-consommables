@@ -18,6 +18,8 @@ class ProductStock extends Model
         'supplier_id',
         'quantity',
         'notes',
+        'batch_number',
+        'expiration_date',
         'last_updated',
     ];
 

@@ -182,6 +182,16 @@
               <option *ngFor="let c of item.cabinets" [ngValue]="c.id">{{ c.name || c.code || ('#' + c.id) }}</option>
             </select>
           </div>
+
+          <div class="field full" *ngIf="item.has_expiration">
+            <label>Date d'expiration (Optionnelle)</label>
+            <input type="date" [(ngModel)]="item.expiration_date" />
+          </div>
+
+          <div class="field full" *ngIf="item.has_expiration">
+            <label>Numéro de lot (Optionnel)</label>
+            <input type="text" [(ngModel)]="item.batch_number" placeholder="Ex: LOT-2026-A" />
+          </div>
         </div>
       </div>
 
@@ -394,7 +404,7 @@
     </h3>
 
     <!-- Filtres actifs -->
-    <div class="active-filters" *ngIf="statusFilter || directionFilter">
+    <div class="active-filters" *ngIf="statusFilter || directionFilter || typeFilter">
       <span class="filter-label">Filtres actifs :</span>
       <span class="filter-chip" *ngIf="statusFilter">
         Statut : {{ statusFilter }}
@@ -404,7 +414,28 @@
         Direction : {{ directionFilter }}
         <button (click)="filterByDirection(null)">✕</button>
       </span>
+      <span class="filter-chip" *ngIf="typeFilter">
+        Type : {{ getDocTypeLabel(typeFilter) }}
+        <button (click)="filterByType(null)">✕</button>
+      </span>
       <button class="btn ghost sm" (click)="clearFilters()">Tout effacer</button>
+    </div>
+
+    <!-- Sélecteur de type -->
+    <div class="filter-toolbar">
+      <div class="type-selector">
+        <label>Type de document :</label>
+        <div class="type-chips">
+          <button class="type-chip" [class.active]="!typeFilter" (click)="filterByType(null)">Tous</button>
+          <button *ngFor="let t of getAvailableTypes()" 
+            class="type-chip" 
+            [class.active]="typeFilter === t" 
+            (click)="filterByType(t)">
+            {{ getDocTypeLabel(t) }}
+            <span class="type-count">({{ getTypeCount(t) }})</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div *ngIf="isLoading" class="loading">Chargement...</div>

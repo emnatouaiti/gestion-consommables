@@ -99,7 +99,7 @@ Route::prefix('api')->group(function () {
             Route::put('/{id}/confirm-exit', [ConsumableRequestController::class, 'confirmExit']);
         });
         // Stock movements endpoints
-        Route::prefix('stock-movements')->middleware('role:Agent de stock|Responsable de stock')->group(function () {
+        Route::prefix('stock-movements')->middleware('role:Agent de stock|Agent|Responsable de stock|Responsable|Gestionnaire')->group(function () {
             Route::get('/', [\App\Http\Controllers\StockMovementController::class, 'index']);
             Route::post('/', [\App\Http\Controllers\StockMovementController::class, 'store']);
             Route::get('/{id}', [\App\Http\Controllers\StockMovementController::class, 'show']);
@@ -143,7 +143,7 @@ Route::prefix('api')->group(function () {
         });
 
         // Section: REDUCED ADMIN & RESPONSABLE
-        Route::middleware('role:Responsable de stock')->group(function () {
+        Route::middleware('role:Responsable de stock|Responsable|Gestionnaire')->group(function () {
             Route::get('admin/categories', [CategoryController::class, 'index']);
             Route::post('admin/categories', [CategoryController::class, 'store']);
             Route::get('admin/categories/{id}', [CategoryController::class, 'show']);
@@ -157,7 +157,7 @@ Route::prefix('api')->group(function () {
         });
 
         // Section: RESPONSABLE & AGENT
-        Route::middleware('role:Responsable de stock|Agent de stock')->group(function () {
+        Route::middleware('role:Responsable de stock|Responsable|Gestionnaire|Agent de stock|Agent')->group(function () {
             Route::get('admin/products', [ProductController::class, 'index']);
             Route::post('admin/products', [ProductController::class, 'store']);
             Route::get('admin/products/{id}', [ProductController::class, 'show']);
@@ -237,10 +237,15 @@ Route::prefix('api')->group(function () {
             Route::put('admin/product-stocks/{stock}', [ProductStockController::class, 'updateStock']);
             Route::delete('admin/product-stocks/{stock}', [ProductStockController::class, 'removeStock']);
             Route::get('admin/product-stocks/search', [ProductStockController::class, 'searchStocks']);
+
+            // Expiration API
+            Route::get('admin/products/{product}/expiration/batches', [\App\Http\Controllers\API\ExpirationController::class, 'getBatches']);
+            Route::get('admin/products/{product}/expiration/expiring-soon', [\App\Http\Controllers\API\ExpirationController::class, 'getExpiringSoon']);
+            Route::get('admin/products/{product}/expiration-events', [\App\Http\Controllers\API\ExpirationController::class, 'getEvents']);
         });
             
         // OCR specific to Agent & Responsable
-        Route::middleware('role:Agent de stock|Responsable de stock')->group(function () {
+        Route::middleware('role:Agent de stock|Agent|Responsable de stock|Responsable|Gestionnaire')->group(function () {
             Route::get('admin/documents', [DocumentController::class, 'index']);
             Route::post('admin/documents', [DocumentController::class, 'store']);
             Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
@@ -249,7 +254,7 @@ Route::prefix('api')->group(function () {
         });
 
         // Shared across Admin, Responsable, Agent
-        Route::middleware('role:Administrateur|Responsable de stock|Agent de stock')->group(function () {
+        Route::middleware('role:Administrateur|Responsable de stock|Responsable|Gestionnaire|Agent de stock|Agent')->group(function () {
             Route::get('admin/suppliers', [SupplierController::class, 'index']);
             Route::post('admin/suppliers', [SupplierController::class, 'store']);
             Route::get('admin/suppliers/{supplier}', [SupplierController::class, 'show']);
@@ -266,7 +271,22 @@ Route::prefix('api')->group(function () {
 
     // Proxy simplifié pour les documents
     Route::get('docs/{path}', function($path) {
-        if (!\Storage::disk('public')->exists($path)) abort(404);
-        return \Storage::disk('public')->response($path);
+        $disk = \Storage::disk('public');
+        $clean = ltrim((string) $path, '/\\');
+
+        $candidates = [$clean];
+        if (!str_contains($clean, '/')) {
+            $candidates[] = 'products/' . $clean;
+            $candidates[] = 'suppliers/' . $clean;
+            $candidates[] = 'documents/' . $clean;
+        }
+
+        foreach ($candidates as $candidate) {
+            if ($disk->exists($candidate)) {
+                return $disk->response($candidate);
+            }
+        }
+
+        abort(404);
     })->where('path', '.*');
 });

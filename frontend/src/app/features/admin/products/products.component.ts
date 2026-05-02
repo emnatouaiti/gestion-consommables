@@ -44,6 +44,9 @@ export class ProductsComponent implements OnInit {
   showModal = false;
   private readonly barcodeCache = new Map<string, string>();
   updatingPhotoId: number | null = null;
+  // Réactivation modal
+showReactivateModal = false;
+reactivateProduct: any | null = null;
 
   warehouses: any[] = [];
   rooms: any[] = [];
@@ -83,11 +86,24 @@ export class ProductsComponent implements OnInit {
   /** Responsable de stock can write (create/update/delete). Agent can only read. */
   get canWrite(): boolean {
     const user = this.authService.getCurrentUserSnapshot();
-    return this.authService.userHasAnyRole(user, ['Responsable de stock', 'Administrateur']);
+    return this.authService.userHasAnyRole(user, ['Responsable de stock', 'Responsable', 'Gestionnaire', 'Administrateur']);
+  }
+
+  /** Access aligned with backend products middleware (Responsable de stock | Agent de stock). */
+  get canAccessProducts(): boolean {
+    const user = this.authService.getCurrentUserSnapshot();
+    return this.authService.userHasAnyRole(user, ['Responsable de stock', 'Responsable', 'Gestionnaire', 'Agent de stock', 'Agent']);
   }
 
   ngOnInit(): void {
-    this.loadUnits();
+    if (!this.canAccessProducts) {
+      this.router.navigate(['/admin/profile']);
+      return;
+    }
+
+    if (this.canWrite) {
+      this.loadUnits();
+    }
     this.loadBrands();
     this.loadAll();
   }
@@ -224,6 +240,7 @@ export class ProductsComponent implements OnInit {
       seuil_max: null as number | null,
       reference: '',
       categorie_id: null as number | null,
+      has_expiration: false,
       // Kept for compatibility with existing product listing & stock/location features.
       stock_quantity: null as number | null,
       purchase_price: null as number | null,
@@ -354,6 +371,7 @@ export class ProductsComponent implements OnInit {
       seuil_max: item.seuil_max || null,
       reference: item.reference || '',
       categorie_id: item.categorie_id ?? null,
+      has_expiration: item.has_expiration ?? false,
       stock_quantity: null,
       purchase_price: item.purchase_price ?? null,
       unit_id: item.unit_id ?? item.unit?.id ?? null,
@@ -444,6 +462,7 @@ export class ProductsComponent implements OnInit {
       seuil_max: this.form.seuil_max ? Number(this.form.seuil_max) : null,
       reference: (this.form.reference || '').trim(),
       categorie_id: Number(this.form.categorie_id),
+      has_expiration: this.form.has_expiration ? 1 : 0,
       purchase_price: this.form.purchase_price === null ? null : Number(this.form.purchase_price),
       unit_id: unitId,
       unit: selectedUnit?.name || '',
@@ -485,9 +504,17 @@ export class ProductsComponent implements OnInit {
         this.loadProducts();
         setTimeout(() => this.successMessage = '', 5000);
       },
-      error: (err) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
-      }
+   error: (err) => {
+  console.log('ERR COMPLET:', JSON.stringify(err));
+  if (err?.existing_product) {
+    this.reactivateProduct = err.existing_product;
+    this.showReactivateModal = true;
+    this.errorMessage = '';
+    this.cdr.detectChanges();  // ← ajoute cette ligne
+  } else {
+    this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
+  }
+}
     });
   }
 
@@ -524,6 +551,27 @@ export class ProductsComponent implements OnInit {
       }
     });
   }
+  confirmReactivate(): void {
+  if (!this.reactivateProduct?.id) return;
+  this.stockService.activateProduct(this.reactivateProduct.id).subscribe({
+    next: () => {
+      this.successMessage = `Produit "${this.reactivateProduct.title}" réactivé !`;
+      this.showReactivateModal = false;
+      this.reactivateProduct = null;
+      this.closeModal();
+      this.loadProducts();
+      setTimeout(() => this.successMessage = '', 4000);
+    },
+    error: (err) => {
+      this.errorMessage = this.extractApiError(err, 'Impossible de réactiver le produit.');
+    }
+  });
+}
+
+dismissReactivate(): void {
+  this.showReactivateModal = false;
+  this.reactivateProduct = null;
+}
 
   resetForm(): void {
     this.editingId = null;
@@ -634,6 +682,7 @@ export class ProductsComponent implements OnInit {
 
     this.errorMessage = '';
     this.updatingPhotoId = product.id;
+
     this.stockService.updateProduct(product.id, { photos: [file] }).subscribe({
       next: () => {
         this.successMessage = 'Photo mise à jour.';
@@ -651,8 +700,12 @@ export class ProductsComponent implements OnInit {
   photoUrl(path: string | null | undefined): string {
     if (!path) return 'assets/default-avatar.svg';
     if (path.startsWith('http')) return path;
-    const cleanPath = path.replace(/^\/+/, '');
-    return `/storage/${cleanPath}`;
+    const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '');
+    return `/api/docs/${cleanPath}`;
+  }
+
+  onImageError(event: any): void {
+    event.target.src = 'assets/images/placeholder-product.png';
   }
 
   productThumb(product: any): string {
@@ -779,18 +832,22 @@ export class ProductsComponent implements OnInit {
 
   private extractApiError(err: any, fallback: string): string {
     if (!err) return fallback;
-    if (typeof err.message === 'string' && err.message.trim()) return err.message;
-    const errors = err.errors;
+    const payload = err?.error ?? err;
+
+    if (typeof payload?.message === 'string' && payload.message.trim()) return payload.message;
+    if (typeof err?.message === 'string' && err.message.trim()) return err.message;
+
+    const errors = payload?.errors || payload?.error || err?.errors;
     if (errors && typeof errors === 'object') {
       const firstField = Object.keys(errors)[0];
       const firstValue = firstField ? errors[firstField] : null;
       if (Array.isArray(firstValue) && firstValue.length) return String(firstValue[0]);
       if (typeof firstValue === 'string') return firstValue;
     }
-    if (typeof err === 'object') {
-      const topLevelField = Object.keys(err).find((key) => Array.isArray(err[key]));
+    if (typeof payload === 'object') {
+      const topLevelField = Object.keys(payload).find((key) => Array.isArray(payload[key]));
       if (topLevelField) {
-        const value = err[topLevelField];
+        const value = payload[topLevelField];
         if (Array.isArray(value) && value.length) return String(value[0]);
       }
     }

@@ -142,6 +142,9 @@ export class AdminStockService {
       responseType: 'blob'
     });
   }
+  activateProduct(id: number): Observable<any> {
+  return this.api.put(`admin/products/${id}/activate`, {});
+}
 
   private toFormData(payload: any): FormData {
     const formData = new FormData();

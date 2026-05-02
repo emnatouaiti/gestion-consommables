@@ -69,6 +69,7 @@
               alt="avatar"
               class="avatar-sm"
               (click)="openAvatarModal(u)"
+              (error)="onImageError($event)"
               title="Cliquer pour agrandir"
             />
           </td>
@@ -157,7 +158,7 @@
      (click)="closeAvatarModal()">
   <div class="avatar-modal-box" (click)="$event.stopPropagation()">
     <button class="avatar-modal-close" (click)="closeAvatarModal()">&times;</button>
-    <img [src]="avatarModalUrl" alt="avatar agrandi" class="avatar-modal-img" />
+    <img [src]="avatarModalUrl" alt="avatar agrandi" class="avatar-modal-img" (error)="onImageError($event)" />
     <div class="avatar-modal-name">{{ avatarModalName }}</div>
   </div>
 </div>

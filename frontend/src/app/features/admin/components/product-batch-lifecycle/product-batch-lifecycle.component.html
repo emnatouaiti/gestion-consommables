@@ -1,0 +1,161 @@
+<div class="batch-lifecycle-container">
+  <!-- Aucun stock -->
+  <div *ngIf="batches.length === 0" class="alert alert-info">
+    <strong>ℹ️</strong> Aucun stock avec date d'expiration pour ce produit
+  </div>
+
+  <!-- Liste des batches -->
+  <div *ngIf="batches.length > 0">
+    <!-- Tabs pour les différents batches -->
+    <div class="batch-tabs mb-4">
+      <div class="batch-tabs-header">
+        <h5 class="mb-3">📦 Cycles de Vie par Lot</h5>
+        <div class="batch-tabs-list">
+          <button
+            *ngFor="let batch of batches"
+            class="batch-tab"
+            [class.active]="selectedBatch === batch"
+            [class.expired]="batch.daysLeft < 0"
+            [class.warning]="batch.daysLeft >= 0 && batch.daysLeft <= 7"
+            (click)="selectBatch(batch)">
+
+            <!-- Icone statut -->
+            <span class="batch-icon">{{ batch.color === 'danger' ? '❌' : batch.color === 'warning' ? '⚠️' : '✅' }}</span>
+
+            <!-- Lot + Date -->
+            <span class="batch-info">
+              <strong>{{ batch.batch_number }}</strong>
+              <small *ngIf="batch.expiration_date && batch.expiration_date !== 'null'; else noDateTab">
+                {{ batch.expiration_date | date:'dd/MM/yyyy' }}
+              </small>
+              <ng-template #noDateTab><small>Aucune date</small></ng-template>
+            </span>
+
+            <!-- Quantité -->
+            <span class="batch-quantity">
+              <strong>{{ batch.quantity }}</strong> unités
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Détail du batch sélectionné -->
+    <div *ngIf="selectedBatch" class="batch-detail">
+      <!-- Header avec statut -->
+      <div class="batch-header">
+        <div class="batch-title">
+          <h5>Lot: <strong>{{ selectedBatch.batch_number }}</strong></h5>
+          <span [class]="['badge', getStatusBadgeClass(selectedBatch)]">
+            {{ selectedBatch.status }}
+          </span>
+        </div>
+        <div class="batch-info-box">
+          <div class="info-item">
+            <strong>📅 Date d'Expiration:</strong>
+            <span *ngIf="selectedBatch.expiration_date && selectedBatch.expiration_date !== 'null'; else noDateInfo">
+              {{ selectedBatch.expiration_date | date:'dd/MM/yyyy' }}
+            </span>
+            <ng-template #noDateInfo>Non renseignée</ng-template>
+          </div>
+          <div class="info-item">
+            <strong>📦 Quantité totale:</strong>
+            {{ selectedBatch.quantity }} unités
+          </div>
+          <div class="info-item">
+            <strong>⏳ Jours restants:</strong>
+            <span [ngClass]="selectedBatch.daysLeft < 0 ? 'text-danger' : selectedBatch.daysLeft <= 7 ? 'text-warning' : 'text-success'">
+              <ng-container *ngIf="selectedBatch.daysLeft === null || selectedBatch.daysLeft === undefined || selectedBatch.daysLeft.toString() === 'Infinity'; else dateLeft">
+                Pas de date d'expiration
+              </ng-container>
+              <ng-template #dateLeft>
+                {{ selectedBatch.daysLeft > 0 ? selectedBatch.daysLeft + ' jour(s)' : 'EXPIRÉ' }}
+              </ng-template>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- TIMELINE DU CYCLE DE VIE -->
+      <div class="lifecycle-timeline mt-4">
+        <h6 class="mb-3">📊 Cycle de Vie</h6>
+
+        <div class="timeline">
+          <div *ngFor="let event of selectedBatch.events; let isLast = last"
+               class="timeline-item"
+               [ngClass]="'status-' + event.status">
+
+            <!-- Timeline marker -->
+            <div class="timeline-marker" [ngClass]="'bg-' + event.color">
+              <span class="timeline-icon">{{ event.icon }}</span>
+            </div>
+
+            <!-- Timeline content -->
+            <div class="timeline-content">
+              <h6 class="timeline-title">{{ event.title }}</h6>
+              <p class="timeline-description">{{ event.description }}</p>
+              <small class="timeline-date">
+                📅 {{ event.date | date:'dd/MM/yyyy' }}
+              </small>
+            </div>
+
+            <!-- Timeline line -->
+            <div *ngIf="!isLast" class="timeline-line" [ngClass]="'bg-' + event.color"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Localisations avec ce batch -->
+      <div class="batch-locations mt-4">
+        <h6 class="mb-3">📍 Emplacements</h6>
+        <div class="locations-list">
+          <div *ngFor="let stock of getSelectedBatchStocks()" class="location-item">
+            <span class="location-icon">📦</span>
+            <span class="location-name">{{ stock.warehouse_location?.name || stock.cabinet_id || 'Non spécifié' }}</span>
+            <span class="location-quantity badge badge-info">{{ stock.quantity }} unités</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="batch-actions mt-4">
+        <button
+          *ngIf="canConsume(selectedBatch)"
+          class="btn btn-primary me-2"
+          (click)="onConsume(selectedBatch)">
+          ✅ Consommer ce lot
+        </button>
+
+        <button
+          *ngIf="!canConsume(selectedBatch)"
+          class="btn btn-danger"
+          (click)="onForceConsume(selectedBatch)">
+          🆘 Forcer Consommation (Admin)
+        </button>
+      </div>
+    </div>
+
+    <!-- Résumé des batches -->
+    <div class="batch-summary mt-5">
+      <h6>📊 Résumé</h6>
+      <div class="summary-grid">
+        <div class="summary-item">
+          <strong>Total Batches:</strong>
+          {{ batches.length }}
+        </div>
+        <div class="summary-item">
+          <strong>Valides (✅):</strong>
+          {{ getValidBatchesCount() }}
+        </div>
+        <div class="summary-item">
+          <strong>Attention (⚠️):</strong>
+          {{ getWarningBatchesCount() }}
+        </div>
+        <div class="summary-item">
+          <strong>Expirés (❌):</strong>
+          {{ getExpiredBatchesCount() }}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

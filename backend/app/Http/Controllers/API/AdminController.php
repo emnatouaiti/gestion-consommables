@@ -48,10 +48,12 @@ class AdminController extends Controller
             ->take(8)
             ->get()
             ->map(function ($ps) {
+            $loc = $ps->warehouseLocation;
+            $locCode = $loc ? $loc->code : ($ps->warehouseCabinet ? $ps->warehouseCabinet->code : 'Empl. inconnu');
             return [
             'type' => 'stock',
             'icon' => '📦',
-            'description' => "{$ps->quantity}x {$ps->product->title} -> {$ps->warehouseLocation->code}",
+            'description' => "{$ps->quantity}x {$ps->product->title} -> {$locCode}",
             'created_at' => $ps->created_at,
             'notes' => $ps->notes
             ];

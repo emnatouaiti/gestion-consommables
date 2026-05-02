@@ -1,0 +1,279 @@
+// Stock Form SCSS
+.stock-form {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  padding: 25px;
+  border-radius: 12px;
+  border-left: 5px solid #007bff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+
+  .form-label {
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #333;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    .text-danger {
+      color: #dc3545;
+      font-weight: bold;
+    }
+  }
+
+  .form-control,
+  .form-select {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    background-color: white;
+
+    &:focus {
+      border-color: #007bff;
+      box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
+      outline: none;
+    }
+
+    &.is-invalid {
+      border-color: #dc3545;
+      background-color: #fff5f5;
+      box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+
+      &:focus {
+        border-color: #dc3545;
+        box-shadow: 0 0 0 4px rgba(220, 53, 69, 0.1);
+      }
+    }
+
+    &:disabled {
+      background-color: #f8f9fa;
+      cursor: not-allowed;
+      opacity: 0.6;
+    }
+
+    option {
+      padding: 8px;
+      color: #333;
+    }
+  }
+
+  .invalid-feedback {
+    display: block;
+    color: #dc3545;
+    font-size: 12px;
+    margin-top: 6px;
+    font-weight: 500;
+  }
+
+  .form-actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid #dee2e6;
+    flex-wrap: wrap;
+
+    button {
+      padding: 12px 24px;
+      font-weight: 600;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-size: 14px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 150px;
+
+      &.btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        color: white;
+
+        &:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(0, 123, 255, 0.3);
+        }
+
+        &:active:not(:disabled) {
+          transform: translateY(0);
+          box-shadow: 0 3px 8px rgba(0, 123, 255, 0.2);
+        }
+      }
+
+      &.btn-secondary {
+        background: #6c757d;
+        color: white;
+
+        &:hover:not(:disabled) {
+          background: #5a6268;
+          transform: translateY(-2px);
+          box-shadow: 0 6px 16px rgba(108, 117, 125, 0.3);
+        }
+      }
+
+      &:disabled {
+        opacity: 0.65;
+        cursor: not-allowed;
+      }
+
+      .spinner-border-sm {
+        width: 16px;
+        height: 16px;
+        border-width: 2px;
+      }
+    }
+  }
+
+  .alert {
+    margin-bottom: 20px;
+    border-radius: 6px;
+    border-left: 4px solid;
+    padding: 15px;
+    font-size: 14px;
+
+    &.alert-danger {
+      background-color: #f8d7da;
+      border-left-color: #dc3545;
+      color: #721c24;
+
+      strong {
+        color: #721c24;
+      }
+    }
+
+    &.alert-info {
+      background-color: #d1ecf1;
+      border-left-color: #17a2b8;
+      color: #0c5460;
+
+      strong {
+        color: #0c5460;
+      }
+    }
+
+    &.alert-dismissible {
+      padding-right: 20px;
+      position: relative;
+
+      .alert-close {
+        position: absolute;
+        top: 50%;
+        right: 10px;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: inherit;
+        opacity: 0.7;
+        transition: opacity 0.3s ease;
+
+        &:hover {
+          opacity: 1;
+        }
+      }
+    }
+  }
+
+  .row {
+    margin-right: -7.5px;
+    margin-left: -7.5px;
+
+    > [class*='col-'] {
+      padding-right: 7.5px;
+      padding-left: 7.5px;
+    }
+  }
+
+  small {
+    display: block;
+    margin-top: 6px;
+    color: #666;
+    font-size: 12px;
+  }
+
+  input[type='date'] {
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      border-radius: 4px;
+      margin-right: 4px;
+      opacity: 0.7;
+      filter: invert(0.8);
+    }
+
+    &::-webkit-calendar-picker-indicator:hover {
+      opacity: 1;
+    }
+  }
+}
+
+// Pour la colonne optionnelle
+.form-text {
+  display: block;
+  margin-top: 8px;
+  color: #6c757d;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+// Input number custom styling
+input[type='number'] {
+  &::-webkit-inner-spin-button,
+  &::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  &[type='number'] {
+    -moz-appearance: textfield;
+  }
+}
+
+// Responsive adjustments
+@media (max-width: 768px) {
+  .stock-form {
+    padding: 20px;
+
+    .form-label {
+      font-size: 13px;
+    }
+
+    .form-control,
+    .form-select {
+      font-size: 13px;
+      padding: 10px 12px;
+    }
+
+    .form-actions {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+        min-width: auto;
+      }
+    }
+
+    .row > [class*='col-'] {
+      margin-bottom: 15px;
+    }
+  }
+}
+
+@media (max-width: 576px) {
+  .stock-form {
+    padding: 15px;
+    border-radius: 8px;
+
+    .form-actions {
+      flex-direction: column;
+      gap: 10px;
+
+      button {
+        padding: 10px 16px;
+        font-size: 13px;
+      }
+    }
+  }
+}

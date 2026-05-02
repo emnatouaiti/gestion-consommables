@@ -210,8 +210,8 @@ export class DashboardComponent implements OnInit {
   photoUrl(path: string | null): string {
     if (!path) return 'assets/default-avatar.svg';
     if (path.startsWith('http')) return path;
-    const cleanPath = path.replace(/^\/+/, '');
-    return `http://localhost:8000/storage/${cleanPath}`;
+    const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '');
+    return `/api/docs/${cleanPath}`;
   }
 
   onImageError(event: any) {

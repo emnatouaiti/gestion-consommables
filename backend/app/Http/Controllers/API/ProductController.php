@@ -18,7 +18,7 @@ class ProductController extends Controller
 
         $query = Product::query()
             ->where('status', 'active')
-            ->select(['id', 'title', 'reference', 'stock_quantity'])
+            ->select(['id', 'title', 'reference', 'stock_quantity', 'has_expiration'])
             ->orderBy('title');
 
         if ($q !== '') {
@@ -129,6 +129,7 @@ class ProductController extends Controller
             'seuil_max' => 'nullable|integer|gt:seuil_min',
             'reference' => 'nullable|string|max:120',
             'categorie_id' => 'required|exists:categories,id',
+            'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',
@@ -144,7 +145,10 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => 'Donnees invalides pour la creation du produit.',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
         $data = $validator->validated();
@@ -293,6 +297,7 @@ class ProductController extends Controller
             'seuil_max' => 'nullable|integer|gt:seuil_min',
             'reference' => 'required|string|max:120|unique:products,reference,' . $product->id,
             'categorie_id' => 'required|exists:categories,id',
+            'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
             'sale_price' => 'nullable|numeric|min:0',

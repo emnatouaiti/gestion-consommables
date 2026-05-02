@@ -1,6 +1,6 @@
 import { Component, EventEmitter, Output, ViewChild, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { BrowserMultiFormatReader } from '@zxing/browser';
+import { BrowserMultiFormatReader, Result } from '@zxing/library';
 
 @Component({
   selector: 'app-barcode-scanner',
@@ -19,7 +19,7 @@ export class BarcodeScannerComponent implements OnDestroy {
     if (this.active) return;
     this.active = true;
     try {
-      this.reader.decodeFromVideoDevice(undefined, this.video.nativeElement, (result, err) => {
+      this.reader.decodeFromVideoDevice(null, this.video.nativeElement, (result: Result | undefined, err: unknown) => {
         if (result) {
           this.codeDetected.emit(result.getText());
           this.stop();

@@ -11,12 +11,19 @@ class RoleMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  \\Closure(\\Illuminate\\Http\\Request): (\\Symfony\\Component\\HttpFoundation\\Response)  $next
      */
     public function handle(Request $request, Closure $next, $role)
     {
-        if (!$request->user() || !$request->user()->hasRole($role)) {
-            return response()->json(['message' => 'Accès refusé'], 403);
+        $user = $request->user();
+        $roles = collect(explode('|', (string) $role))
+            ->map(fn ($r) => trim($r))
+            ->filter()
+            ->values()
+            ->all();
+
+        if (!$user || (count($roles) > 0 && !$user->hasAnyRole($roles))) {
+            return response()->json(['message' => 'Access denied'], 403);
         }
 
         return $next($request);

@@ -1,325 +1,613 @@
-<div class="consumable-request-container">
-  <div class="page-top">
-    <div>
-      <h1>Gestion des demandes de consommables</h1>
-      <p class="subtitle">Espace utilisateur</p>
+<div class="cr-container">
+
+  <!-- ══ Header ══════════════════════════════════════════════════════════════ -->
+  <div class="cr-header">
+    <div class="cr-header-left">
+      <div class="cr-header-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      </div>
+      <div>
+        <h1>Gestion des consommables</h1>
+        <p class="cr-subtitle" [class.cr-subtitle--director]="viewMode === 'validation'"
+                                [class.cr-subtitle--responsable]="isResponsable && viewMode !== 'validation'">
+          {{ pageTitle }}
+        </p>
+      </div>
     </div>
-    <button class="btn-open-modal" *ngIf="canCreateRequest" (click)="openCreateRequestModal()">
-      Nouvelle demande
-    </button>
+    <div class="cr-header-right">
+      <div class="cr-page-size">
+        <span>Afficher</span>
+        <select (change)="changePageSize(+$any($event.target).value)">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="20">20</option>
+          <option value="50">50</option>
+        </select>
+        <span>par page</span>
+      </div>
+      <button class="cr-btn-new" *ngIf="canCreateRequest" (click)="openCreateRequestModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nouvelle demande
+      </button>
+    </div>
   </div>
 
-  <div *ngIf="message" class="alert" [ngStyle]="{'background-color': message.includes('Erreur') ? '#f8d7da' : '#d4edda'}">
+  <!-- ══ Flash message ════════════════════════════════════════════════════════ -->
+  <div *ngIf="message" class="cr-alert" [class.cr-alert--error]="message.includes('Erreur')">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+    </svg>
     {{ message }}
   </div>
 
-  <div class="requests-section">
-    <h2>Historique des demandes</h2>
+  <!-- ══ Navigation Tabs ═══════════════════════════════════════════════════════ -->
+  <nav class="cr-tabs">
+    <button
+      *ngFor="let tab of tabs"
+      class="cr-tab"
+      [class.cr-tab--active]="activeTab === tab.id"
+      (click)="setTab(tab.id)"
+    >
+      {{ tab.label }}
+      <span class="cr-tab-badge" *ngIf="tab.count !== undefined && tab.count > 0">{{ tab.count }}</span>
+    </button>
+  </nav>
 
-    <div *ngIf="loading && requests.length === 0" class="loading">
-      Chargement des demandes...
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       TAB: EN ATTENTE (Directeur — Validation)
+  ══════════════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'pending' && viewMode === 'validation'" class="cr-section">
+
+    <div *ngIf="loading && requests.length === 0" class="cr-empty">
+      <span class="cr-spinner"></span> Chargement...
     </div>
 
-    <div *ngIf="filteredRequests.length === 0 && !loading" class="no-data">
-      Aucune demande pour le moment
+    <div *ngIf="pendingValidationRequests.length === 0 && !loading" class="cr-empty">
+      Aucune demande en attente de validation.
     </div>
 
-    <table *ngIf="filteredRequests.length > 0" class="requests-table">
-      <thead>
-        <tr>
-          <th>Article(s)</th>
-          <th>Utilisateur</th>
-          <th>Service</th>
-          <th>Poste</th>
-          <th *ngIf="!canApprove">Statut</th>
-          <th>Date</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let request of filteredRequests" class="request-row">
-          <td>
-            <div class="row-main">
-              <span>{{ request.item_name }}</span>
-            </div>
-          </td>
-          <td>{{ request.requester_name || request.user?.nomprenom || request.user?.name || '-' }}</td>
-          <td>{{ request.requester_service || request.user?.service || '-' }}</td>
-          <td>{{ request.requester_poste || request.user?.poste || request.user?.role || '-' }}</td>
-          <td *ngIf="!canApprove">
-            <span class="status-badge" [ngStyle]="{'background-color': getStatusColor(request.status)}">
-              {{ request.status === 'draft' ? 'Brouillon' : request.status }}
-            </span>
-          </td>
-          <td>{{ request.created_at | date: 'short' }}</td>
-          <td class="actions">
-            <button
-              *ngIf="(request.status === 'pending' || request.status === 'draft') && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
-              class="btn-edit"
-              (click)="openEditRequestModal(request.items?.[0] || request)"
-              title="Modifier cette demande"
-            >
-              {{ request.status === 'draft' ? 'Modifier / Vérifier' : 'Modifier' }}
-            </button>
-            <button
-              *ngIf="(request.status === 'pending' || request.status === 'draft') && canEditDeleteOwnRequests && (request.items?.length || 1) === 1"
-              class="btn-delete"
-              (click)="deleteRequest((request.items?.[0]?.id) || request.id)"
-              title="Supprimer cette demande"
-            >
-              Supprimer
-            </button>
-            <button *ngIf="request.status === 'draft' && canEditDeleteOwnRequests" class="btn-confirm" (click)="validateDraft(request.items?.[0]?.id || request.id)">
-              Valider
-            </button>
-            <button
-              class="btn-edit"
-              (click)="openDetailsModal(request)"
-            >
-              Voir details
-            </button>
-            <button
-              *ngIf="request.status === 'approved_pending_exit' && isResponsable"
-              class="btn-confirm"
-              (click)="$event.stopPropagation(); openExitModal(request)"
-              title="Confirmer la remise physique et mise à jour du stock"
-            >
-              Confirmer sortie
-            </button>
-            <span *ngIf="request.status !== 'pending' && request.status !== 'approved_pending_exit' && !canApprove" class="no-action">Pas d'action</span>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-<!-- Modal Confirmation de Sortie (Responsable de stock) -->
-<div class="approval-modal-overlay" *ngIf="selectedRequestForExit" (click)="closeExitModal()">
-  <div class="approval-modal" (click)="$event.stopPropagation()">
-    <h3>Confirmation de remise physique</h3>
-    <p class="modal-intro">
-      Vous confirmez la sortie de : <strong>{{ selectedRequestForExit.item_name }}</strong> (Qté : {{ selectedRequestForExit.approved_quantity }})
-    </p>
-
-    <div class="form-group" style="margin-top: 1.5rem;">
-      <label for="exit_depot">Dépôt source :</label>
-      <select id="exit_depot" [(ngModel)]="selectedDepot" (change)="onDepotChange()" class="modern-select">
-        <option [ngValue]="null" disabled>Sélectionner le dépôt...</option>
-        <option *ngFor="let depot of depotsList" [ngValue]="depot">
-          {{ depot.name }}
-        </option>
-      </select>
-    </div>
-
-    <div class="form-group" *ngIf="selectedDepot">
-      <label for="exit_salle">Salle :</label>
-      <select id="exit_salle" [(ngModel)]="selectedSalle" (change)="onSalleChange()" class="modern-select">
-        <option [ngValue]="null" disabled>Sélectionner la salle...</option>
-        <option *ngFor="let salle of sallesList" [ngValue]="salle">
-          {{ salle.name }}
-        </option>
-      </select>
-    </div>
-
-    <div class="form-group" *ngIf="selectedSalle">
-      <label for="exit_emplacement">Emplacement / Armoire précis :</label>
-      <select id="exit_emplacement" [(ngModel)]="selectedEmplacement" (change)="onEmplacementChange()" class="modern-select">
-        <option [ngValue]="null" disabled>Choisir l'emplacement/armoire...</option>
-        <optgroup label="Emplacements">
-          <option *ngFor="let loc of locationsList" [ngValue]="loc">{{ loc.code || loc.name }}</option>
-        </optgroup>
-        <optgroup label="Armoires">
-          <option *ngFor="let cab of cabinetsList" [ngValue]="cab">{{ cab.code || cab.name }}</option>
-        </optgroup>
-      </select>
-    </div>
-    
-    <div *ngIf="exitSourceStocks.length === 0" class="form-group">
-      <small class="error-text">Aucun stock disponible pour ce produit.</small>
-    </div>
-
-    <div class="form-group readonly-group">
-      <label>Demandeur :</label>
-      <div class="readonly-value">{{ exitRequesterName }}</div>
-    </div>
-
-    <div class="form-group">
-      <label for="exit_local">Local / Société (Destination finale) :</label>
-      <input id="exit_local" type="text" [(ngModel)]="exitLocalText" placeholder="Ex: Bureau 102, Société ABC...">
-    </div>
-
-    <div class="form-group">
-      <label for="exit_motif">Observations (facultatif) :</label>
-      <input id="exit_motif" type="text" [(ngModel)]="exitMotif" placeholder="Notes additionnelles...">
-    </div>
-
-    <div class="modal-actions">
-      <button type="button" class="btn-confirm" [disabled]="confirmingExit || !exitSourceLocationId" (click)="confirmExitAction()">
-        {{ confirmingExit ? 'Mise à jour stock...' : 'Valider la sortie' }}
-      </button>
-      <button type="button" class="btn-cancel" (click)="closeExitModal()">Annuler</button>
+    <div *ngIf="pendingValidationRequests.length > 0" class="cr-table-wrap">
+      <table class="cr-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Article</th>
+            <th>Demandeur</th>
+            <th>Service / Poste</th>
+            <th>Qté demandée</th>
+            <th>Stock dispo</th>
+            <th>Seuil</th>
+            <th>Suggestion</th>
+            <th>État stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of pendingValidationRequests">
+            <td class="cr-td-date">{{ r.created_at | date: 'dd/MM/yy HH:mm' }}</td>
+            <td class="cr-td-main">{{ r.item_name }}</td>
+            <td>{{ r.requester_name || r.user?.nomprenom || '—' }}</td>
+            <td>
+              <div class="cr-sub">{{ r.requester_service || '—' }}</div>
+              <div class="cr-sub cr-sub--mini">{{ r.requester_poste || '—' }}</div>
+            </td>
+            <td class="cr-td-num">{{ r.requested_quantity }}</td>
+            <td class="cr-td-num">{{ r.available_stock ?? '?' }}</td>
+            <td class="cr-td-num">{{ r.product_threshold ?? 0 }}</td>
+            <td class="cr-td-num cr-suggestion">{{ r.suggested_approved_quantity ?? '—' }}</td>
+            <td>
+              <span class="cr-tag" [ngClass]="stockStatusClass(r)">{{ stockStatusLabel(r) }}</span>
+            </td>
+            <td class="cr-td-actions">
+              <button class="cr-btn cr-btn--approve" (click)="openApproveModal(r)">Approuver</button>
+              <button class="cr-btn cr-btn--reject" (click)="openRejectModal(r)">Rejeter</button>
+              <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Détails</button>
+              <button *ngIf="r.pdf_path" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                PDF
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       TAB: SORTIES À CONFIRMER (Responsable)
+  ══════════════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'exits' && isResponsable" class="cr-section">
+
+    <div *ngIf="loading && requests.length === 0" class="cr-empty">
+      <span class="cr-spinner"></span> Chargement...
+    </div>
+
+    <div *ngIf="pendingExitRequests.length === 0 && !loading" class="cr-empty">
+      Aucune sortie physique à confirmer.
+    </div>
+
+    <div *ngIf="pendingExitRequests.length > 0" class="cr-table-wrap">
+      <table class="cr-table">
+        <thead>
+          <tr>
+            <th>Date approbation</th>
+            <th>Article</th>
+            <th>Demandeur</th>
+            <th>Poste</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of pendingExitRequests">
+            <td class="cr-td-date">{{ r.created_at | date: 'dd/MM/yy HH:mm' }}</td>
+            <td class="cr-td-main">{{ r.item_name }}</td>
+            <td>{{ r.requester_name || r.user?.nomprenom || '—' }}</td>
+            <td>{{ r.requester_poste || '—' }}</td>
+            <td class="cr-td-actions">
+              <button class="cr-btn cr-btn--approve" (click)="openExitModal(r)">Confirmer sortie</button>
+              <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Détails</button>
+              <button *ngIf="r.pdf_path" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                PDF
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════════
+       TAB: HISTORIQUE (tous les rôles)
+  ══════════════════════════════════════════════════════════════════════════════ -->
+  <div *ngIf="activeTab === 'history'" class="cr-section">
+
+    <!-- Filter bar -->
+    <div class="cr-filter-bar">
+      <div class="cr-filter-group">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <select [(ngModel)]="statusFilter">
+          <option value="all">Tous les statuts</option>
+          <ng-container *ngIf="!isResponsable">
+            <option value="draft">Brouillon</option>
+            <option value="pending">En attente</option>
+            <option value="rejected">Refusé</option>
+          </ng-container>
+          <option value="approved_pending_exit">Approuvé (Attente sortie)</option>
+          <option value="approved">Livré / Terminé</option>
+        </select>
+      </div>
+      <span class="cr-count" *ngIf="historyRequests.length > 0">
+        {{ historyRequests.length }} demande{{ historyRequests.length > 1 ? 's' : '' }}
+      </span>
+    </div>
+
+    <div *ngIf="loading && requests.length === 0" class="cr-empty">
+      <span class="cr-spinner"></span> Chargement...
+    </div>
+
+    <div *ngIf="historyRequests.length === 0 && !loading" class="cr-empty">
+      Aucune demande enregistrée pour le moment.
+    </div>
+
+    <div *ngIf="historyRequests.length > 0" class="cr-table-wrap">
+      <table class="cr-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Article</th>
+            <th>Demandeur</th>
+            <th>Service / Poste</th>
+            <th>Qté dem.</th>
+            <th>Qté approuvée</th>
+            <th>Statut</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let r of paginatedHistory">
+            <td class="cr-td-date">{{ r.created_at | date: 'dd/MM/yy HH:mm' }}</td>
+            <td class="cr-td-main">{{ r.item_name }}</td>
+            <td>{{ r.requester_name || r.user?.nomprenom || '—' }}</td>
+            <td>
+              <div class="cr-sub">{{ r.requester_service || '—' }}</div>
+              <div class="cr-sub cr-sub--mini">{{ r.requester_poste || '—' }}</div>
+            </td>
+            <td class="cr-td-num">{{ r.requested_quantity }}</td>
+            <td class="cr-td-num">{{ r.approved_quantity ?? '—' }}</td>
+            <td>
+              <span class="cr-status-pill" [ngStyle]="{'background-color': getStatusColor(r.status)}">
+                {{ getStatusLabel(r.status) }}
+              </span>
+            </td>
+            <td class="cr-td-actions">
+              <button
+                *ngIf="r.status === 'draft' && canEditDeleteOwnRequests"
+                class="cr-btn cr-btn--validate"
+                (click)="validateDraft(r.items?.[0]?.id || r.id)"
+              >Valider</button>
+              <button
+                *ngIf="(r.status === 'pending' || r.status === 'draft') && canEditDeleteOwnRequests"
+                class="cr-btn cr-btn--edit"
+                (click)="openEditRequestModal(r.items?.[0] || r)"
+              >Modifier</button>
+              <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Détails</button>
+              <button
+                *ngIf="r.pdf_path"
+                class="cr-btn cr-btn--pdf"
+                (click)="downloadPdf(r)"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                PDF
+              </button>
+              <!-- Director can also approve/reject from history if still pending -->
+              <button
+                *ngIf="canApprove && r.status === 'pending'"
+                class="cr-btn cr-btn--approve"
+                (click)="openApproveModal(r)"
+              >Approuver</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="cr-table-footer" *ngIf="historyRequests.length > pageSize">
+        <span>{{ paginatedHistory.length }} / {{ historyRequests.length }} demandes</span>
+        <button class="cr-btn cr-btn--ghost" (click)="changePageSize(pageSize + 10)">Voir plus</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<div class="approval-modal-overlay" *ngIf="requestModalOpen" (click)="closeRequestModal()">
-  <div class="approval-modal request-modal" (click)="$event.stopPropagation()">
-    <h3>{{ requestModalEditMode ? 'Modifier la demande' : 'Nouvelle demande' }}</h3>
-    <form [formGroup]="form" (ngSubmit)="submitRequest()">
-      <ng-container *ngIf="requestModalEditMode; else createMultiMode">
-        <div class="form-group">
-          <input
-            type="text"
-            placeholder="Rechercher un produit..."
-            [(ngModel)]="productSearchTerm"
-            [ngModelOptions]="{standalone: true}"
-          />
-          <label for="product_id">Produit :</label>
-          <select id="product_id" formControlName="product_id">
-            <option [ngValue]="null">Selectionner un produit</option>
-            <option *ngFor="let p of filteredProducts" [ngValue]="p.id">
-              {{ p.title }} ({{ p.reference || 'N/A' }})
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: CONFIRMATION DE SORTIE
+══════════════════════════════════════════════════════════════════════════════ -->
+<div class="cr-overlay" *ngIf="selectedRequestForExit" (click)="closeExitModal()">
+  <div class="cr-modal cr-modal--wide" (click)="$event.stopPropagation()">
+    <div class="cr-modal-header">
+      <h3>Confirmation de sortie physique</h3>
+      <button class="cr-modal-close" (click)="closeExitModal()">×</button>
+    </div>
+
+    <!-- Résumé -->
+    <div class="cr-modal-summary">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="cr-modal-label">Article à sortir</span>
+        <strong style="font-size: 16px; color: var(--e-800);">{{ selectedRequestForExit.item_name }}</strong>
+      </div>
+      <div style="margin-left: auto; text-align: right;">
+        <span class="cr-modal-label">Quantité</span>
+        <div style="font-size: 20px; font-weight: 800; color: var(--e-600);">{{ selectedRequestForExit.approved_quantity }}</div>
+      </div>
+    </div>
+
+    <div class="cr-exit-section" style="padding-top: 10px;">
+      <div class="cr-form-row">
+        <div class="cr-field">
+          <label>Dépôt avec stock</label>
+          <select [(ngModel)]="selectedDepot" (change)="onDepotChange()">
+            <option [ngValue]="null" disabled>Sélectionner un dépôt...</option>
+            <option *ngFor="let d of depotsList" [ngValue]="d">{{ d.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cr-form-row" *ngIf="selectedDepot">
+        <div class="cr-field">
+          <label>Salle</label>
+          <select [(ngModel)]="selectedSalle" (change)="onSalleChange()">
+            <option [ngValue]="null" disabled>Sélectionner une salle...</option>
+            <option *ngFor="let s of sallesList" [ngValue]="s">{{ s.name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="cr-form-row" *ngIf="selectedSalle">
+        <div class="cr-field">
+          <label>Emplacement / Armoire (avec stock)</label>
+          <select [(ngModel)]="selectedEmplacement">
+            <option [ngValue]="null" disabled>Choisir la source précise...</option>
+            <option *ngFor="let s of locationsList" [ngValue]="s">
+              {{ getEmplacementLabel(s) }}
             </option>
           </select>
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="item_name">Ou saisir un article manuel :</label>
-          <input id="item_name" type="text" formControlName="item_name" placeholder="Ex: Papier A4, Stylos" />
+      <div class="cr-no-stock" *ngIf="exitSourceStocks.length === 0" style="margin-top: 10px;">
+        ⚠️ Aucun stock enregistré pour ce produit. Contactez l'administrateur.
+      </div>
+
+      <div class="cr-field" style="margin-top: 15px;">
+        <label>Destination prévue</label>
+        <div class="cr-readonly" style="padding: 10px; background: var(--e-50); border-radius: 6px; border: 1px solid var(--e-200); font-weight: 500;">
+          📍 {{ exitRequesterName }} — 🏢 {{ selectedRequestForExit.requester_siege || 'Siège' }} ({{ selectedRequestForExit.requester_poste }})
         </div>
+      </div>
 
-        <div class="form-group">
-          <label for="requested_quantity">Quantite demandee :</label>
-          <input id="requested_quantity" type="number" formControlName="requested_quantity" min="1" required />
+      <div class="cr-field">
+        <label>Observations</label>
+        <input type="text" [(ngModel)]="exitMotif" placeholder="Note interne...">
+      </div>
+    </div>
+
+    <div class="cr-modal-footer">
+      <button
+        class="cr-btn cr-btn--approve cr-btn--lg"
+        [disabled]="confirmingExit || !selectedEmplacement"
+        (click)="confirmExitAction()"
+      >
+        {{ confirmingExit ? 'Traitement...' : 'Confirmer la remise' }}
+      </button>
+      <button class="cr-btn cr-btn--ghost cr-btn--lg" (click)="closeExitModal()">Annuler</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: NOUVELLE / MODIFIER DEMANDE
+══════════════════════════════════════════════════════════════════════════════ -->
+<div class="cr-overlay" *ngIf="requestModalOpen" (click)="closeRequestModal()">
+  <div class="cr-modal cr-modal--wide" (click)="$event.stopPropagation()">
+    <div class="cr-modal-header">
+      <h3>{{ requestModalEditMode ? 'Modifier la demande' : 'Nouvelle demande' }}</h3>
+      <button class="cr-modal-close" (click)="closeRequestModal()">×</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="submitRequest()">
+
+      <!-- Search bar (shared) -->
+      <div class="cr-field" style="margin-bottom: 1.25rem;">
+        <label>Rechercher un produit</label>
+        <input type="text" placeholder="Titre ou référence..." [(ngModel)]="productSearchTerm" [ngModelOptions]="{standalone: true}">
+      </div>
+
+      <!-- EDIT MODE: single line -->
+      <ng-container *ngIf="requestModalEditMode">
+        <div class="cr-form-row">
+          <div class="cr-field">
+            <label>Produit</label>
+            <select formControlName="product_id">
+              <option [ngValue]="null">Sélectionner un produit</option>
+              <option *ngFor="let p of filteredProducts" [ngValue]="p.id">{{ p.title }} ({{ p.reference || 'N/A' }})</option>
+            </select>
+          </div>
+        </div>
+        <div class="cr-form-row cr-form-row--2col">
+          <div class="cr-field">
+            <label>Article manuel (si non listé)</label>
+            <input type="text" formControlName="item_name" placeholder="Ex: Papier A4">
+          </div>
+          <div class="cr-field">
+            <label>Quantité demandée</label>
+            <input type="number" formControlName="requested_quantity" min="1">
+          </div>
         </div>
       </ng-container>
 
-      <ng-template #createMultiMode>
-        <div class="form-group">
-          <input
-            type="text"
-            placeholder="Rechercher un produit..."
-            [(ngModel)]="productSearchTerm"
-            [ngModelOptions]="{standalone: true}"
-          />
-          <small *ngIf="loadingProducts" class="loading">Chargement des produits...</small>
-        </div>
-        <div class="request-lines">
-          <div class="request-line" *ngFor="let line of requestLines; let i = index">
-            <select [(ngModel)]="line.product_id" [ngModelOptions]="{standalone: true}">
-              <option [ngValue]="null">Selectionner un produit</option>
-              <option *ngFor="let p of filteredProducts" [ngValue]="p.id">
-                {{ p.title }} ({{ p.reference || 'N/A' }})
-              </option>
+      <!-- CREATE MODE: multi-lines -->
+      <ng-container *ngIf="!requestModalEditMode">
+        <small *ngIf="loadingProducts" class="cr-loading-small">Chargement des produits...</small>
+        <div class="cr-lines">
+          <div class="cr-line" *ngFor="let line of requestLines; let i = index">
+            <select [(ngModel)]="line.product_id" [ngModelOptions]="{standalone: true}" class="cr-line-select">
+              <option [ngValue]="null">Sélectionner un produit</option>
+              <option *ngFor="let p of filteredProducts" [ngValue]="p.id">{{ p.title }} ({{ p.reference || 'N/A' }})</option>
             </select>
-            <input
-              type="number"
-              min="1"
-              placeholder="Quantite"
-              [(ngModel)]="line.requested_quantity"
-              [ngModelOptions]="{standalone: true}"
-            />
-            <button type="button" class="btn-delete" (click)="removeRequestLine(i)">Supprimer</button>
+            <input type="number" min="1" placeholder="Quantité" [(ngModel)]="line.requested_quantity" [ngModelOptions]="{standalone: true}" class="cr-line-qty">
+            <button type="button" class="cr-btn cr-btn--danger-icon" (click)="removeRequestLine(i)" [disabled]="requestLines.length === 1">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
           </div>
-          <button type="button" class="btn-edit" (click)="addRequestLine()">Ajouter un produit</button>
         </div>
-      </ng-template>
-
-      <div class="modal-actions">
-        <button type="submit" class="btn-confirm" [disabled]="loading">
-          {{ loading ? 'Envoi...' : (requestModalEditMode ? 'Enregistrer' : 'Soumettre') }}
+        <button type="button" class="cr-btn cr-btn--add-line" (click)="addRequestLine()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ajouter un produit
         </button>
-        <button type="button" class="btn-cancel" (click)="closeRequestModal()">Annuler</button>
+      </ng-container>
+
+      <div class="cr-modal-footer">
+        <button type="submit" class="cr-btn cr-btn--approve cr-btn--lg" [disabled]="loading">
+          {{ loading ? 'Envoi...' : (requestModalEditMode ? 'Enregistrer' : 'Créer le brouillon') }}
+        </button>
+        <button type="button" class="cr-btn cr-btn--ghost cr-btn--lg" (click)="closeRequestModal()">Annuler</button>
       </div>
     </form>
   </div>
 </div>
 
-<div class="approval-modal-overlay" *ngIf="selectedRequestForApproval" (click)="closeApproveModal()">
-  <div class="approval-modal" (click)="$event.stopPropagation()">
-    <h3>Validation de la demande</h3>
-
-    <div class="approval-grid">
-      <div><strong>Article:</strong> {{ selectedRequestForApproval?.item_name }}</div>
-      <div><strong>Utilisateur:</strong> {{ selectedRequestForApproval?.requester_name || selectedRequestForApproval?.user?.nomprenom || selectedRequestForApproval?.user?.name || '-' }}</div>
-      <div><strong>Service:</strong> {{ selectedRequestForApproval?.requester_service || selectedRequestForApproval?.user?.service || '-' }}</div>
-      <div><strong>Poste:</strong> {{ selectedRequestForApproval?.requester_poste || '-' }}</div>
-      <div><strong>Quantite demandee:</strong> {{ selectedRequestForApproval?.requested_quantity }}</div>
-      <div><strong>Stock disponible:</strong> {{ selectedRequestForApproval?.available_stock ?? '-' }}</div>
-      <div><strong>Quantite proposee:</strong> {{ selectedRequestForApproval?.suggested_approved_quantity ?? '-' }}</div>
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: APPROBATION
+══════════════════════════════════════════════════════════════════════════════ -->
+<div class="cr-overlay" *ngIf="selectedRequestForApproval" (click)="closeApproveModal()">
+  <div class="cr-modal" (click)="$event.stopPropagation()">
+    <div class="cr-modal-header">
+      <h3>Validation de la demande</h3>
+      <button class="cr-modal-close" (click)="closeApproveModal()">×</button>
     </div>
 
-    <div class="form-group">
-      <label for="modal_approved_quantity">Quantite a approuver:</label>
-      <input
-        id="modal_approved_quantity"
-        type="number"
-        min="0"
-        [max]="selectedRequestForApproval?.available_stock ?? selectedRequestForApproval?.requested_quantity"
-        [(ngModel)]="modalApprovedQuantity"
-      />
+    <div class="cr-approval-grid">
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Article</span>
+        <span class="cr-approval-value">{{ selectedRequestForApproval?.item_name }}</span>
+      </div>
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Demandeur</span>
+        <span class="cr-approval-value">{{ selectedRequestForApproval?.requester_name || selectedRequestForApproval?.user?.nomprenom || '—' }}</span>
+      </div>
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Service</span>
+        <span class="cr-approval-value">{{ selectedRequestForApproval?.requester_service || '—' }}</span>
+      </div>
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Poste</span>
+        <span class="cr-approval-value">{{ selectedRequestForApproval?.requester_poste || '—' }}</span>
+      </div>
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Qté demandée</span>
+        <span class="cr-approval-value cr-approval-value--num">{{ selectedRequestForApproval?.requested_quantity }}</span>
+      </div>
+      <div class="cr-approval-cell">
+        <span class="cr-approval-label">Stock disponible</span>
+        <span class="cr-approval-value cr-approval-value--num">{{ selectedRequestForApproval?.available_stock ?? '—' }}</span>
+      </div>
+      <div class="cr-approval-cell cr-approval-cell--highlight">
+        <span class="cr-approval-label">Suggestion système</span>
+        <span class="cr-approval-value cr-approval-value--num">{{ selectedRequestForApproval?.suggested_approved_quantity ?? '—' }}</span>
+      </div>
     </div>
 
-    <div class="modal-actions">
-     
-      <button type="button" class="btn-confirm" [disabled]="approving" (click)="confirmApprove()">
-        {{ approving ? 'Validation...' : 'Confirmer approbation' }}
+    <div class="cr-field" style="margin-top: 1.25rem;">
+      <label>Quantité à approuver</label>
+      <div class="cr-qty-row">
+        <input
+          type="number" min="0"
+          [max]="selectedRequestForApproval?.available_stock ?? selectedRequestForApproval?.requested_quantity"
+          [(ngModel)]="modalApprovedQuantity"
+        >
+        <button type="button" class="cr-btn cr-btn--ghost" (click)="useSuggestedQuantity()">
+          Utiliser suggestion
+        </button>
+      </div>
+    </div>
+
+    <div class="cr-modal-footer">
+      <button class="cr-btn cr-btn--approve cr-btn--lg" [disabled]="approving" (click)="confirmApprove()">
+        {{ approving ? 'Validation...' : 'Confirmer l\'approbation' }}
       </button>
-      <button type="button" class="btn-cancel" (click)="closeApproveModal()">Annuler</button>
+      <button class="cr-btn cr-btn--ghost cr-btn--lg" (click)="closeApproveModal()">Annuler</button>
     </div>
   </div>
 </div>
 
-<div class="approval-modal-overlay" *ngIf="selectedRequestDetails" (click)="closeDetailsModal()">
-  <div class="approval-modal" (click)="$event.stopPropagation()">
-    <h3>Details de la demande</h3>
-    <div class="detail-grid" *ngIf="selectedRequestDetails?.items?.length; else singleDetail">
-      <div class="item-card" *ngFor="let it of selectedRequestDetails.items">
-        <div class="item-head">
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: DÉTAILS
+══════════════════════════════════════════════════════════════════════════════ -->
+<div class="cr-overlay" *ngIf="selectedRequestDetails" (click)="closeDetailsModal()">
+  <div class="cr-modal" (click)="$event.stopPropagation()">
+    <div class="cr-modal-header">
+      <h3>Détails de la demande</h3>
+      <button class="cr-modal-close" (click)="closeDetailsModal()">×</button>
+    </div>
+
+    <!-- Multi-items -->
+    <div *ngIf="selectedRequestDetails?.items?.length; else singleDetail">
+      <div class="cr-item-card" *ngFor="let it of selectedRequestDetails.items">
+        <div class="cr-item-head">
           <strong>{{ it.item_name }}</strong>
-          <span class="status-tag" [ngClass]="stockStatusClass(it)">
-            {{ stockStatusLabel(it) }}
-          </span>
+          <span class="cr-tag" [ngClass]="stockStatusClass(it)">{{ stockStatusLabel(it) }}</span>
         </div>
-        <div class="item-meta">
-          <span>Ref: {{ it.product?.reference || 'N/A' }}</span>
-          <span>Demande: {{ it.requested_quantity }}</span>
-          <span>Approuvee: {{ it.approved_quantity ?? '-' }}</span>
-          <span>Statut: {{ it.status }}</span>
+        <div class="cr-item-meta">
+          <span>Réf : {{ it.product?.reference || 'N/A' }}</span>
+          <span>Demandé : <strong>{{ it.requested_quantity }}</strong></span>
+          <span>Approuvé : <strong>{{ it.approved_quantity ?? '—' }}</strong></span>
+          <span class="cr-status-pill cr-status-pill--sm" [ngStyle]="{'background-color': getStatusColor(it.status)}">{{ getStatusLabel(it.status) }}</span>
         </div>
-        <div class="item-actions" *ngIf="canEditFromDetails(it)">
-          <button class="btn-edit" (click)="editItemFromDetails(it)">Modifier</button>
-          <button class="btn-delete" (click)="deleteItemFromDetails(it)">Supprimer</button>
+        <div class="cr-item-actions" *ngIf="canEditFromDetails(it)">
+          <button class="cr-btn cr-btn--edit" (click)="editItemFromDetails(it)">Modifier</button>
+          <button class="cr-btn cr-btn--danger-text" (click)="deleteItemFromDetails(it)">Supprimer</button>
         </div>
-        <div class="item-actions" *ngIf="canApprove && it.status === 'pending'">
-          <button class="btn-approve" (click)="approveFromDetails(it)">Approuver</button>
-          <button class="btn-reject" (click)="rejectRequest(it.id)">Rejeter</button>
+        <div class="cr-item-actions" *ngIf="canApprove && it.status === 'pending'">
+          <button class="cr-btn cr-btn--approve" (click)="approveFromDetails(it)">Approuver</button>
+          <button class="cr-btn cr-btn--reject" (click)="rejectRequest(it.id)">Rejeter</button>
         </div>
       </div>
     </div>
+
+    <!-- Single item -->
     <ng-template #singleDetail>
-      <div class="detail-grid">
-        <div><strong>Produit:</strong> {{ selectedRequestDetails?.product?.title || selectedRequestDetails?.item_name }}</div>
-        <div><strong>Reference:</strong> {{ selectedRequestDetails?.product?.reference || 'N/A' }}</div>
-        <div><strong>Quantite demandee:</strong> {{ selectedRequestDetails?.requested_quantity }}</div>
-        <div><strong>Statut:</strong> {{ selectedRequestDetails?.status }}</div>
-        <div *ngIf="selectedRequestDetails?.reject_reason"><strong>Motif de refus:</strong> <span style="color:var(--danger-color)">{{ selectedRequestDetails?.reject_reason }}</span></div>
+      <div class="cr-approval-grid cr-approval-grid--single">
+        <div class="cr-approval-cell">
+          <span class="cr-approval-label">Produit</span>
+          <span class="cr-approval-value">{{ selectedRequestDetails?.product?.title || selectedRequestDetails?.item_name }}</span>
+        </div>
+        <div class="cr-approval-cell">
+          <span class="cr-approval-label">Référence</span>
+          <span class="cr-approval-value">{{ selectedRequestDetails?.product?.reference || 'N/A' }}</span>
+        </div>
+        <div class="cr-approval-cell">
+          <span class="cr-approval-label">Qté demandée</span>
+          <span class="cr-approval-value cr-approval-value--num">{{ selectedRequestDetails?.requested_quantity }}</span>
+        </div>
+        <div class="cr-approval-cell">
+          <span class="cr-approval-label">Statut</span>
+          <span class="cr-status-pill" [ngStyle]="{'background-color': getStatusColor(selectedRequestDetails?.status)}">
+            {{ getStatusLabel(selectedRequestDetails?.status) }}
+          </span>
+        </div>
+        <div class="cr-approval-cell" *ngIf="selectedRequestDetails?.reject_reason" style="grid-column: 1/-1;">
+          <span class="cr-approval-label">Motif de refus</span>
+          <span class="cr-approval-value" style="color: #dc2626;">{{ selectedRequestDetails?.reject_reason }}</span>
+        </div>
       </div>
-      <div class="item-actions" *ngIf="canEditFromDetails(selectedRequestDetails)">
-        <button class="btn-edit" (click)="editItemFromDetails(selectedRequestDetails)">Modifier</button>
-        <button class="btn-delete" (click)="deleteItemFromDetails(selectedRequestDetails)">Supprimer</button>
+
+      <div class="cr-item-actions" style="margin-top: 1rem;" *ngIf="canEditFromDetails(selectedRequestDetails)">
+        <button class="cr-btn cr-btn--edit" (click)="editItemFromDetails(selectedRequestDetails)">Modifier</button>
+        <button class="cr-btn cr-btn--danger-text" (click)="deleteItemFromDetails(selectedRequestDetails)">Supprimer</button>
       </div>
-      <div class="item-actions" *ngIf="selectedRequestDetails?.status === 'draft' && canEditDeleteOwnRequests">
-        <button class="btn-edit" (click)="openCreateRequestModalWithBatch(selectedRequestDetails.batch_code)">Ajouter un produit au brouillon</button>
+      <div class="cr-item-actions" style="margin-top: 0.75rem;" *ngIf="selectedRequestDetails?.status === 'draft' && canEditDeleteOwnRequests">
+        <button class="cr-btn cr-btn--ghost" (click)="openCreateRequestModalWithBatch(selectedRequestDetails.batch_code)">Ajouter un produit au brouillon</button>
       </div>
-      <div class="item-actions" *ngIf="canApprove && selectedRequestDetails?.status === 'pending'">
-        <button class="btn-approve" (click)="approveFromDetails(selectedRequestDetails)">Approuver</button>
-        <button class="btn-reject" (click)="rejectRequest(selectedRequestDetails?.id)">Rejeter</button>
+      <div class="cr-item-actions" style="margin-top: 0.75rem;" *ngIf="selectedRequestDetails?.status === 'pending' && canApprove">
+        <button class="cr-btn cr-btn--approve" (click)="approveFromDetails(selectedRequestDetails)">Approuver</button>
+        <button class="cr-btn cr-btn--reject" (click)="rejectRequest(selectedRequestDetails?.id)">Rejeter</button>
       </div>
     </ng-template>
-    <div class="modal-actions">
-      <button type="button" class="btn-cancel" (click)="closeDetailsModal()">Fermer</button>
+
+    <!-- PDF button — visible for director on ALL statuses -->
+    <div *ngIf="selectedRequestDetails?.pdf_path" style="margin-top: 1rem;">
+      <button class="cr-btn cr-btn--pdf cr-btn--full" (click)="downloadPdf(selectedRequestDetails)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+        Télécharger le Bon de Demande (PDF)
+      </button>
+    </div>
+
+    <div class="cr-modal-footer">
+      <button class="cr-btn cr-btn--ghost cr-btn--lg" (click)="closeDetailsModal()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════
+     MODAL: MOTIF DE REFUS
+══════════════════════════════════════════════════════════════════════════════ -->
+<div class="cr-overlay" *ngIf="selectedRequestForRejection" (click)="closeRejectModal()">
+  <div class="cr-modal" (click)="$event.stopPropagation()" style="max-width: 500px;">
+    <div class="cr-modal-header" style="background: var(--e-50); border-bottom-color: var(--e-200);">
+      <h3 style="color: var(--e-800);">Motif du refus</h3>
+      <button class="cr-modal-close" (click)="closeRejectModal()">×</button>
+    </div>
+
+    <div class="cr-modal-body" style="padding: 24px;">
+      <p style="margin-bottom: 16px; color: var(--e-600); font-size: 14px;">
+        Veuillez indiquer la raison pour laquelle vous rejetez cette demande. 
+        Elle sera transmise au demandeur par email.
+      </p>
+
+      <div class="cr-field">
+        <label>Raison du refus</label>
+        <textarea 
+          [(ngModel)]="rejectReason" 
+          rows="4" 
+          placeholder="Ex: Quantité excessive, produit non disponible, etc."
+          style="width: 100%; padding: 12px; border: 1px solid var(--e-200); border-radius: 8px; font-family: inherit;"
+        ></textarea>
+      </div>
+    </div>
+
+    <div class="cr-modal-footer">
+      <button 
+        class="cr-btn cr-btn--danger cr-btn--lg" 
+        [disabled]="rejecting || !rejectReason.trim()"
+        (click)="confirmReject()"
+      >
+        {{ rejecting ? 'Traitement...' : 'Confirmer le rejet' }}
+      </button>
+      <button class="cr-btn cr-btn--ghost cr-btn--lg" (click)="closeRejectModal()">Annuler</button>
     </div>
   </div>
 </div>

@@ -15,8 +15,9 @@ export class DocumentsComponent implements OnInit {
   documents: any[] = [];
   file: File | null = null;
   title = '';
-  type = '';
-  direction = 'unknown';
+  type = 'bon_livraison';
+  direction = 'in';
+  typeFilter: string | null = 'bon_livraison';
   product_id: number | null = null;
   supplier_id: number | null = null;
   warehouse_id: number | null = null;
@@ -32,6 +33,14 @@ export class DocumentsComponent implements OnInit {
   productConfirmation: any = null;
   locationConfirmation: any = null;
   locationStepIndex = 0;
+  allProducts: any[] = [];
+
+  // Expiration modal properties
+  showExpirationModal = false;
+  expirationDate: string = '';
+  currentApplyingDocument: any = null;
+  expirationProductHasExpiration = false;
+  today = new Date().toISOString().split('T')[0];
 
   constructor(
     private http: HttpClient,
@@ -43,8 +52,16 @@ export class DocumentsComponent implements OnInit {
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.load();
-    this.loadCategories();
     this.loadWarehouses();
+    this.loadProductsList();
+  }
+
+  loadProductsList(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.http.get('/api/products/request-list').subscribe({
+      next: (res: any) => { this.allProducts = Array.isArray(res) ? res : []; },
+      error: () => { this.allProducts = []; }
+    });
   }
 
   load(): void {
@@ -52,7 +69,11 @@ export class DocumentsComponent implements OnInit {
     this.isLoading = true;
     this.http.get('/api/admin/documents').subscribe({
       next: (res: any) => {
-        this.documents = Array.isArray(res) ? res : [];
+        const rawDocs = Array.isArray(res) ? res : [];
+        // Filtrer pour ne garder que ce qui est lié à l'OCR/Livraison
+        this.documents = rawDocs.filter((d: any) => 
+          d.type === 'bon_livraison' || d.type === 'document' || !d.type
+        );
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -78,7 +99,14 @@ export class DocumentsComponent implements OnInit {
           });
         }
       },
-      error: () => { this.categories = []; }
+      error: (err: any) => {
+        // Roles like Agent may not have access to categories endpoint; avoid noisy fallback call.
+        if (err?.status === 403) {
+          this.categories = [];
+          return;
+        }
+        this.categories = [];
+      }
     });
   }
 
@@ -169,17 +197,38 @@ export class DocumentsComponent implements OnInit {
   }
 
   apply(doc: any): void {
-    const items = (doc?.ocr_lines || []).map((l: any) => ({
+    const defaultBatchNumber = 'LOT-' + new Date().toISOString().slice(0,10).replace(/-/g, '') + '-' + doc.id;
+
+    const items = (doc?.ocr_lines || []).map((l: any) => {
+      let product = null;
+      if (l.product_id) {
+        product = this.allProducts.find(p => p.id === l.product_id);
+      }
+      if (!product && l.reference) {
+        product = this.allProducts.find(p => p.reference?.toLowerCase() === l.reference.toLowerCase());
+      }
+      if (!product && l.title) {
+        product = this.allProducts.find(p => p.title?.toLowerCase() === l.title.toLowerCase());
+      }
+      if (!product && doc.product) {
+        product = doc.product;
+      }
+
+      return {
       title: l.title,
       reference: l.reference || null,
       quantity: l.quantity,
       direction: doc.direction || 'unknown',
-      product_id: l.product_id || null,
+      product_id: product?.id || l.product_id || null,
+      has_expiration: !!product?.has_expiration,
       warehouse_id: l.warehouse_id || null,
       room_id: l.room_id || null,
       warehouse_location_id: l.warehouse_location_id || l.location_id || null,
-      cabinet_id: l.cabinet_id || null
-    }));
+      cabinet_id: l.cabinet_id || null,
+      expiration_date: null,
+      batch_number: !!product?.has_expiration ? defaultBatchNumber : null
+    };
+    });
 
     if (items.length === 0) {
       this.error = 'Aucune ligne OCR trouvee. Verifiez le fichier.';
@@ -388,7 +437,9 @@ export class DocumentsComponent implements OnInit {
       warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : null,
       room_id: item.room_id ? Number(item.room_id) : null,
       warehouse_location_id: item.warehouse_location_id ? Number(item.warehouse_location_id) : null,
-      cabinet_id: item.cabinet_id ? Number(item.cabinet_id) : null
+      cabinet_id: item.cabinet_id ? Number(item.cabinet_id) : null,
+      expiration_date: item.expiration_date || null,
+      batch_number: item.batch_number || null
     }));
 
     this.executeApply(this.locationConfirmation.doc, items, this.locationConfirmation.autoCreateProduct);
@@ -416,7 +467,9 @@ export class DocumentsComponent implements OnInit {
         warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : null,
         room_id: item.room_id ? Number(item.room_id) : null,
         warehouse_location_id: item.warehouse_location_id ? Number(item.warehouse_location_id) : null,
-        cabinet_id: item.cabinet_id ? Number(item.cabinet_id) : null
+        cabinet_id: item.cabinet_id ? Number(item.cabinet_id) : null,
+        expiration_date: item.expiration_date || null,
+        batch_number: item.batch_number || null
       };
     });
 
@@ -538,8 +591,8 @@ export class DocumentsComponent implements OnInit {
     if (!isPlatformBrowser(this.platformId)) return;
     const path = doc?.path;
     if (!path) return;
-    const cleanPath = path.replace(/^[/\\]+/, '');
-    const url = 'http://localhost:8000/storage/' + cleanPath;
+    const cleanPath = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
+    const url = `/api/docs/${cleanPath}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = doc?.title || 'document';
@@ -565,8 +618,15 @@ get filteredDocuments() {
   return this.documents.filter(d => {
     const matchStatus    = !this.statusFilter    || d.status    === this.statusFilter;
     const matchDirection = !this.directionFilter || d.direction === this.directionFilter;
-    return matchStatus && matchDirection;
+    const matchType      = !this.typeFilter      || d.type      === this.typeFilter;
+    return matchStatus && matchDirection && matchType;
   });
+}
+
+filterByType(type: string | null): void {
+  this.typeFilter = this.typeFilter === type ? null : type;
+  this.currentPage = 1;
+  this.expandedDocId = null;
 }
 
 filterByStatus(status: string | null): void {
@@ -584,6 +644,7 @@ filterByDirection(dir: string | null): void {
 clearFilters(): void {
   this.statusFilter    = null;
   this.directionFilter = null;
+  this.typeFilter      = 'bon_livraison';
   this.currentPage     = 1;
   this.expandedDocId   = null;
 }
@@ -595,6 +656,28 @@ countByStatus(status: string): number {
 
 countByDirection(dir: string): number {
   return this.documents.filter(d => d.direction === dir).length;
+}
+
+getAvailableTypes(): string[] {
+  const types = new Set<string>();
+  this.documents.forEach(d => { if (d.type) types.add(d.type); });
+  return Array.from(types).sort();
+}
+
+getTypeCount(type: string): number {
+  return this.documents.filter(d => d.type === type).length;
+}
+
+getDocTypeLabel(type: string): string {
+  const labels: any = {
+    'demande': 'Demande',
+    'bon_sortie': 'Bon de Sortie',
+    'refus': 'Refus',
+    'bon_livraison': 'Bon de Livraison',
+    'demande_approuvee': 'Demande Approuvée',
+    'document': 'Document'
+  };
+  return labels[type] || type;
 }
 
 // ── Pagination ────────────────────────────────────────────────

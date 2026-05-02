@@ -1,0 +1,125 @@
+<form [formGroup]="form" (ngSubmit)="onSubmit()" class="stock-form">
+  <!-- Alert Error -->
+  <div *ngIf="error" class="alert alert-danger alert-dismissible">
+    {{ error }}
+  </div>
+
+  <div class="row">
+    <!-- Emplacement / Localisation -->
+    <div class="col-md-6 mb-3">
+      <label for="warehouse_location_id" class="form-label">
+        📍 Localisation / Emplacement <span class="text-danger">*</span>
+      </label>
+      <select
+        class="form-control"
+        id="warehouse_location_id"
+        formControlName="warehouse_location_id"
+        [class.is-invalid]="form.get('warehouse_location_id')?.invalid && form.get('warehouse_location_id')?.touched">
+        <option value="">-- Sélectionner --</option>
+        <option *ngFor="let loc of warehouseLocations" [value]="loc.id">
+          {{ loc.name }}
+        </option>
+      </select>
+      <div class="invalid-feedback" *ngIf="form.get('warehouse_location_id')?.invalid && form.get('warehouse_location_id')?.touched">
+        Localisation requise
+      </div>
+    </div>
+
+    <!-- Fournisseur -->
+    <div class="col-md-6 mb-3">
+      <label for="supplier_id" class="form-label">🏭 Fournisseur</label>
+      <select class="form-control" id="supplier_id" formControlName="supplier_id">
+        <option value="">-- Aucun --</option>
+        <option *ngFor="let sup of suppliers" [value]="sup.id">
+          {{ sup.name }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Quantité -->
+    <div class="col-md-4 mb-3">
+      <label for="quantity" class="form-label">
+        📦 Quantité <span class="text-danger">*</span>
+      </label>
+      <input
+        type="number"
+        class="form-control"
+        id="quantity"
+        formControlName="quantity"
+        placeholder="Ex: 50"
+        [class.is-invalid]="form.get('quantity')?.invalid && form.get('quantity')?.touched">
+      <div class="invalid-feedback" *ngIf="form.get('quantity')?.invalid && form.get('quantity')?.touched">
+        Quantité valide requise (> 0)
+      </div>
+    </div>
+
+    <!-- N° de Lot / Batch -->
+    <div class="col-md-4 mb-3">
+      <label for="batch_number" class="form-label">📋 N° de Lot / Batch</label>
+      <input
+        type="text"
+        class="form-control"
+        id="batch_number"
+        formControlName="batch_number"
+        placeholder="Ex: LOT-2026-001">
+      <small class="text-muted">Optionnel - pour traçabilité</small>
+    </div>
+
+    <!-- DATE D'EXPIRATION ← NOUVEAU -->
+    <div class="col-md-4 mb-3">
+      <label for="expiration_date" class="form-label">
+        📅 Date d'Expiration
+      </label>
+      <input
+        type="date"
+        class="form-control"
+        id="expiration_date"
+        formControlName="expiration_date"
+        [class.is-invalid]="!isExpirationDateValid">
+      <small class="text-muted" *ngIf="getDaysUntilExpiration() !== null">
+        ⏰ {{ getDaysUntilExpiration() }} jour(s) avant expiration
+      </small>
+      <div class="invalid-feedback" *ngIf="!isExpirationDateValid">
+        La date d'expiration ne peut pas être dans le passé
+      </div>
+    </div>
+
+    <!-- Cabinet (optionnel) -->
+    <div class="col-md-12 mb-3">
+      <label for="cabinet_id" class="form-label">🗄️ Cabinet (optionnel)</label>
+      <input
+        type="text"
+        class="form-control"
+        id="cabinet_id"
+        formControlName="cabinet_id"
+        placeholder="Numéro de cabinet ou identifiant">
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="form-actions">
+    <button
+      type="submit"
+      class="btn btn-primary"
+      [disabled]="loading || form.invalid">
+      <span *ngIf="!loading">✅ Ajouter le Stock</span>
+      <span *ngIf="loading">
+        <span class="spinner-border spinner-border-sm me-2"></span>
+        Ajout en cours...
+      </span>
+    </button>
+    <button
+      type="button"
+      class="btn btn-secondary"
+      (click)="onCancel()">
+      ❌ Annuler
+    </button>
+  </div>
+
+  <!-- Info Box -->
+  <div class="alert alert-info mt-3" *ngIf="form.get('expiration_date')?.value">
+    <strong>📌 Note:</strong> Ce stock expirera le
+    <strong>{{ form.get('expiration_date')?.value | date:'dd/MM/yyyy' }}</strong>
+    ({{ getDaysUntilExpiration() }} jour(s) à partir d'aujourd'hui)
+  </div>
+</form>

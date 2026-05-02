@@ -19,7 +19,7 @@ class DocumentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Document::with(['product:id,title,reference', 'supplier:id,name', 'warehouse:id,name'])
+        $query = Document::with(['product:id,title,reference,has_expiration', 'supplier:id,name', 'warehouse:id,name'])
             ->orderByDesc('id');
 
         if ($request->filled('product_id')) {
@@ -214,6 +214,8 @@ class DocumentController extends Controller
             $dir       = $item['direction'] ?? $document->direction ?? 'unknown';
             $locId     = $item['warehouse_location_id'] ?? $item['location_id'] ?? null;
             $cabinetId = $item['cabinet_id'] ?? null;
+            $expirationDate = $item['expiration_date'] ?? null;
+            $batchNumber = $item['batch_number'] ?? null;
 
             if ($dir === 'unknown') {
                 $guessedDir = $this->guessDirection((string) $document->ocr_text);
@@ -265,6 +267,8 @@ class DocumentController extends Controller
                     'direction' => $dir,
                     'warehouse_location_id' => $locId,
                     'cabinet_id' => $cabinetId,
+                    'expiration_date' => $expirationDate,
+                    'batch_number' => $batchNumber,
                     'product' => null,
                 ];
                 continue;
@@ -278,6 +282,8 @@ class DocumentController extends Controller
                 'direction' => $dir,
                 'warehouse_location_id' => $locId,
                 'cabinet_id' => $cabinetId,
+                'expiration_date' => $expirationDate,
+                'batch_number' => $batchNumber,
                 'product' => $product,
             ];
         }
@@ -344,15 +350,13 @@ class DocumentController extends Controller
                 // Mettre à jour le stock par emplacement si fourni
                 if ($locId || $cabinetId) {
                     $ps = ProductStock::firstOrNew(
-                        $locId
-                            ? [
-                                'product_id' => $product->id,
-                                'warehouse_location_id' => $locId,
-                            ]
-                            : [
-                                'product_id' => $product->id,
-                                'cabinet_id' => $cabinetId,
-                            ]
+                        [
+                            'product_id' => $product->id,
+                            'warehouse_location_id' => $locId ?: null,
+                            'cabinet_id' => $cabinetId ?: null,
+                            'batch_number' => $action['batch_number'] ?: null,
+                            'expiration_date' => $action['expiration_date'] ?: null,
+                        ]
                     );
                     if (!$ps->exists || !$ps->supplier_id) {
                         $ps->supplier_id = $validSupplierId;
@@ -360,6 +364,12 @@ class DocumentController extends Controller
                     if ($cabinetId && !$locId) {
                         $ps->cabinet_id = $cabinetId;
                         $ps->warehouse_location_id = null;
+                    }
+                    if ($action['expiration_date']) {
+                        $ps->expiration_date = $action['expiration_date'];
+                    }
+                    if ($action['batch_number']) {
+                        $ps->batch_number = $action['batch_number'];
                     }
                     $delta = $dir === 'in' ? $quantity : -$quantity;
                     $ps->quantity = max(0, (int)($ps->quantity ?? 0) + $delta);

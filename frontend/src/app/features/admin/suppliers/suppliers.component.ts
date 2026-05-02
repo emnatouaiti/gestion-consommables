@@ -167,8 +167,8 @@ export class SuppliersComponent implements OnInit {
 
     downloadDoc(doc: any): void {
         if (!isPlatformBrowser(this.platformId)) return;
-        const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '') : null;
-        const url = cleanPath ? `http://localhost:8000/storage/${cleanPath}` : null;
+        const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '').replace(/^storage\//, '') : null;
+        const url = cleanPath ? `/api/docs/${cleanPath}` : null;
         if (!url) return;
 
         const a = document.createElement('a');
@@ -177,6 +177,12 @@ export class SuppliersComponent implements OnInit {
         a.download = doc?.title || 'document';
         a.rel = 'noopener noreferrer';
         a.click();
+    }
+
+    supplierImageUrl(path: string | null | undefined): string {
+        if (!path) return 'assets/images/placeholder-supplier.png';
+        const cleanPath = String(path).replace(/^[/\\]+/, '').replace(/^storage\//, '');
+        return `/api/docs/${cleanPath}`;
     }
 
     clearSearch(): void {
@@ -373,7 +379,7 @@ export class SuppliersComponent implements OnInit {
             email: supplier.email || '',
             photo: null
         };
-        this.photoPreview = supplier.image_path ? `http://localhost:8000/storage/${supplier.image_path}` : null;
+        this.photoPreview = supplier.image_path ? this.supplierImageUrl(supplier.image_path) : null;
         this.selectedProductIds = supplier.products?.map((p: any) => p.id) || [];
 
         const selectedIds = this.selectedProductIds;

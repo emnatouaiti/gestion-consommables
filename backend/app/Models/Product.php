@@ -35,6 +35,11 @@ class Product extends Model
         'photo',
         'barcode_value',
         'warehouse_location_id',
+        'has_expiration',
+    ];
+
+    protected $casts = [
+        'has_expiration' => 'boolean',
     ];
 
     public function category(): BelongsTo

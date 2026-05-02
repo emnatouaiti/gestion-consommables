@@ -1,0 +1,45 @@
+/* ===== DOCUMENTS STYLES ===== */
+.docs-header { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px; 
+  padding-bottom: 15px;
+}
+
+.docs-actions-top { 
+  display: flex; 
+  align-items: center; 
+  justify-content: space-between; 
+  width: 100%; 
+  gap: 15px; 
+  flex-wrap: wrap;
+}
+
+.docs-filter { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+}
+
+.docs-filter label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.docs-filter select {
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: white;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+
+.docs-filter select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 74, 153, 0.1);
+}

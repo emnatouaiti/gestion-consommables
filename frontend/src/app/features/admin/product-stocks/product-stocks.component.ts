@@ -5,6 +5,7 @@ import { HttpClient } from '@angular/common/http';
 import { ProductStockService } from '../services/product-stock.service';
 import { AdminStockService } from '../services/admin-stock.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
+import { AdminExpirationService } from '../services/admin-expiration.service';
 
 @Component({
   selector: 'app-product-stocks',
@@ -52,10 +53,19 @@ export class ProductStocksComponent implements OnInit {
   selectedRoomIdForForm: string = '';
   storageTargetForForm: 'location' | 'cabinet' = 'location';
 
-  activeSection: 'details' | 'stock' | 'documents' | 'images' = 'stock';
+  activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' = 'stock';
   selectedPhotoIndex = 0;
   photoUploadInProgress = false;
   productDocuments: any[] = [];
+  docTypeFilter: string = 'all';
+  docUploadInProgress: boolean = false;
+  availableDocTypes: string[] = [];
+
+  // Expiration tracking properties
+  productHasExpiration = false;
+  batchLifecycles: any[] = [];
+  expiringAlerts: any[] = [];
+  expirationEvents: any[] = [];
 
   constructor(
     private route: ActivatedRoute,
@@ -64,7 +74,8 @@ export class ProductStocksComponent implements OnInit {
     private stockService: ProductStockService,
     private adminStockService: AdminStockService,
     private warehouseService: AdminWarehouseService,
-    private http: HttpClient
+    private http: HttpClient,
+    private expirationService: AdminExpirationService
   ) { }
 
   ngOnInit(): void {
@@ -81,12 +92,58 @@ export class ProductStocksComponent implements OnInit {
         this.loadLocations();
         this.loadCabinets();
         this.loadDocuments();
+        this.loadExpirationData();
       }
     });
   }
 
-  setSection(section: 'details' | 'stock' | 'documents' | 'images'): void {
-    this.activeSection = section;
+  setSection(section: 'details' | 'stock' | 'documents' | 'images' | 'expiration'): void {
+    this.activeSection = section as any;
+    this.cdr.detectChanges();
+  }
+
+  private loadExpirationData(): void {
+    if (!this.productId) return;
+
+    // Charger les batches avec timeline
+    this.expirationService.getBatchLifecycle(this.productId).subscribe({
+      next: (batches: any[]) => {
+        this.batchLifecycles = batches;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('Erreur chargement batches:', err);
+      }
+    });
+
+    // Charger les expirations imminentes
+    this.expirationService.getExpiringSoon(this.productId).subscribe({
+      next: (expiring: any[]) => {
+        this.expiringAlerts = expiring;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('Erreur chargement expirations:', err);
+      }
+    });
+
+    // Charger les événements d'expiration
+    this.expirationService.getExpirationEvents(this.productId).subscribe({
+      next: (events: any[]) => {
+        this.expirationEvents = events;
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        console.warn('Erreur chargement événements:', err);
+      }
+    });
+  }
+
+  onStockAdded(newStock: any): void {
+    this.loadStocks();
+    this.loadExpirationData();
+    this.successMessage = 'Stock ajouté avec succès!';
+    setTimeout(() => { this.successMessage = ''; }, 3000);
     this.cdr.detectChanges();
   }
 
@@ -201,7 +258,8 @@ export class ProductStocksComponent implements OnInit {
     const path = item?.path || item?.image_path || item?.url || '';
     if (!path) return 'assets/images/placeholder-product.png';
     if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) return path;
-    return `http://localhost:8000/storage/${path}`;
+    const cleanPath = path.replace(/^storage\//, '').replace(/^[/\\]+/, '');
+    return `http://localhost:8000/api/docs/${cleanPath}`;
   }
 
   // Documents liés au produit
@@ -210,16 +268,103 @@ export class ProductStocksComponent implements OnInit {
     this.http.get(`/api/admin/documents`).subscribe({
       next: (docs: any) => {
         const arr = Array.isArray(docs) ? docs : [];
-        const title = (this.product?.title || '').toString().toLowerCase();
         this.productDocuments = arr.filter((d: any) => {
+          const title = (this.product?.title || '').toString().trim();
+          const reference = (this.product?.reference || '').toString().trim();
+          
+          if (!title && !reference) return d.product_id == this.productId;
+
+          // Helper for word-boundary matching
+          const matches = (source: string, target: string) => {
+            if (!target || !source) return false;
+            const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`\\b${escaped}\\b`, 'i');
+            return regex.test(source);
+          };
+
+          // 1. Direct ID link
           if (this.productId && d.product_id == this.productId) return true;
+          
+          // 2. Check in document title
+          const docTitle = (d.title || '');
+          if (matches(docTitle, title)) return true;
+          if (matches(docTitle, reference)) return true;
+
+          // 3. Check in OCR text (full document content)
+          const ocrText = (d.ocr_text || '');
+          if (matches(ocrText, title)) return true;
+          if (matches(ocrText, reference)) return true;
+
+          // 4. Check in specific OCR lines
           const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
-          return title && lines.some((l: any) => (l.title || '').toString().toLowerCase().includes(title));
+          return lines.some((l: any) => matches(l.title, title) || matches(l.reference, reference));
         });
+        
+        // Sort documents by date descending initially
+        this.productDocuments.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        
+        // Extract available types for filtering
+        const typesSet = new Set<string>();
+        this.productDocuments.forEach(d => {
+          if (d.type) typesSet.add(d.type);
+        });
+        this.availableDocTypes = Array.from(typesSet);
+        
         this.cdr.detectChanges();
       },
       error: () => { }
     });
+  }
+
+  onDocSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) {
+      this.handleDocUpload(file);
+    }
+  }
+
+  handleDocUpload(file: File): void {
+    this.docUploadInProgress = true;
+    this.errorMessage = '';
+    
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('product_id', (this.productId || '').toString());
+    formData.append('type', 'bon_livraison'); // Default for manual upload here
+    formData.append('direction', 'in');
+
+    this.http.post('/api/admin/documents', formData).subscribe({
+      next: (res: any) => {
+        this.successMessage = 'Document ajouté avec succès !';
+        this.docUploadInProgress = false;
+        this.loadDocuments();
+        setTimeout(() => this.successMessage = '', 3000);
+      },
+      error: (err: any) => {
+        this.errorMessage = 'Erreur lors de l\'envoi du document.';
+        this.docUploadInProgress = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getFilteredDocuments(): any[] {
+    let docs = this.docTypeFilter === 'all' 
+      ? [...this.productDocuments] 
+      : this.productDocuments.filter(d => d.type === this.docTypeFilter);
+    
+    // Ensure they are sorted by date descending
+    return docs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+
+  getDocTypeLabel(type: string): string {
+    switch (type) {
+      case 'demande': return 'Demande';
+      case 'bon_sortie': return 'Bon de Sortie';
+      case 'bon_livraison': return 'Bon de Livraison';
+      case 'refus': return 'Refus';
+      default: return type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
+    }
   }
 
   downloadDoc(doc: any): void {
@@ -239,7 +384,8 @@ export class ProductStocksComponent implements OnInit {
   getPhotoUrl(path: string | null | undefined): string {
     if (!path) return 'assets/images/placeholder-product.png';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    return `http://localhost:8000/storage/${path}`;
+    const cleanPath = path.replace(/^storage\//, '').replace(/^[/\\]+/, '');
+    return `http://localhost:8000/api/docs/${cleanPath}`;
   }
 
   unitLabel(): string {
@@ -260,6 +406,7 @@ export class ProductStocksComponent implements OnInit {
     this.adminStockService.getProduct(this.productId).subscribe({
       next: (res: any) => {
         this.product = res.data || res;
+        this.productHasExpiration = this.product?.has_expiration || false;
         this.productSuppliers = this.product.suppliers || [];
         this.cdr.detectChanges();
       },
@@ -535,5 +682,9 @@ export class ProductStocksComponent implements OnInit {
     } else {
       this.newStockForm.warehouse_location_id = '';
     }
+  }
+
+  onImageError(event: any): void {
+    event.target.src = 'assets/images/placeholder-product.png';
   }
 }

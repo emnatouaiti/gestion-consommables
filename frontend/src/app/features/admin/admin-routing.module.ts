@@ -30,8 +30,8 @@ import { ChatComponent } from './chat/chat.component';
 
 const adminRoles = ['Administrateur'];
 const directorRoles = ['Directeur'];
-const managerRoles = ['Responsable de stock'];
-const agentRoles = ['Agent de stock'];
+const managerRoles = ['Responsable de stock', 'Responsable', 'Gestionnaire'];
+const agentRoles = ['Agent de stock', 'Agent'];
 const userRoles = ['Utilisateur', 'Employé'];
 
 const adminAndDirector = [...adminRoles, ...directorRoles];

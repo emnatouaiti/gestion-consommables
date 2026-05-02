@@ -36,6 +36,11 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   private chatSub?: Subscription;
   miniChatOpen = false;
 
+  private deferViewSync(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    setTimeout(() => this.cdr.detectChanges(), 0);
+  }
+
     get userPhotoUrl(): string | null {
     const raw = this.user?.photo || this.user?.avatar;
     if (!raw || typeof raw !== 'string') {
@@ -206,7 +211,7 @@ get userInitials(): string {
         next: (user) => {
           this.user = user;
           this.loadUnreadNotifications();
-          this.cdr.detectChanges();
+          this.deferViewSync();
           this.redirectAdminRootToFirstMenu();
         }
       });
@@ -236,11 +241,11 @@ get userInitials(): string {
       return this.directorSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock', 'Responsable', 'Gestionnaire'])) {
       return this.managerSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Agent de stock'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Agent de stock', 'Agent'])) {
       return this.agentSections;
     }
 
@@ -260,11 +265,11 @@ get userInitials(): string {
       return 'Direction';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Responsable de stock', 'Responsable', 'Gestionnaire'])) {
       return 'Gestion de Stock';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Agent de stock'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Agent de stock', 'Agent'])) {
       return 'Opérations Stock';
     }
 
@@ -312,12 +317,12 @@ get userInitials(): string {
       next: (res) => {
         this.notifications = Array.isArray(res) ? res : [];
         this.notificationsLoading = false;
-        this.cdr.detectChanges();
+        this.deferViewSync();
       },
       error: () => {
         this.notifications = [];
         this.notificationsLoading = false;
-        this.cdr.detectChanges();
+        this.deferViewSync();
       }
     });
 
@@ -328,7 +333,7 @@ get userInitials(): string {
     this.apiService.put('notifications/read-all', {}).subscribe({
       next: () => {
         this.notifCount = 0;
-        this.cdr.detectChanges();
+        this.deferViewSync();
       }
     });
   }
@@ -370,7 +375,7 @@ get userInitials(): string {
     this.apiService.get('notifications/unread-count').subscribe({
       next: (res) => {
         this.notifCount = Number(res?.count || 0);
-        this.cdr.detectChanges();
+        this.deferViewSync();
       },
       error: () => {
         this.notifCount = 0;
@@ -384,9 +389,13 @@ get userInitials(): string {
       next: (convs: any[]) => {
         const arr = Array.isArray(convs) ? convs : [];
         this.chatUnread = arr.reduce((sum, c: any) => sum + Number(c?.unread || 0), 0);
-        this.cdr.detectChanges();
+        this.deferViewSync();
       },
       error: () => { this.chatUnread = 0; }
     });
   }
 }
+
+
+
+

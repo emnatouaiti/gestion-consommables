@@ -117,8 +117,8 @@ export class UsersListComponent implements OnInit {
   photoUrl(path: string | null | undefined): string {
     if (!path) return 'assets/default-avatar.svg';
     if (path.startsWith('http')) return path;
-    const cleanPath = path.replace(/^\/+/, '');
-    return `http://localhost:8000/storage/${cleanPath}`;
+    const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '');
+    return `/api/docs/${cleanPath}`;
   }
 
   load(): void {
@@ -337,5 +337,9 @@ export class UsersListComponent implements OnInit {
   closeAvatarModal(): void {
     this.avatarModalOpen = false;
     this.cdr.detectChanges();
+  }
+
+  onImageError(event: any): void {
+    event.target.src = 'assets/default-avatar.svg';
   }
 }

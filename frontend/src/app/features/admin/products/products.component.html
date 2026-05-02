@@ -110,7 +110,7 @@
 
   <div class="scan-result" *ngIf="scannedProduct">
     <div class="scan-result-inner">
-      <img class="scan-photo" [src]="photoUrl(scannedProduct.photo)" alt="" />
+      <img class="scan-photo" [src]="photoUrl(scannedProduct.photo)" alt="" (error)="onImageError($event)" />
       <div class="scan-details">
         <strong>{{ scannedProduct.title }}</strong>
         <span>Réf: {{ scannedProduct.reference }} · Stock: {{ scannedProduct.stock_quantity }}</span>
@@ -150,7 +150,7 @@
         <tbody>
           <tr *ngFor="let p of products" [class.row-highlight]="highlightedProductId === p.id">
             <td>
-              <div class="product-cell"><img class="product-thumb" [src]="productThumb(p)" alt="" /><span
+              <div class="product-cell"><img class="product-thumb" [src]="productThumb(p)" alt="" (error)="onImageError($event)" /><span
                   class="product-name" (click)="manageProductStocks(p)"
                   style="cursor: pointer; color: #0066cc; text-decoration: underline;">{{ p.title }}</span></div>
             </td>
@@ -206,7 +206,9 @@
     </div>
   </div>
 
-  <!-- Modal -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Modal Création / Édition Produit                        -->
+  <!-- ═══════════════════════════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
     <div class="modal-panel" (click)="$event.stopPropagation()">
       <div class="modal-header">
@@ -220,7 +222,6 @@
             <label>Référence *</label>
             <input [(ngModel)]="form.reference" placeholder="REF-001" />
           </div>
-          <!-- Reference is hidden on create; generated server-side. (no user hint shown) -->
         </div>
         <div class="form-row">
           <div class="field"><label>Catégorie *</label>
@@ -235,6 +236,12 @@
               <button [class.active]="form.status === 'inactive'" (click)="form.status = 'inactive'">Inactive</button>
             </div>
           </div>
+          <div class="field"><label>Cycle de vie (Expiration)</label>
+            <label class="checkbox-label" style="margin-top: 10px;">
+              <input type="checkbox" [(ngModel)]="form.has_expiration" />
+              <span>Gérer l'expiration (dates, lots)</span>
+            </label>
+          </div>
         </div>
         <div class="form-row triple">
           <div class="field"><label>Seuil min *</label><input type="number" [(ngModel)]="form.seuil_min" placeholder="0" /></div>
@@ -246,7 +253,6 @@
             </select>
           </div>
         </div>
-
         <div class="form-row">
           <div class="field"><label>Marque</label>
             <select [(ngModel)]="selectedMarqueId" (change)="onMarqueSelect()">
@@ -261,12 +267,10 @@
             </select>
           </div>
         </div>
-
         <div class="form-row triple">
           <div class="field"><label>N° Série</label><input [(ngModel)]="form.num_serie" placeholder="SN..." /></div>
           <div class="field"><label>N° Inventaire</label><input [(ngModel)]="form.num_inventaire" placeholder="INV..." /></div>
         </div>
-
         <div class="form-row">
           <div class="field"><label>Fournisseur</label>
             <select [(ngModel)]="form.supplier_id">
@@ -302,8 +306,10 @@
       </div>
     </div>
   </div>
-</div>
-  <!-- Scanner modal -->
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Modal Scanner Caméra                                    -->
+  <!-- ═══════════════════════════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="showScannerModal" (click)="closeScanner()">
     <div class="modal-panel" (click)="$event.stopPropagation()">
       <div class="modal-header">
@@ -316,95 +322,131 @@
     </div>
   </div>
 
-
-<!-- Modal Détails Fournisseur (Avis + Produits) -->
-<div class="modal-backdrop" *ngIf="showSupplierDetailsModal" (click)="closeSupplierDetails()">
-  <div class="modal-panel supplier-details-modal" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <div class="header-with-img">
-        <img *ngIf="selectedSupplier?.image_path" [src]="'http://localhost:8000/storage/' + selectedSupplier.image_path"
-          class="supplier-logo-mini" />
-        <h3>Détails Fournisseur: {{ selectedSupplier?.name }}</h3>
-      </div>
-      <button class="modal-close" (click)="closeSupplierDetails()">✕</button>
-    </div>
-    <div class="modal-body scrollable-body">
-
-      <!-- Section Informations -->
-      <div class="detail-section info-card">
-        <div class="info-item" *ngIf="selectedSupplier?.phone">
-          <i class="fas fa-phone"></i> <span>{{ selectedSupplier.phone }}</span>
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Modal Détails Fournisseur                               -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="showSupplierDetailsModal" (click)="closeSupplierDetails()">
+    <div class="modal-panel supplier-details-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="header-with-img">
+          <img *ngIf="selectedSupplier?.image_path" [src]="photoUrl(selectedSupplier.image_path)"
+            class="supplier-logo-mini" (error)="onImageError($event)" />
+          <h3>Détails Fournisseur: {{ selectedSupplier?.name }}</h3>
         </div>
-        <div class="info-item" *ngIf="selectedSupplier?.email">
-          <i class="fas fa-envelope"></i> <span>{{ selectedSupplier.email }}</span>
-        </div>
+        <button class="modal-close" (click)="closeSupplierDetails()">✕</button>
       </div>
-
-      <!-- Section Produits effectivement fournis (Stock) -->
-      <div class="detail-section">
-        <h4 class="section-title"><i class="fas fa-history"></i> Produits effectivement fournis (Stock)</h4>
-        <div class="supply-history-list" *ngIf="selectedSupplier?.supply_history?.length; else noSupplyHistory">
-          <div class="supply-history-item" *ngFor="let item of selectedSupplier.supply_history">
-            <div class="p-info">
-              <strong>{{ item.product?.title || 'Produit inconnu' }}</strong>
-              <span>Réf: {{ item.product?.reference || '—' }}</span>
-            </div>
-            <div class="p-quantity">
-              <span class="qty-label">Total fourni:</span>
-              <strong>{{ item.total_quantity }}</strong>
-            </div>
+      <div class="modal-body scrollable-body">
+        <div class="detail-section info-card">
+          <div class="info-item" *ngIf="selectedSupplier?.phone">
+            <i class="fas fa-phone"></i> <span>{{ selectedSupplier.phone }}</span>
+          </div>
+          <div class="info-item" *ngIf="selectedSupplier?.email">
+            <i class="fas fa-envelope"></i> <span>{{ selectedSupplier.email }}</span>
           </div>
         </div>
-        <ng-template #noSupplyHistory>
-          <p class="empty-mini">Aucune fourniture enregistrée pour le moment.</p>
-        </ng-template>
-      </div>
-
-      <!-- Section Avis -->
-      <div class="detail-section reviews-block">
-        <h4 class="section-title"><i class="fas fa-comment-dots"></i> Avis et Évaluations</h4>
-
-        <!-- Formulaire d'avis -->
-        <div class="review-compose">
-          <textarea [(ngModel)]="newReviewContent" placeholder="Votre avis sur ce fournisseur..."
-            class="review-input"></textarea>
-          <div class="review-actions">
-            <select [(ngModel)]="newReviewRating" class="rating-picker">
-              <option [ngValue]="5">⭐⭐⭐⭐⭐ (5)</option>
-              <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
-              <option [ngValue]="3">⭐⭐⭐ (3)</option>
-              <option [ngValue]="2">⭐⭐ (2)</option>
-              <option [ngValue]="1">⭐ (1)</option>
-            </select>
-            <button class="btn-primary sm" (click)="submitSupplierReview()"
-              [disabled]="isLoading || !newReviewContent.trim()">
-              <i class="fas fa-paper-plane"></i> Publier
-            </button>
-          </div>
-        </div>
-
-        <!-- Liste des avis -->
-        <div class="reviews-feed" *ngIf="selectedSupplier?.reviews?.length; else noReviews">
-          <div class="review-card" *ngFor="let rev of selectedSupplier.reviews">
-            <div class="rev-header">
-              <span class="user-info"><i class="fas fa-user-circle"></i> {{ rev.user?.name || 'Anonyme' }}</span>
-              <span class="rev-date">{{ rev.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+        <div class="detail-section">
+          <h4 class="section-title"><i class="fas fa-history"></i> Produits effectivement fournis (Stock)</h4>
+          <div class="supply-history-list" *ngIf="selectedSupplier?.supply_history?.length; else noSupplyHistory">
+            <div class="supply-history-item" *ngFor="let item of selectedSupplier.supply_history">
+              <div class="p-info">
+                <strong>{{ item.product?.title || 'Produit inconnu' }}</strong>
+                <span>Réf: {{ item.product?.reference || '—' }}</span>
+              </div>
+              <div class="p-quantity">
+                <span class="qty-label">Total fourni:</span>
+                <strong>{{ item.total_quantity }}</strong>
+              </div>
             </div>
-            <div class="rev-rating" *ngIf="rev.rating">
-              {{ '⭐'.repeat(rev.rating) }}
-            </div>
-            <p class="rev-text">{{ rev.content }}</p>
           </div>
+          <ng-template #noSupplyHistory>
+            <p class="empty-mini">Aucune fourniture enregistrée pour le moment.</p>
+          </ng-template>
         </div>
-        <ng-template #noReviews>
-          <p class="empty-msg">Soyez le premier à donner votre avis !</p>
-        </ng-template>
+        <div class="detail-section reviews-block">
+          <h4 class="section-title"><i class="fas fa-comment-dots"></i> Avis et Évaluations</h4>
+          <div class="review-compose">
+            <textarea [(ngModel)]="newReviewContent" placeholder="Votre avis sur ce fournisseur..."
+              class="review-input"></textarea>
+            <div class="review-actions">
+              <select [(ngModel)]="newReviewRating" class="rating-picker">
+                <option [ngValue]="5">⭐⭐⭐⭐⭐ (5)</option>
+                <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
+                <option [ngValue]="3">⭐⭐⭐ (3)</option>
+                <option [ngValue]="2">⭐⭐ (2)</option>
+                <option [ngValue]="1">⭐ (1)</option>
+              </select>
+              <button class="btn-primary sm" (click)="submitSupplierReview()"
+                [disabled]="isLoading || !newReviewContent.trim()">
+                <i class="fas fa-paper-plane"></i> Publier
+              </button>
+            </div>
+          </div>
+          <div class="reviews-feed" *ngIf="selectedSupplier?.reviews?.length; else noReviews">
+            <div class="review-card" *ngFor="let rev of selectedSupplier.reviews">
+              <div class="rev-header">
+                <span class="user-info"><i class="fas fa-user-circle"></i> {{ rev.user?.name || 'Anonyme' }}</span>
+                <span class="rev-date">{{ rev.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="rev-rating" *ngIf="rev.rating">{{ '⭐'.repeat(rev.rating) }}</div>
+              <p class="rev-text">{{ rev.content }}</p>
+            </div>
+          </div>
+          <ng-template #noReviews>
+            <p class="empty-msg">Soyez le premier à donner votre avis !</p>
+          </ng-template>
+        </div>
       </div>
-
-    </div>
-    <div class="modal-footer"
-      style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafbff; border-radius: 0 0 16px 16px;">
-      <button class="btn-outline sm" (click)="closeSupplierDetails()">Fermer</button>
+      <div class="modal-footer"
+        style="padding: 16px 24px; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; background: #fafbff; border-radius: 0 0 16px 16px;">
+        <button class="btn-outline sm" (click)="closeSupplierDetails()">Fermer</button>
+      </div>
     </div>
   </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Modal Réactivation Produit Inactif                      -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div *ngIf="showReactivateModal"
+    (click)="dismissReactivate()"
+    style="position:fixed; inset:0; background:rgba(0,0,0,0.6);
+           display:flex; align-items:center; justify-content:center; z-index:99999;">
+    <div (click)="$event.stopPropagation()"
+         style="background:#fff; border-radius:16px; padding:2.5rem 2rem; max-width:440px; width:90%;
+                box-shadow:0 24px 80px rgba(0,0,0,0.25); text-align:center;">
+
+      <div style="font-size:3.5rem; margin-bottom:1rem;">⚠️</div>
+
+      <h3 style="margin:0 0 0.5rem; font-size:1.25rem; font-weight:700; color:#1a1a2e;">
+        Produit déjà existant
+      </h3>
+
+      <p style="color:#444; font-size:1rem; margin:0.25rem 0 0.5rem;">
+        <strong style="color:#1a1a2e;">{{ reactivateProduct?.title }}</strong>
+      </p>
+      <p style="color:#666; font-size:0.875rem; margin-bottom:0.25rem;">
+        Référence : <code style="background:#f3f4f6; padding:2px 6px; border-radius:4px;">{{ reactivateProduct?.reference }}</code>
+      </p>
+
+      <p style="color:#888; font-size:0.875rem; margin:1rem 0 1.75rem;">
+        Ce produit existe déjà mais il est
+        <strong style="color:#e67e22;">inactif</strong>.<br>
+        Voulez-vous le <strong style="color:#27ae60;">réactiver</strong> au lieu de créer un doublon ?
+      </p>
+
+      <div style="display:flex; gap:0.75rem; justify-content:center;">
+        <button (click)="dismissReactivate()"
+                style="padding:0.65rem 1.5rem; border-radius:8px; border:1.5px solid #d1d5db;
+                       background:#f9fafb; color:#374151; cursor:pointer; font-size:0.9rem; font-weight:500;">
+          Non, annuler
+        </button>
+        <button (click)="confirmReactivate()"
+                style="padding:0.65rem 1.5rem; border-radius:8px; border:none;
+                       background:#27ae60; color:#fff; cursor:pointer; font-size:0.9rem; font-weight:700;
+                       box-shadow:0 4px 12px rgba(39,174,96,0.35);">
+          ✓ Oui, réactiver
+        </button>
+      </div>
+    </div>
+  </div>
+
 </div>

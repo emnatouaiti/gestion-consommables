@@ -31,6 +31,8 @@ import { ChatComponent } from './chat/chat.component';
 import { ThreadWidgetComponent } from './chat/thread-widget.component';
 import { MiniThreadsComponent } from './chat/mini-threads.component';
 import { BarcodeScannerComponent } from '../../shared/barcode-scanner/barcode-scanner.component';
+import { ProductBatchLifecycleComponent } from './components/product-batch-lifecycle/product-batch-lifecycle.component';
+import { StockFormComponent } from './components/stock-form/stock-form.component';
 
 @NgModule({
   declarations: [
@@ -60,6 +62,8 @@ import { BarcodeScannerComponent } from '../../shared/barcode-scanner/barcode-sc
     ModelesComponent,
     // Barcode scanner (standalone)
     BarcodeScannerComponent,
+    ProductBatchLifecycleComponent,
+    StockFormComponent,
     ReferencesComponent,
     SuppliersComponent,
     UnitsComponent,

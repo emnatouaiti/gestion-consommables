@@ -139,21 +139,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
       return normalizedPhoto;
     }
 
-    if (normalizedPhoto.startsWith('/storage/')) {
-      const url = `http://localhost:8000${normalizedPhoto}`;
-      console.log('[Photo] Chemin /storage détecté →', url);
-      return url;
-    }
-
-    if (normalizedPhoto.startsWith('/')) {
-      const url = `http://localhost:8000${normalizedPhoto}`;
-      console.log('[Photo] Chemin absolu détecté →', url);
-      return url;
-    }
-
-    // Supposer que c'est un chemin relatif
-    const url = `${this.storageBase}/${normalizedPhoto}`;
-    console.log('[Photo] Chemin relatif →', url);
+    const cleanPath = normalizedPhoto.replace(/^\/+/, '').replace(/^storage\//, '');
+    const url = `/api/docs/${cleanPath}`;
+    console.log('[Photo] Résolu via proxy →', url);
     return url;
   }
 

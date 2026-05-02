@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Document;
 use App\Models\ConsumableRequest;
 use App\Models\Product;
 use App\Models\User;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ConsumableRequestController extends Controller
 {
@@ -38,6 +40,7 @@ class ConsumableRequestController extends Controller
                     $request->setAttribute('suggested_approved_quantity', $suggestion['quantity']);
                     $request->setAttribute('suggestion_reason', $suggestion['reason']);
                     $request->setAttribute('product_threshold', $productThreshold);
+                    $request->setAttribute('requester_siege', $request->user?->siege);
                     $request->setAttribute('stock_alert', $this->isStockBelowThreshold($availableStock, $productThreshold, $request->requested_quantity));
 
                     return $request;
@@ -65,7 +68,9 @@ class ConsumableRequestController extends Controller
                         'suggested_approved_quantity' => $first->getAttribute('suggested_approved_quantity'),
                         'suggestion_reason' => $first->getAttribute('suggestion_reason'),
                         'product_threshold' => $first->getAttribute('product_threshold'),
+                        'requester_siege' => $first->getAttribute('requester_siege'),
                         'stock_alert' => $first->getAttribute('stock_alert'),
+                        'pdf_path' => $first->pdf_path,
                         'items' => $items,
                     ];
                 })
@@ -94,6 +99,7 @@ class ConsumableRequestController extends Controller
                         'requester_name' => $this->getRequesterName($first->user),
                         'requester_service' => $this->getRequesterService($first->user),
                         'requester_poste' => $this->getRequesterPoste($first->user),
+                        'pdf_path' => $first->pdf_path,
                         'items' => $items,
                     ];
                 })
@@ -103,7 +109,7 @@ class ConsumableRequestController extends Controller
         return response()->json($requests);
     }
 
-    // Cr�er une nouvelle demande
+    // Crer une nouvelle demande
     public function store(Request $request)
     {
         $user = Auth::user();
@@ -135,38 +141,25 @@ class ConsumableRequestController extends Controller
                 ]));
             }
         });
-        // Notifier uniquement le directeur (role/poste/role legacy) si la demande est en 'pending'.
+        // Notifier uniquement le directeur si la demande est en 'pending'.
         $firstStatus = collect($createdRequests)->first()?->status ?? null;
-        $directors = collect();
+        $notifiedCount = 0;
         if ($firstStatus === 'pending') {
-            $directors = User::query()
-                ->where(function ($query) {
-                    $query->whereHas('roles', function ($roleQuery) {
-                        $roleQuery->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
-                    })
-                    ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
-                    ->orWhereRaw('LOWER(role) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
-                })
-                ->where('id', '!=', $user->id)
-                ->get();
+            foreach ($createdRequests as $createdRequest) {
+                $notifiedCount += $this->notifyDirectors($createdRequest);
+            }
+        }
 
-            $notifiedCount = 0;
-            foreach ($directors as $director) {
-                try {
-                    foreach ($createdRequests as $createdRequest) {
-                        $director->notify(new \App\Notifications\ConsumableRequestNotification($createdRequest));
-                        $notifiedCount++;
-                    }
-                } catch (\Throwable $e) {
-                    Log::error('Notification en echec pour demande consommable', [
-                        'request_ids' => collect($createdRequests)->pluck('id')->all(),
-                        'director_id' => $director->id,
-                        'error' => $e->getMessage(),
-                    ]);
+        // Generate PDF
+        try {
+            $pdfPath = $this->generateAndSavePdf($user, $createdRequests, $batchCode);
+            if ($pdfPath) {
+                foreach ($createdRequests as $req) {
+                    $req->update(['pdf_path' => $pdfPath]);
                 }
             }
-        } else {
-            $notifiedCount = 0;
+        } catch (\Throwable $e) {
+            Log::error('PDF Generation failed for consumable request', ['error' => $e->getMessage()]);
         }
 
         return response()->json([
@@ -197,8 +190,14 @@ class ConsumableRequestController extends Controller
                 return response()->json(['message' => 'Invalid status change.'], 422);
             }
 
+            $oldStatus = $consumableRequest->status;
             $consumableRequest->status = $requestedStatus;
             $consumableRequest->save();
+
+            // Notify if becoming pending
+            if (Str::lower($oldStatus) !== 'pending' && $requestedStatus === 'pending') {
+                $this->notifyDirectors($consumableRequest);
+            }
 
             return response()->json([
                 'message' => 'Request updated successfully.',
@@ -275,10 +274,27 @@ class ConsumableRequestController extends Controller
             ], 422);
         }
 
-        DB::transaction(function () use ($consumableRequest, $approvedQuantity) {
+        DB::transaction(function () use ($consumableRequest, $approvedQuantity, $requestOwner) {
             $consumableRequest->approved_quantity = $approvedQuantity;
             $consumableRequest->status = 'approved_pending_exit';
             $consumableRequest->save();
+
+            // Regenerate PDF with approved quantity
+            try {
+                $pdfPath = $this->generateAndSavePdf($requestOwner, [$consumableRequest], $consumableRequest->batch_code, 'BON DE DEMANDE APPROUVÉ');
+                if ($pdfPath) {
+                    $consumableRequest->update(['pdf_path' => $pdfPath]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('PDF Regeneration on Approve failed', ['error' => $e->getMessage()]);
+            }
+
+            // Notify owner
+            try {
+                $consumableRequest->user->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest->fresh()));
+            } catch (\Throwable $e) {
+                Log::error('Failed to notify owner on approve', ['err' => $e->getMessage()]);
+            }
 
             // Notify responsables that this item awaits physical confirmation
             try {
@@ -292,7 +308,7 @@ class ConsumableRequestController extends Controller
                     ->get();
 
                 foreach ($responsables as $responsable) {
-                    $responsable->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest));
+                    $responsable->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest->fresh()));
                 }
             } catch (\Throwable $e) {
                 Log::error('Failed to notify responsables on approve', ['err' => $e->getMessage()]);
@@ -318,7 +334,7 @@ class ConsumableRequestController extends Controller
             return response()->json(['message' => 'Unauthorized'], 403);
         }
 
-        if ($consumableRequest->status !== 'approved_pending_exit') {
+        if (!in_array($consumableRequest->status, ['approved', 'approved_pending_exit'])) {
             return response()->json(['message' => 'Cette demande n\'est pas en attente de sortie.'], 422);
         }
 
@@ -328,43 +344,57 @@ class ConsumableRequestController extends Controller
             'destination_text' => 'nullable|string|max:255',
             'motif' => 'nullable|string|max:500',
         ]);
+Log::info('confirmExit payload', $request->all());
 
-        $sourceLocationId = $request->input('source_warehouse_location_id');
-        $sourceCabinetId = $request->input('source_cabinet_id');
-        $destinationText = $request->input('destination_text') ?: $this->getRequesterName($consumableRequest->user);
-        $motif = $request->input('motif', 'Sortie confirmee suite validation Direction');
+        DB::transaction(function () use ($consumableRequest, $user, $request) {
+            $sourceLocationId = $request->input('source_warehouse_location_id');
+            $sourceCabinetId = $request->input('source_cabinet_id');
 
-        if (!$sourceLocationId && !$sourceCabinetId) {
-            return response()->json(['message' => 'Veuillez specifier un emplacement ou une armoire de sortie.'], 422);
-        }
+            $destinationText = $request->input('destination_text') ?: $this->getRequesterName($consumableRequest->user);
+            $motif = $request->input('motif', 'Sortie confirmee suite validation Direction');
 
-        DB::transaction(function () use ($consumableRequest, $user, $sourceLocationId, $sourceCabinetId, $destinationText, $motif) {
+            // If neither location nor cabinet is provided, we'll attempt to infer a suitable source later.
+
             $productId = $consumableRequest->product_id;
-            $approvedQuantity = (int) $consumableRequest->approved_quantity;
+
+            // Resolve productId if missing (for manual entries)
+            if (!$productId) {
+                $name = trim((string)$consumableRequest->item_name);
+                // Try exact match or match by title
+                $productId = \App\Models\Product::where('title', 'like', $name)
+                    ->orWhereRaw('LOWER(title) = ?', [mb_strtolower($name, 'UTF-8')])
+                    ->value('id');
+            }
+
+            $approvedQuantity = (int) ($consumableRequest->approved_quantity ?: $consumableRequest->requested_quantity);
 
             if ($productId && $approvedQuantity > 0) {
-                $query = \App\Models\ProductStock::where('product_id', $productId);
-                
-                if ($sourceLocationId) {
-                    $query->where('warehouse_location_id', $sourceLocationId);
-                } else {
-                    $query->where('cabinet_id', $sourceCabinetId);
+                // Ensure the request is now linked to the real product for future reference, if column exists
+                if (\Schema::hasColumn('consumable_requests', 'product_id') && !$consumableRequest->product_id) {
+                    $consumableRequest->update(['product_id' => $productId]);
                 }
-
-                $stockRecord = $query->first();
-
-                if (!$stockRecord || (int)$stockRecord->quantity < $approvedQuantity) {
-                    throw ValidationException::withMessages([
-                        'source' => 'Stock insuffisant a la source selectionnee.'
-                    ]);
-                }
-
-                $stockRecord->quantity = (int)$stockRecord->quantity - $approvedQuantity;
-                $stockRecord->save();
             }
 
             $consumableRequest->status = 'approved';
             $consumableRequest->save();
+
+            // Regenerate PDF for the exit confirmation
+            try {
+                $batchRequests = ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get();
+                if ($batchRequests->isEmpty() || !$consumableRequest->batch_code) $batchRequests = collect([$consumableRequest]);
+                
+                // Force refresh to ensure status 'approved' is loaded for PDF
+                $batchRequests->each->refresh();
+                
+                $pdfPath = $this->generateAndSavePdf($consumableRequest->user, $batchRequests->all(), $consumableRequest->batch_code, 'BON DE SORTIE DE CONSOMMABLES');
+                if ($pdfPath) {
+                    foreach ($batchRequests as $req) {
+                        $req->update(['pdf_path' => $pdfPath]);
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error('Failed to regenerate PDF on confirmExit', ['err' => $e->getMessage()]);
+            }
 
             // Create the outgoing stock movement
             if ($approvedQuantity > 0) {
@@ -398,16 +428,26 @@ class ConsumableRequestController extends Controller
                     Log::error('Failed to create audit log for confirmExit', ['err' => $e->getMessage()]);
                 }
 
-                // Notify the requesting employee
+                // Notify the requesting employee about the physical exit
                 try {
-                    if ($consumableRequest->user_id) {
-                        $owner = User::find($consumableRequest->user_id);
-                        if ($owner) {
-                            $owner->notify(new \App\Notifications\StockMovementNotification($movement));
-                        }
-                    }
+                    $consumableRequest->refresh();
+                    $consumableRequest->user->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest));
+                    
+                    // Also send the technical movement notification if needed
+                    $consumableRequest->user->notify(new \App\Notifications\StockMovementNotification($movement));
                 } catch (\Throwable $e) {
                     Log::error('Failed to notify owner on confirmExit', ['err' => $e->getMessage()]);
+                }
+
+                // Decrement the global product stock quantity
+                try {
+                    $prod = \App\Models\Product::find($productId);
+                    if ($prod) {
+                        $prod->decrement('stock_quantity', $approvedQuantity);
+                        Log::info("Decremented stock for product {$prod->id} by {$approvedQuantity}");
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('Failed to decrement global product stock', ['err' => $e->getMessage()]);
                 }
             }
         });
@@ -438,6 +478,34 @@ class ConsumableRequestController extends Controller
         }
         $consumableRequest->save();
 
+        // Generate Refusal PDF (Batch or Single)
+        try {
+            $batchCode = $consumableRequest->batch_code;
+            $requestsToPdf = [];
+            if ($batchCode) {
+                $requestsToPdf = ConsumableRequest::where('batch_code', $batchCode)->get()->all();
+            } else {
+                $requestsToPdf = [$consumableRequest];
+            }
+
+            $pdfPath = $this->generateAndSavePdf($consumableRequest->user, $requestsToPdf, $batchCode, 'BON DE REFUS DE CONSOMMABLES');
+            if ($pdfPath) {
+                foreach ($requestsToPdf as $req) {
+                    $req->update(['pdf_path' => $pdfPath]);
+                }
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to generate PDF on reject', ['err' => $e->getMessage()]);
+        }
+
+        // Notify owner of rejection
+        try {
+            $consumableRequest->refresh();
+            $consumableRequest->user->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest));
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('Failed to notify owner on reject', ['err' => $e->getMessage()]);
+        }
+
         return response()->json(['message' => 'Request rejected successfully.']);
     }
 
@@ -456,7 +524,7 @@ class ConsumableRequestController extends Controller
             $itemName = trim((string) $consumableRequest->item_name);
             if ($itemName !== '') {
                 $product = Product::query()
-                    ->whereRaw('LOWER(title) = ?', [Str::lower($itemName)])
+                    ->whereRaw('LOWER(title) = ?', [mb_strtolower($itemName, 'UTF-8')])
                     ->orWhere('reference', $itemName)
                     ->first();
             }
@@ -506,15 +574,18 @@ class ConsumableRequestController extends Controller
         if (!$productId && $itemName !== '') {
             $matched = Product::query()
                 ->select(['id', 'title', 'reference', 'status'])
-                ->whereRaw('LOWER(title) = ?', [Str::lower($itemName)])
-                ->orWhereRaw('LOWER(reference) = ?', [Str::lower($itemName)])
+                ->whereRaw('LOWER(title) = ?', [mb_strtolower($itemName, 'UTF-8')])
+                ->orWhereRaw('LOWER(reference) = ?', [mb_strtolower($itemName, 'UTF-8')])
                 ->first();
 
-            if ($matched && Str::lower((string) $matched->status) !== 'active') {
-                $label = $matched->reference ? ($matched->title . ' (' . $matched->reference . ')') : $matched->title;
-                throw ValidationException::withMessages([
-                    'item_name' => ["Le produit \"{$label}\" existe mais il est inactif. Activez-le pour pouvoir l'ajouter."],
-                ]);
+            if ($matched) {
+                if (Str::lower((string) $matched->status) !== 'active') {
+                    $label = $matched->reference ? ($matched->title . ' (' . $matched->reference . ')') : $matched->title;
+                    throw ValidationException::withMessages([
+                        'item_name' => ["Le produit \"{$label}\" existe mais il est inactif. Activez-le pour pouvoir l'ajouter."],
+                    ]);
+                }
+                $productId = $matched->id;
             }
         }
 
@@ -818,5 +889,89 @@ class ConsumableRequestController extends Controller
         }
 
         return $currentRoles->unique()->intersect($normalizedExpected)->isNotEmpty();
+    }
+
+    private function generateAndSavePdf(User $user, array $requests, ?string $batchCode, ?string $forceTitle = null): ?string
+    {
+        try {
+            $data = [
+                'user' => $user,
+                'requests' => collect($requests),
+                'batch_code' => $batchCode,
+                'forceTitle' => $forceTitle,
+            ];
+
+            $pdf = Pdf::loadView('pdf.consumable_request', $data);
+            $fileName = 'request_' . ($batchCode ?: $requests[0]->id) . '_' . time() . '.pdf';
+            $filePath = 'requests/' . $fileName;
+
+            \Illuminate\Support\Facades\Storage::disk('public')->put($filePath, $pdf->output());
+
+            // Create Document entries for all products in this request batch
+            foreach ($requests as $req) {
+                if ($req->product_id) {
+                    $indStatus = strtolower((string)$req->status);
+                    $docType = 'demande';
+                    $titlePrefix = 'Demande de consommables';
+
+                    if ($indStatus === 'approved') {
+                        $docType = 'bon_sortie';
+                        $titlePrefix = 'Bon de sortie';
+                    } elseif ($indStatus === 'rejected') {
+                        $docType = 'refus';
+                        $titlePrefix = 'Refus de demande';
+                    } elseif ($indStatus === 'approved_pending_exit') {
+                        $docType = 'demande_approuvee';
+                        $titlePrefix = 'Demande approuvée';
+                    }
+
+                    $title = $titlePrefix . ' - ' . ($req->item_name ?: 'Produit') . ' (' . ($batchCode ?: 'REQ-' . $req->id) . ')';
+
+                    Document::create([
+                        'user_id' => $user->id,
+                        'product_id' => $req->product_id,
+                        'title' => $title,
+                        'type' => $docType,
+                        'direction' => 'out',
+                        'status' => 'applied',
+                        'path' => $filePath,
+                    ]);
+                }
+            }
+
+            return $filePath;
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error('PDF generation error', ['msg' => $e->getMessage()]);
+            return null;
+        }
+    }
+
+    private function notifyDirectors(ConsumableRequest $consumableRequest): int
+    {
+        $directors = User::query()
+            ->where(function ($query) {
+                $query->whereHas('roles', function ($roleQuery) {
+                    $roleQuery->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
+                })
+                ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
+                ->orWhereRaw('LOWER(role) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
+            })
+            ->where('id', '!=', $consumableRequest->user_id)
+            ->get();
+
+        $count = 0;
+        foreach ($directors as $director) {
+            try {
+                $director->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest));
+                $count++;
+            } catch (\Throwable $e) {
+                Log::error('Notification director error', [
+                    'req_id' => $consumableRequest->id,
+                    'dir_id' => $director->id,
+                    'err'    => $e->getMessage()
+                ]);
+            }
+        }
+        return $count;
     }
 }

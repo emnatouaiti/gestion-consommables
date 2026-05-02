@@ -88,7 +88,7 @@
                     {{ supplier.products_count }} produit{{ supplier.products_count > 1 ? 's' : '' }}
                 </div>
                 <div class="supplier-image">
-                    <img [src]="supplier.image_path ? 'http://localhost:8000/storage/' + supplier.image_path : 'assets/images/placeholder-supplier.png'"
+                    <img [src]="supplierImageUrl(supplier.image_path)"
                         [alt]="supplier.name">
                 </div>
                 <div class="supplier-info">
@@ -198,7 +198,7 @@
                             [class.row-alt]="i % 2 !== 0">
                             <td class="col-avatar">
                                 <div class="table-avatar">
-                                    <img [src]="supplier.image_path ? 'http://localhost:8000/storage/' + supplier.image_path : 'assets/images/placeholder-supplier.png'"
+                                    <img [src]="supplierImageUrl(supplier.image_path)"
                                         [alt]="supplier.name">
                                 </div>
                             </td>

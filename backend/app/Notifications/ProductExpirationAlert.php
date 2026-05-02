@@ -1,0 +1,94 @@
+<?php
+
+namespace App\Notifications;
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
+
+class ProductExpirationAlert extends Notification implements ShouldQueue
+{
+    use Queueable;
+
+    protected $expiringSoon;
+    protected $expired;
+
+    /**
+     * Create a new notification instance.
+     */
+    public function __construct(array $expiringSoon, array $expired)
+    {
+        $this->expiringSoon = $expiringSoon;
+        $this->expired = $expired;
+    }
+
+    /**
+     * Get the notification's delivery channels.
+     *
+     * @return array<int, string>
+     */
+    public function via(object $notifiable): array
+    {
+        return ['database', 'mail'];
+    }
+
+    /**
+     * Get the mail representation of the notification.
+     */
+    public function toMail(object $notifiable): MailMessage
+    {
+        $total = count($this->expiringSoon) + count($this->expired);
+
+        $mail = (new MailMessage)
+                    ->subject("Alerte Stock : $total lot(s) avec des problèmes d'expiration")
+                    ->greeting("Bonjour {$notifiable->name},")
+                    ->line("Ceci est un récapitulatif automatique concernant les dates d'expiration de vos stocks de consommables.")
+                    ->line("Nombre de lots expirés : " . count($this->expired))
+                    ->line("Nombre de lots expirant dans les 7 prochains jours : " . count($this->expiringSoon))
+                    ->action('Consulter le Dashboard', url(config('app.frontend_url', 'http://localhost:4200') . '/admin/dashboard'));
+
+        if (count($this->expired) > 0) {
+            $mail->line("\n**Lots Expirés :**");
+            foreach (array_slice($this->expired, 0, 5) as $item) {
+                $stock = $item['stock'];
+                $productName = $stock->product->title ?? 'Produit inconnu';
+                $batch = $stock->batch_number ?: 'Sans lot';
+                $mail->line("- {$productName} (Lot: {$batch}) - Expiré depuis {$item['days']} jour(s) ({$stock->quantity} unités)");
+            }
+            if (count($this->expired) > 5) {
+                $mail->line("- et " . (count($this->expired) - 5) . " autre(s)...");
+            }
+        }
+
+        if (count($this->expiringSoon) > 0) {
+            $mail->line("\n**Lots expirant bientôt :**");
+            foreach (array_slice($this->expiringSoon, 0, 5) as $item) {
+                $stock = $item['stock'];
+                $productName = $stock->product->title ?? 'Produit inconnu';
+                $batch = $stock->batch_number ?: 'Sans lot';
+                $mail->line("- {$productName} (Lot: {$batch}) - Expire dans {$item['days']} jour(s) ({$stock->quantity} unités)");
+            }
+            if (count($this->expiringSoon) > 5) {
+                $mail->line("- et " . (count($this->expiringSoon) - 5) . " autre(s)...");
+            }
+        }
+
+        return $mail;
+    }
+
+    /**
+     * Get the array representation of the notification.
+     *
+     * @return array<string, mixed>
+     */
+    public function toArray(object $notifiable): array
+    {
+        return [
+            'type' => 'expiration_alert',
+            'message' => count($this->expired) . ' lot(s) expiré(s) et ' . count($this->expiringSoon) . ' expirant bientôt.',
+            'expiring_count' => count($this->expiringSoon),
+            'expired_count' => count($this->expired)
+        ];
+    }
+}
