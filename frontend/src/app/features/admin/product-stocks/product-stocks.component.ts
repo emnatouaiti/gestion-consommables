@@ -38,6 +38,14 @@ export class ProductStocksComponent implements OnInit {
     supplier_id: ''
   };
 
+  show3DViewerModal = false;
+  viewerData = {
+    title: '',
+    capacity: 0,
+    current: 0,
+    type: 'location' as 'location' | 'cabinet'
+  };
+
   productSuppliers: any[] = [];
 
   totalStock: any = {
@@ -53,7 +61,15 @@ export class ProductStocksComponent implements OnInit {
   selectedRoomIdForForm: string = '';
   storageTargetForForm: 'location' | 'cabinet' = 'location';
 
-  activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' = 'stock';
+  activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history' = 'stock';
+  productHistory: any[] = [];
+  historyLoading = false;
+  historyPagination = {
+    page: 1,
+    perPage: 10,
+    total: 0,
+    lastPage: 1
+  };
   selectedPhotoIndex = 0;
   photoUploadInProgress = false;
   productDocuments: any[] = [];
@@ -97,9 +113,38 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
-  setSection(section: 'details' | 'stock' | 'documents' | 'images' | 'expiration'): void {
+  setSection(section: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history'): void {
     this.activeSection = section as any;
+    if (section === 'history') {
+      this.loadHistory();
+    }
     this.cdr.detectChanges();
+  }
+
+  loadHistory(page: number = 1): void {
+    if (!this.productId) return;
+    this.historyPagination.page = page;
+    this.historyLoading = true;
+    this.adminStockService.getProductHistory(this.productId, { 
+      page: this.historyPagination.page, 
+      per_page: this.historyPagination.perPage 
+    }).subscribe({
+      next: (res: any) => {
+        this.productHistory = res.data || [];
+        this.historyPagination.total = res.total || 0;
+        this.historyPagination.lastPage = res.last_page || 1;
+        this.historyLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.historyLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onHistoryPerPageChange(): void {
+    this.loadHistory(1);
   }
 
   private loadExpirationData(): void {
@@ -603,6 +648,20 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
+  open3DViewer(stock: any): void {
+    this.viewerData = {
+      title: stock.storage_type === 'cabinet' ? stock.cabinet_display : stock.location_display,
+      capacity: stock.capacity_units || 100, // Fallback if 0 or null
+      current: stock.current_units || 0,
+      type: stock.storage_type
+    };
+    this.show3DViewerModal = true;
+  }
+
+  close3DViewer(): void {
+    this.show3DViewerModal = false;
+  }
+
   getStockStatus(): string {
     if (this.totalStock.is_in_stock) {
       return `En stock (${this.totalStock.total_quantity} unités)`;
@@ -653,6 +712,10 @@ export class ProductStocksComponent implements OnInit {
     if (!this.selectedRoomIdForForm) return [];
     return this.locations
       .filter(loc => loc.room_id.toString() === this.selectedRoomIdForForm)
+      .map(loc => ({
+        ...loc,
+        isFull: loc.capacity_units > 0 && loc.current_units >= loc.capacity_units
+      }))
       .sort((a, b) => a.code.localeCompare(b.code));
   }
 
@@ -661,6 +724,10 @@ export class ProductStocksComponent implements OnInit {
     if (!this.selectedRoomIdForForm) return [];
     return this.allCabinets
       .filter(cabinet => cabinet.room_id.toString() === this.selectedRoomIdForForm)
+      .map(cabinet => ({
+        ...cabinet,
+        isFull: cabinet.capacity_units > 0 && cabinet.current_units >= cabinet.capacity_units
+      }))
       .sort((a, b) => a.code.localeCompare(b.code));
   }
 

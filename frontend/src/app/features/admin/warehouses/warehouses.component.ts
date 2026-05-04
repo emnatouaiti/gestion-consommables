@@ -40,6 +40,15 @@ export class WarehousesComponent implements OnInit {
   editingLocationId: number | null = null;
   editingCabinetId: number | null = null;
 
+  show3DViewerModal = false;
+  viewerData = {
+    title: '',
+    capacity: 0,
+    current: 0,
+    type: 'location' as 'location' | 'cabinet',
+    id: null as number | null
+  };
+
   warehouseForm = {
     name: '',
     kind: 'depot',
@@ -50,7 +59,9 @@ export class WarehousesComponent implements OnInit {
     latitude: null as number | null,
     longitude: null as number | null,
     phone: '',
-    status: 'active'
+    status: 'active',
+    max_rooms: null as number | null,
+    capacity_units: null as number | null,
   };
 
   governorates = [
@@ -98,6 +109,9 @@ export class WarehousesComponent implements OnInit {
     description: '',
     type: '',
     capacity_volume: '',
+    capacity_units: null as number | null,
+    max_locations: null as number | null,
+    max_cabinets: null as number | null,
     status: 'active'
   };
 
@@ -114,6 +128,7 @@ export class WarehousesComponent implements OnInit {
     code: '',
     name: '',
     description: '',
+    capacity_units: null as number | null,
     status: 'active'
   };
 
@@ -180,7 +195,9 @@ export class WarehousesComponent implements OnInit {
       latitude: warehouse.latitude ? Number(warehouse.latitude) : null,
       longitude: warehouse.longitude ? Number(warehouse.longitude) : null,
       phone: warehouse.phone || '',
-      status: warehouse.status || 'active'
+      status: warehouse.status || 'active',
+      max_rooms: warehouse.max_rooms || null,
+      capacity_units: warehouse.capacity_units || null,
     };
     this.updateCities();
     this.showWarehouseModal = true;
@@ -425,7 +442,9 @@ export class WarehousesComponent implements OnInit {
       latitude: null,
       longitude: null,
       phone: '',
-      status: 'active'
+      status: 'active',
+      max_rooms: null,
+      capacity_units: null,
     };
   }
 
@@ -476,6 +495,9 @@ export class WarehousesComponent implements OnInit {
       description: room.description || '',
       type: room.type || '',
       capacity_volume: room.capacity_volume || '',
+      capacity_units: room.capacity_units || null,
+      max_locations: room.max_locations || null,
+      max_cabinets: room.max_cabinets || null,
       status: room.status || 'active'
     };
     this.showRoomModal = true;
@@ -546,6 +568,9 @@ export class WarehousesComponent implements OnInit {
       description: '',
       type: '',
       capacity_volume: '',
+      capacity_units: null,
+      max_locations: null,
+      max_cabinets: null,
       status: 'active'
     };
   }
@@ -691,6 +716,7 @@ export class WarehousesComponent implements OnInit {
       code: cabinet.code || '',
       name: cabinet.name || '',
       description: cabinet.description || '',
+      capacity_units: cabinet.capacity_units || null,
       status: cabinet.status || 'active'
     };
     this.showCabinetModal = true;
@@ -715,7 +741,7 @@ export class WarehousesComponent implements OnInit {
     this.errorMessage = '';
 
     const payload = {
-      room_id: this.selectedRoom.id,
+      room_id: this.selectedRoom?.id,
       ...this.cabinetForm
     };
 
@@ -758,6 +784,7 @@ export class WarehousesComponent implements OnInit {
       code: '',
       name: '',
       description: '',
+      capacity_units: null,
       status: 'active'
     };
   }
@@ -768,5 +795,28 @@ export class WarehousesComponent implements OnInit {
 
   viewRoomProducts(room: any): void {
     this.router.navigate(['/admin/room', room.id, 'products']);
+  }
+
+  viewLocationProducts(location: any): void {
+    this.router.navigate(['/admin/location', location.id, 'products']);
+  }
+
+  viewCabinetProducts(cabinet: any): void {
+    this.router.navigate(['/admin/cabinet', cabinet.id, 'products']);
+  }
+
+  open3DViewer(type: 'location' | 'cabinet', item: any): void {
+    this.viewerData = {
+      title: type === 'cabinet' ? (item.name || item.code) : (item.code + ' ' + item.name),
+      capacity: item.capacity_units || 100,
+      current: item.current_units || 0,
+      type: type,
+      id: item.id
+    };
+    this.show3DViewerModal = true;
+  }
+
+  close3DViewer(): void {
+    this.show3DViewerModal = false;
   }
 }

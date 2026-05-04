@@ -415,3 +415,16 @@
   .card { padding: 18px 16px; }
   .page-btn { min-width: 32px; height: 32px; font-size: 12px; }
 }
+
+/* ── Disabled Options (Capacity) ─────────────────────────── */
+select option:disabled {
+  color: var(--text-muted);
+  background-color: var(--bg-soft);
+  font-style: italic;
+  cursor: not-allowed;
+}
+
+select option[disabled] {
+  color: var(--text-muted);
+  font-style: italic;
+}

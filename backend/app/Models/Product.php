@@ -11,6 +11,16 @@ class Product extends Model
 {
     use HasFactory;
 
+    protected static function booted()
+    {
+        static::creating(function ($product) {
+            if (empty($product->reference)) {
+                $count = static::count() + 1;
+                $product->reference = 'PRD-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     protected $fillable = [
         'status',
         'title',

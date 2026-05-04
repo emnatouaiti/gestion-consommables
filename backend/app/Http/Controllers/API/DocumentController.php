@@ -312,6 +312,36 @@ class DocumentController extends Controller
             $validSupplierId = (int) $document->supplier_id;
         }
 
+        // PRE-CHECK CAPACITY
+        $locDeltas = [];
+        $cabDeltas = [];
+        foreach ($prepareActions as $action) {
+            $quantity = $action['quantity'] ?? 0;
+            $dir = $action['direction'] ?? 'unknown';
+            if ($quantity > 0 && $dir === 'in') {
+                if (!empty($action['warehouse_location_id'])) {
+                    $locId = $action['warehouse_location_id'];
+                    $locDeltas[$locId] = ($locDeltas[$locId] ?? 0) + $quantity;
+                }
+                if (!empty($action['cabinet_id'])) {
+                    $cabId = $action['cabinet_id'];
+                    $cabDeltas[$cabId] = ($cabDeltas[$cabId] ?? 0) + $quantity;
+                }
+            }
+        }
+        foreach ($locDeltas as $locId => $delta) {
+            $loc = \App\Models\WarehouseLocation::find($locId);
+            if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $delta) > $loc->capacity_units) {
+                return response()->json(['message' => 'Capacité maximale dépassée pour l\'emplacement '.$loc->name], 422);
+            }
+        }
+        foreach ($cabDeltas as $cabId => $delta) {
+            $cab = \App\Models\WarehouseCabinet::find($cabId);
+            if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $delta) > $cab->capacity_units) {
+                return response()->json(['message' => 'Capacité maximale dépassée pour l\'armoire '.$cab->name], 422);
+            }
+        }
+
         foreach ($prepareActions as $action) {
             $product = $action['product'];
             $locId   = $action['warehouse_location_id'] ?? null;

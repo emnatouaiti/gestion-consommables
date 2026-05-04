@@ -54,7 +54,11 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
                 $batch = $stock->batch_number ?: 'Sans lot';
-                $mail->line("- {$productName} (Lot: {$batch}) - Expiré depuis {$item['days']} jour(s) ({$stock->quantity} unités)");
+                $location = $this->formatStockLocation($stock);
+                
+                $mail->line("- **{$productName}** (Lot: {$batch})");
+                $mail->line("  Statut: Expiré depuis {$item['days']} jour(s) ({$stock->quantity} unités)");
+                if ($location) $mail->line("  📍 Emplacement: {$location}");
             }
             if (count($this->expired) > 5) {
                 $mail->line("- et " . (count($this->expired) - 5) . " autre(s)...");
@@ -67,7 +71,11 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
                 $batch = $stock->batch_number ?: 'Sans lot';
-                $mail->line("- {$productName} (Lot: {$batch}) - Expire dans {$item['days']} jour(s) ({$stock->quantity} unités)");
+                $location = $this->formatStockLocation($stock);
+                
+                $mail->line("- **{$productName}** (Lot: {$batch})");
+                $mail->line("  Statut: Expire dans {$item['days']} jour(s) ({$stock->quantity} unités)");
+                if ($location) $mail->line("  📍 Emplacement: {$location}");
             }
             if (count($this->expiringSoon) > 5) {
                 $mail->line("- et " . (count($this->expiringSoon) - 5) . " autre(s)...");
@@ -75,6 +83,31 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
         }
 
         return $mail;
+    }
+
+    /**
+     * Construit une chaîne lisible de l'emplacement du stock
+     */
+    private function formatStockLocation($stock): string
+    {
+        $parts = [];
+        
+        // Via Warehouse Location (Emplacement précis)
+        if ($stock->warehouseLocation) {
+            $loc = $stock->warehouseLocation;
+            if ($loc->room?->warehouse) $parts[] = $loc->room->warehouse->name;
+            if ($loc->room) $parts[] = $loc->room->name;
+            $parts[] = $loc->name ?: $loc->code;
+        } 
+        // Sinon via Cabinet (Armoire)
+        elseif ($stock->warehouseCabinet) {
+            $cab = $stock->warehouseCabinet;
+            if ($cab->room?->warehouse) $parts[] = $cab->room->warehouse->name;
+            if ($cab->room) $parts[] = $cab->room->name;
+            $parts[] = "Armoire: " . $cab->name;
+        }
+
+        return !empty($parts) ? implode(' > ', $parts) : '';
     }
 
     /**

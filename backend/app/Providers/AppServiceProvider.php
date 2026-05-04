@@ -23,5 +23,7 @@ class AppServiceProvider extends ServiceProvider
         // Register route middleware aliases required by routes
         $router = $this->app->make(Router::class);
         $router->aliasMiddleware('role', \App\Http\Middleware\RoleMiddleware::class);
+        
+        \App\Models\ProductStock::observe(\App\Observers\ProductStockObserver::class);
     }
 }

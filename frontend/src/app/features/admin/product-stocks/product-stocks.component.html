@@ -44,6 +44,9 @@
         (click)="setSection('expiration')">
         Expirations & Lots
       </button>
+      <button class="side-item" [class.active]="activeSection === 'history'" (click)="setSection('history')">
+        Historique
+      </button>
       <input #photoInput type="file" accept="image/*" style="display:none" (change)="onPhotoSelected($event)" />
       <input #docInput type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style="display:none" (change)="onDocSelected($event)" />
     </aside>
@@ -248,6 +251,7 @@
                       </td>
                       <td class="actions">
                         <div class="row-actions">
+                          <button class="btn info small" *ngIf="stock.storage_type === 'location' || stock.storage_type === 'cabinet'" (click)="open3DViewer(stock); $event.stopPropagation()">Vue 3D</button>
                           <button class="btn small" (click)="editStock(stock); $event.stopPropagation()">Modifier</button>
                           <button class="btn danger small" (click)="deleteStock(stock.id); $event.stopPropagation()">Supprimer</button>
                         </div>
@@ -427,6 +431,102 @@
         </div>
 
       </ng-container>
+
+      <!-- HISTORIQUE -->
+      <ng-container *ngIf="activeSection === 'history'">
+        <div class="card">
+          <div class="card-header">
+            <h2>Historique des mouvements</h2>
+            <div class="history-controls">
+              <div class="limit-selector">
+                <label>Afficher:</label>
+                <select [(ngModel)]="historyPagination.perPage" (change)="onHistoryPerPageChange()">
+                  <option [value]="5">5</option>
+                  <option [value]="10">10</option>
+                  <option [value]="20">20</option>
+                </select>
+              </div>
+              <button class="btn ghost small" (click)="loadHistory(1)">Rafraîchir</button>
+            </div>
+          </div>
+          
+          <div class="history-content">
+            <div *ngIf="historyLoading" class="loading-box">
+              <div class="spinner"></div>
+              <span>Chargement de l'historique...</span>
+            </div>
+
+            <div *ngIf="!historyLoading && productHistory.length === 0" class="empty-box">
+              <div class="empty-icon">📭</div>
+              <p>Aucun mouvement enregistré pour ce produit.</p>
+            </div>
+
+            <div class="history-table-container" *ngIf="!historyLoading && productHistory.length > 0">
+              <table class="history-full-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Type</th>
+                    <th>Qté</th>
+                    <th>Origine</th>
+                    <th>Destination</th>
+                    <th>Auteur</th>
+                    <th>Statut</th>
+                    <th>Pièce</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let h of productHistory" [class.entry]="h.movement?.movement_type === 'entry'" [class.exit]="h.movement?.movement_type === 'exit'">
+                    <td class="date-cell">{{ h.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                    <td>
+                      <span class="type-tag" [class.entry]="h.movement?.movement_type === 'entry'" 
+                            [class.exit]="h.movement?.movement_type === 'exit'"
+                            [class.transfer]="h.movement?.movement_type === 'transfer'">
+                        {{ h.movement?.movement_type === 'entry' ? '📥 Entrée' :
+                           h.movement?.movement_type === 'exit' ? '📤 Sortie' : 
+                           h.movement?.movement_type === 'transfer' ? '🔄 Transfert' : h.movement?.movement_type }}
+                      </span>
+                    </td>
+                    <td class="qty-cell"><strong>{{ h.quantity }}</strong></td>
+                    <td class="loc-cell">
+                      {{ h.movement?.sourceWarehouseLocation?.name || h.movement?.sourceCabinet?.name || '—' }}
+                    </td>
+                    <td class="loc-cell">
+                      {{ h.movement?.destinationWarehouseLocation?.name || h.movement?.destinationCabinet?.name || h.movement?.destination_text || '—' }}
+                    </td>
+                    <td>{{ h.movement?.creator?.nomprenom || '—' }}</td>
+                    <td>
+                      <span class="status-pill" [class.validated]="h.movement?.status === 'validated'"
+                            [class.pending]="h.movement?.status === 'pending'">
+                        {{ h.movement?.status || '—' }}
+                      </span>
+                    </td>
+                    <td class="doc-cell-hist">
+                      <button *ngIf="h.movement?.document" class="btn ghost sm doc-btn" (click)="downloadDoc(h.movement.document)">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        PDF
+                      </button>
+                      <span *ngIf="!h.movement?.document" class="empty-cell">—</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination buttons -->
+            <div class="history-footer" *ngIf="!historyLoading && historyPagination.lastPage > 1">
+              <div class="hist-info">
+                Page {{ historyPagination.page }} sur {{ historyPagination.lastPage }} ({{ historyPagination.total }} entrées)
+              </div>
+              <div class="hist-pagination">
+                <button class="btn ghost small" [disabled]="historyPagination.page <= 1" (click)="loadHistory(historyPagination.page - 1)">Précédent</button>
+                <button class="btn ghost small" [disabled]="historyPagination.page >= historyPagination.lastPage" (click)="loadHistory(historyPagination.page + 1)">Suivant</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
     </section>
   </div>
 </div>
@@ -470,7 +570,12 @@
         <label>Emplacement</label>
         <select [(ngModel)]="newStockForm.warehouse_location_id" [disabled]="!selectedRoomIdForForm">
           <option value="">Choisir un emplacement</option>
-          <option *ngFor="let loc of getLocationsForRoom()" [value]="loc.id">{{ loc.code }} - {{ loc.name }}</option>
+          <option *ngFor="let loc of getLocationsForRoom()" 
+                  [value]="loc.id" 
+                  [disabled]="loc.isFull || (loc.capacity_units > 0 && loc.current_units + (newStockForm.quantity || 0) > loc.capacity_units)">
+            {{ loc.code }} - {{ loc.name }} 
+            {{ loc.isFull ? '(Plein)' : (loc.capacity_units > 0 && loc.current_units + (newStockForm.quantity || 0) > loc.capacity_units ? '(Insuffisant)' : '') }}
+          </option>
         </select>
       </div>
 
@@ -478,7 +583,12 @@
         <label>Armoire</label>
         <select [(ngModel)]="newStockForm.cabinet_id" [disabled]="!selectedRoomIdForForm">
           <option value="">Choisir une armoire</option>
-          <option *ngFor="let cabinet of getCabinetsForRoom()" [value]="cabinet.id">{{ cabinet.code }} - {{ cabinet.name }}</option>
+          <option *ngFor="let cabinet of getCabinetsForRoom()" 
+                  [value]="cabinet.id" 
+                  [disabled]="cabinet.isFull || (cabinet.capacity_units > 0 && cabinet.current_units + (newStockForm.quantity || 0) > cabinet.capacity_units)">
+            {{ cabinet.code }} - {{ cabinet.name }} 
+            {{ cabinet.isFull ? '(Plein)' : (cabinet.capacity_units > 0 && cabinet.current_units + (newStockForm.quantity || 0) > cabinet.capacity_units ? '(Insuffisant)' : '') }}
+          </option>
         </select>
       </div>
 
@@ -506,6 +616,24 @@
     <div class="stock-modal-actions">
       <button class="btn ghost" type="button" (click)="closeAddStockModal()">Annuler</button>
       <button class="btn primary" type="button" (click)="saveStock()">{{ editingStockId ? 'Mettre a jour' : 'Ajouter' }}</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" *ngIf="show3DViewerModal" (click)="close3DViewer()">
+  <div class="stock-modal viewer-modal" (click)="$event.stopPropagation()" style="width: 800px; max-width: 95vw;">
+    <div class="stock-modal-header">
+      <h3>Visualisation 3D</h3>
+      <button class="btn danger small" type="button" (click)="close3DViewer()">Fermer</button>
+    </div>
+    <div class="stock-modal-body" style="padding: 0;">
+      <app-storage-3d-viewer
+        *ngIf="show3DViewerModal"
+        [title]="viewerData.title"
+        [capacityUnits]="viewerData.capacity"
+        [currentUnits]="viewerData.current"
+        [type]="viewerData.type">
+      </app-storage-3d-viewer>
     </div>
   </div>
 </div>

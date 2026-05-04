@@ -42,6 +42,15 @@ export class ProductsComponent implements OnInit {
   selectedPhotoFiles: File[] = [];
   photoPreviewUrls: string[] = [];
   showModal = false;
+  activeTab: 'info' | 'stocks' | 'history' = 'info';
+  productHistory: any[] = [];
+  historyLoading = false;
+  historyPagination = {
+    page: 1,
+    perPage: 5,
+    total: 0,
+    lastPage: 1
+  };
   private readonly barcodeCache = new Map<string, string>();
   updatingPhotoId: number | null = null;
   // Réactivation modal
@@ -127,6 +136,12 @@ reactivateProduct: any | null = null;
   }
 
 
+
+  onTitleBlur(): void {
+    if (this.form.title && !this.form.description && !this.form.short_description) {
+      this.generateDescriptions();
+    }
+  }
 
   generateDescriptions(): void {
     if (!this.form.title || !this.form.title.trim()) {
@@ -578,6 +593,8 @@ dismissReactivate(): void {
     this.form = this.createEmptyForm();
     this.selectedPhotoFiles = [];
     this.photoPreviewUrls = [];
+    this.selectedMarqueId = null;
+    this.modelsList = [];
     this.errorMessage = '';
   }
 
@@ -717,10 +734,41 @@ dismissReactivate(): void {
 
   openProductDetails(p: any): void {
     this.selectedProductDetails = p;
+    this.activeTab = 'info';
+    this.loadProductHistory(p.id);
+  }
+
+  loadProductHistory(productId: number, page: number = 1): void {
+    this.historyPagination.page = page;
+    this.historyLoading = true;
+    this.stockService.getProductHistory(productId, {
+      page: this.historyPagination.page,
+      per_page: this.historyPagination.perPage
+    }).subscribe({
+      next: (res: any) => {
+        this.productHistory = res.data || [];
+        this.historyPagination.total = res.total || 0;
+        this.historyPagination.lastPage = res.last_page || 1;
+        this.historyLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.productHistory = [];
+        this.historyLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onHistoryPerPageChange(): void {
+    if (this.selectedProductDetails?.id) {
+      this.loadProductHistory(this.selectedProductDetails.id, 1);
+    }
   }
 
   closeProductDetails(): void {
     this.selectedProductDetails = null;
+    this.productHistory = [];
   }
 
   /* ─── Scan ─── */
@@ -819,6 +867,25 @@ dismissReactivate(): void {
     if (p.stock_quantity <= 0) return 'rupture';
     if (p.seuil_min && p.stock_quantity <= p.seuil_min) return 'faible';
     return 'ok';
+  }
+
+  supplierNames(product: any): string {
+    if (!product?.suppliers?.length) return '—';
+    return product.suppliers.map((s: any) => s.name || s).join(', ');
+  }
+
+  downloadDoc(doc: any): void {
+    const path = doc?.path;
+    if (!path) return;
+    const clean = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
+    const url = `http://localhost:8000/api/docs/${clean}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = doc?.title || 'document';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   /* ─── Helpers ─── */

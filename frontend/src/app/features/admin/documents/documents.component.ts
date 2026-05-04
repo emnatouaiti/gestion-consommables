@@ -345,7 +345,10 @@ export class DocumentsComponent implements OnInit {
 
     this.warehouseService.listLocations(Number(item.room_id), null, 500).subscribe({
       next: (res: any) => {
-        item.locations = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        item.locations = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])).map((loc: any) => ({
+          ...loc,
+          isFull: loc.capacity_units > 0 && loc.current_units >= loc.capacity_units
+        }));
         this.cdr.detectChanges();
       },
       error: () => {
@@ -355,7 +358,10 @@ export class DocumentsComponent implements OnInit {
 
     this.warehouseService.listCabinets(Number(item.room_id), null, 500).subscribe({
       next: (res: any) => {
-        item.cabinets = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        item.cabinets = (Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : [])).map((cab: any) => ({
+          ...cab,
+          isFull: cab.capacity_units > 0 && cab.current_units >= cab.capacity_units
+        }));
         this.cdr.detectChanges();
       },
       error: () => {

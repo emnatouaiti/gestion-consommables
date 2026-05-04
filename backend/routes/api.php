@@ -169,6 +169,7 @@ Route::prefix('api')->group(function () {
             Route::get('admin/brands', [ProductController::class, 'brands']);
             Route::get('admin/models', [ProductController::class, 'models']);
             Route::post('admin/products/generate-descriptions', [ProductController::class, 'generateDescriptions']);
+            Route::get('admin/products/{id}/history', [ProductController::class, 'history']);
 
             // References CRUD endpoints (fabricants, marques, modeles)
             Route::get('admin/fabricants', [\App\Http\Controllers\API\ReferencesController::class, 'listFabricants']);
@@ -212,6 +213,7 @@ Route::prefix('api')->group(function () {
             Route::get('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'show']);
             Route::put('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'update']);
             Route::delete('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'destroy']);
+            Route::get('admin/warehouse-cabinets/{cabinet}/products', [WarehouseCabinetController::class, 'products']);
 
             Route::get('admin/sites', [SiteController::class, 'index']);
             Route::post('admin/sites', [SiteController::class, 'store']);

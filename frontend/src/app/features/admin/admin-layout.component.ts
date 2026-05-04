@@ -340,14 +340,18 @@ get userInitials(): string {
 
   notificationLabel(notification: any): string {
     const data = notification?.data || {};
+    if (data?.type === 'capacity_alert') {
+      return (data.title || 'Alerte Capacité') + ': ' + (data.message || 'Espace saturé');
+    }
     const item = data?.item_name || 'Article';
     const qty = data?.requested_quantity ?? '-';
     return `${item} (${qty})`;
   }
 
   onNotificationClick(notification: any): void {
-    const requestId = notification?.data?.consumable_request_id;
-    const target = notification?.data?.url || '/admin/validation-demandes';
+    const data = notification?.data || {};
+    const requestId = data?.consumable_request_id;
+    const target = data?.action_url || data?.url || '/admin/validation-demandes';
     this.notificationsOpen = false;
 
     if (requestId) {
@@ -355,7 +359,7 @@ get userInitials(): string {
       return;
     }
 
-    this.router.navigate([target]);
+    this.router.navigateByUrl(target);
   }
 
   private redirectAdminRootToFirstMenu(): void {

@@ -10,6 +10,16 @@ class WarehouseLocation extends Model
 {
     use HasFactory;
 
+    protected static function booted()
+    {
+        static::creating(function ($location) {
+            if (empty($location->code)) {
+                $count = static::count() + 1;
+                $location->code = 'LOC-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     protected $fillable = [
         'room_id',
         'code',

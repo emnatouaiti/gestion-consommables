@@ -160,8 +160,10 @@
         <div class="list-item" *ngFor="let location of locations">
           <div class="item-title">{{ location.code }}</div>
           <div class="item-meta">{{ location.name }}</div>
-          <div class="item-small">Capacité: {{ location.capacity_units || '—' }}</div>
+          <div class="item-small">Capacité: {{ location.current_units || 0 }} / {{ location.capacity_units || '∞' }}</div>
           <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('location', location)">3D</button>
+            <button class="btn mini" title="Voir les produits" (click)="viewLocationProducts(location)">📦</button>
             <button class="btn mini" (click)="openEditLocationModal(location)">✎</button>
             <button class="btn mini danger" (click)="deleteLocation(location.id)">✕</button>
           </div>
@@ -176,7 +178,10 @@
           <div class="list-item" *ngFor="let cabinet of cabinets">
             <div class="item-title">{{ cabinet.name }}</div>
             <div class="item-meta" *ngIf="cabinet.code">{{ cabinet.code }}</div>
+            <div class="item-small">Capacité: {{ cabinet.current_units || 0 }} / {{ cabinet.capacity_units || '∞' }}</div>
             <div class="item-actions" (click)="$event.stopPropagation()">
+              <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('cabinet', cabinet)">3D</button>
+              <button class="btn mini" title="Voir les produits" (click)="viewCabinetProducts(cabinet)">📦</button>
               <button class="btn mini" (click)="openEditCabinetModal(cabinet)">✎</button>
               <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">✕</button>
             </div>
@@ -270,6 +275,17 @@
           <textarea [(ngModel)]="warehouseForm.description" name="description" class="form-control"></textarea>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label>Nombre max. de salles</label>
+            <input type="number" [(ngModel)]="warehouseForm.max_rooms" name="max_rooms" class="form-control" placeholder="0 = Illimité" />
+          </div>
+          <div class="form-group">
+            <label>Capacité totale (unités)</label>
+            <input type="number" [(ngModel)]="warehouseForm.capacity_units" name="capacity_units" class="form-control" />
+          </div>
+        </div>
+
         <div class="form-group">
           <label>Statut</label>
           <select [(ngModel)]="warehouseForm.status" name="status" class="form-control">
@@ -318,6 +334,22 @@
           <textarea [(ngModel)]="roomForm.description" name="description" class="form-control"></textarea>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label>Max emplacements</label>
+            <input type="number" [(ngModel)]="roomForm.max_locations" name="max_locations" class="form-control" placeholder="Illimité" />
+          </div>
+          <div class="form-group">
+            <label>Max armoires</label>
+            <input type="number" [(ngModel)]="roomForm.max_cabinets" name="max_cabinets" class="form-control" placeholder="Illimité" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Capacité totale (unités)</label>
+          <input type="number" [(ngModel)]="roomForm.capacity_units" name="capacity_units" class="form-control" />
+        </div>
+
         <div class="form-group">
           <label>Statut</label>
           <select [(ngModel)]="roomForm.status" name="status" class="form-control">
@@ -345,10 +377,6 @@
 
     <div class="modal-content">
       <form (ngSubmit)="saveLocation()">
-        <div class="form-group">
-          <label>Code *</label>
-          <input type="text" [(ngModel)]="locationForm.code" name="code" placeholder="Ex: A1-1" class="form-control" />
-        </div>
 
         <div class="form-group">
           <label>Nom *</label>
@@ -404,14 +432,15 @@
           <input type="text" [(ngModel)]="cabinetForm.name" name="cabinet_name" class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Code</label>
-          <input type="text" [(ngModel)]="cabinetForm.code" name="cabinet_code" placeholder="Ex: ARM-01" class="form-control" />
-        </div>
 
         <div class="form-group">
           <label>Description</label>
           <textarea [(ngModel)]="cabinetForm.description" name="cabinet_description" class="form-control"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label>Capacité (unités)</label>
+          <input type="number" [(ngModel)]="cabinetForm.capacity_units" name="cabinet_capacity_units" class="form-control" />
         </div>
 
         <div class="form-group">
@@ -447,6 +476,26 @@
     </div>
     <div class="modal-footer">
       <button class="btn-secondary" (click)="closeMapConsult()">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- 3D Viewer Modal -->
+<div class="modal-backdrop" *ngIf="show3DViewerModal" (click)="close3DViewer()">
+  <div class="modal-box" (click)="$event.stopPropagation()" style="width: 800px; max-width: 95vw; padding: 0;">
+    <div class="modal-header" style="padding: 15px;">
+      <h2>Visualisation 3D</h2>
+      <button class="modal-close" (click)="close3DViewer()">✕</button>
+    </div>
+    <div class="modal-content" style="padding: 0;">
+      <app-storage-3d-viewer
+        *ngIf="show3DViewerModal"
+        [title]="viewerData.title"
+        [capacityUnits]="viewerData.capacity"
+        [currentUnits]="viewerData.current"
+        [type]="viewerData.type"
+        [storageId]="viewerData.id">
+      </app-storage-3d-viewer>
     </div>
   </div>
 </div>

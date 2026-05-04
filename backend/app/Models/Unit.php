@@ -10,6 +10,16 @@ class Unit extends Model
 {
     use HasFactory;
 
+    protected static function booted()
+    {
+        static::creating(function ($unit) {
+            if (empty($unit->code)) {
+                $count = static::count() + 1;
+                $unit->code = 'UNT-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+            }
+        });
+    }
+
     protected $fillable = [
         'name',
         'code',

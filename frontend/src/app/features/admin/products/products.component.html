@@ -184,6 +184,7 @@
             <td>
               <div class="table-actions">
                 <button class="icon-btn stocks" title="Gestion des stocks" (click)="manageProductStocks(p)">📊</button>
+                <button class="icon-btn info" title="Historique" (click)="openProductDetails(p)">🕓</button>
                 <label class="icon-btn" title="Image">
                   🖼️
                   <input type="file" accept="image/*" (change)="onRowPhotoSelected($event, p)" style="display:none" />
@@ -207,6 +208,158 @@
   </div>
 
   <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- Modal Historique Produit                                -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="selectedProductDetails" (click)="closeProductDetails()">
+    <div class="modal-panel history-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <div class="history-modal-title">
+          <span class="history-icon">🕓</span>
+          <div>
+            <h3>{{ selectedProductDetails.title }}</h3>
+            <span class="history-ref">Réf: {{ selectedProductDetails.reference }}</span>
+          </div>
+        </div>
+        <button class="modal-close" (click)="closeProductDetails()">✕</button>
+      </div>
+
+      <!-- Tabs -->
+      <div class="history-tabs">
+        <button class="hist-tab" [class.active]="activeTab === 'info'" (click)="activeTab = 'info'">
+          📋 Infos
+        </button>
+        <button class="hist-tab" [class.active]="activeTab === 'history'" (click)="activeTab = 'history'">
+          📈 Historique <span class="tab-count" *ngIf="productHistory.length">{{ productHistory.length }}</span>
+        </button>
+      </div>
+
+      <div class="modal-body">
+
+        <!-- Tab: Info -->
+        <div *ngIf="activeTab === 'info'" class="info-tab-content">
+          <div class="info-grid">
+            <div class="info-row"><span class="info-label">Statut</span><span class="status-badge" [ngClass]="selectedProductDetails.status">{{ selectedProductDetails.status }}</span></div>
+            <div class="info-row"><span class="info-label">Catégorie</span><span>{{ selectedProductDetails.category?.title || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">Stock actuel</span><span class="stock-badge" [ngClass]="getStockStatus(selectedProductDetails)">{{ selectedProductDetails.stock_quantity }}</span></div>
+            <div class="info-row"><span class="info-label">Seuil min / max</span><span>{{ selectedProductDetails.seuil_min }} / {{ selectedProductDetails.seuil_max || '∞' }}</span></div>
+            <div class="info-row"><span class="info-label">Unité</span><span>{{ selectedProductDetails.unit?.name || selectedProductDetails.unit || '—' }}</span></div>
+            <div class="info-row"><span class="info-label">Prix achat</span><span>{{ selectedProductDetails.purchase_price ? (selectedProductDetails.purchase_price | number:'1.2-2') + ' DT' : '—' }}</span></div>
+            <div class="info-row" *ngIf="selectedProductDetails.marque"><span class="info-label">Marque</span><span>{{ selectedProductDetails.marque }}</span></div>
+            <div class="info-row" *ngIf="selectedProductDetails.model"><span class="info-label">Modèle</span><span>{{ selectedProductDetails.model }}</span></div>
+            <div class="info-row" *ngIf="selectedProductDetails.num_serie"><span class="info-label">N° Série</span><span>{{ selectedProductDetails.num_serie }}</span></div>
+            <div class="info-row" *ngIf="selectedProductDetails.suppliers?.length"><span class="info-label">Fournisseur(s)</span><span>{{ supplierNames(selectedProductDetails) }}</span></div>
+          </div>
+          <div class="info-desc" *ngIf="selectedProductDetails.description">
+            <div class="info-label">Description</div>
+            <p>{{ selectedProductDetails.description }}</p>
+          </div>
+        </div>
+
+        <!-- Tab: Historique -->
+        <div *ngIf="activeTab === 'history'" class="history-tab-content">
+          <div class="hist-header">
+            <h3>Mouvements récents</h3>
+            <div class="hist-ctrls">
+              <div class="limit-box">
+                <label>Voir:</label>
+                <select [(ngModel)]="historyPagination.perPage" (change)="onHistoryPerPageChange()">
+                  <option [value]="5">5</option>
+                  <option [value]="10">10</option>
+                  <option [value]="20">20</option>
+                </select>
+              </div>
+              <button class="btn-refresh" (click)="loadProductHistory(selectedProductDetails.id, 1)">
+                🔄
+              </button>
+            </div>
+          </div>
+          <div *ngIf="historyLoading" class="history-loading">
+            <div class="spinner"></div><span>Chargement de l'historique...</span>
+          </div>
+
+          <div *ngIf="!historyLoading && productHistory.length === 0" class="history-empty">
+            <span>📭</span>
+            <p>Aucun mouvement de stock enregistré pour ce produit.</p>
+          </div>
+
+          <div *ngIf="!historyLoading && productHistory.length > 0" class="history-table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Type</th>
+                  <th>Qté</th>
+                  <th>Origine</th>
+                  <th>Destination</th>
+                  <th>Auteur</th>
+                  <th>Statut</th>
+                  <th>Document</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let h of productHistory">
+                  <td class="hist-date">{{ h.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
+                  <td>
+                    <span class="move-type-badge" [ngClass]="{
+                      'entry': h.movement?.movement_type === 'entry',
+                      'exit':  h.movement?.movement_type === 'exit',
+                      'transfer': h.movement?.movement_type === 'transfer'
+                    }">
+                      {{ h.movement?.movement_type === 'entry' ? '📥 Entrée' :
+                         h.movement?.movement_type === 'exit'  ? '📤 Sortie' :
+                         h.movement?.movement_type === 'transfer' ? '🔄 Transfert' :
+                         (h.movement?.movement_type || '—') }}
+                    </span>
+                  </td>
+                  <td><strong class="qty-val">{{ h.quantity }}</strong></td>
+                  <td class="hist-location">
+                    {{ h.movement?.sourceWarehouseLocation?.name || h.movement?.sourceCabinet?.name || '—' }}
+                  </td>
+                  <td class="hist-location">
+                    {{ h.movement?.destinationWarehouseLocation?.name || h.movement?.destinationCabinet?.name || '—' }}
+                  </td>
+                  <td>{{ h.movement?.creator?.nomprenom || '—' }}</td>
+                  <td>
+                    <span class="move-status" [ngClass]="h.movement?.status">
+                      {{ h.movement?.status || '—' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button *ngIf="h.movement?.document" class="btn-icon" (click)="downloadDoc(h.movement.document)" title="Télécharger le document">
+                      <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <span *ngIf="!h.movement?.document">—</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="hist-footer" *ngIf="!historyLoading && historyPagination.lastPage > 1">
+            <div class="hist-stats">
+              Page {{ historyPagination.page }} / {{ historyPagination.lastPage }} ({{ historyPagination.total }} total)
+            </div>
+            <div class="hist-nav">
+              <button class="btn-page" [disabled]="historyPagination.page <= 1" (click)="loadProductHistory(selectedProductDetails.id, historyPagination.page - 1)">
+                Précédent
+              </button>
+              <button class="btn-page" [disabled]="historyPagination.page >= historyPagination.lastPage" (click)="loadProductHistory(selectedProductDetails.id, historyPagination.page + 1)">
+                Suivant
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline sm" (click)="closeProductDetails()">Fermer</button>
+        <button class="btn-primary sm" (click)="manageProductStocks(selectedProductDetails)">📊 Gérer les stocks</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
   <!-- Modal Création / Édition Produit                        -->
   <!-- ═══════════════════════════════════════════════════════ -->
   <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
@@ -217,11 +370,7 @@
       </div>
       <div class="modal-body">
         <div class="form-row">
-          <div class="field"><label>Nom *</label><input [(ngModel)]="form.title" placeholder="Nom du produit" /></div>
-          <div class="field" *ngIf="editingId">
-            <label>Référence *</label>
-            <input [(ngModel)]="form.reference" placeholder="REF-001" />
-          </div>
+          <div class="field"><label>Nom *</label><input [(ngModel)]="form.title" (blur)="onTitleBlur()" placeholder="Nom du produit" /></div>
         </div>
         <div class="form-row">
           <div class="field"><label>Catégorie *</label>
@@ -254,14 +403,16 @@
           </div>
         </div>
         <div class="form-row">
-          <div class="field"><label>Marque</label>
-            <select [(ngModel)]="selectedMarqueId" (change)="onMarqueSelect()">
+          <div class="field brand-highlight">
+            <label>Marque</label>
+            <select [(ngModel)]="selectedMarqueId" (change)="onMarqueSelect()" class="marque-select">
               <option [ngValue]="null">Sélectionner...</option>
               <option *ngFor="let b of brands" [ngValue]="b.id">{{ b.name }}</option>
             </select>
           </div>
-          <div class="field"><label>Modèle</label>
-            <select [(ngModel)]="form.model">
+          <div class="field model-highlight">
+            <label>Modèle</label>
+            <select [(ngModel)]="form.model" class="model-select">
               <option value="">Sélectionner...</option>
               <option *ngFor="let m of modelsList" [value]="m.name">{{ m.name }}</option>
             </select>

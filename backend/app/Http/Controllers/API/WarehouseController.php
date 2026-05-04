@@ -43,6 +43,8 @@ class WarehouseController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'phone' => 'nullable|string',
+            'max_rooms' => 'nullable|integer|min:1',
+            'capacity_units' => 'nullable|numeric',
             'status' => 'in:active,inactive',
         ]);
 
@@ -66,6 +68,8 @@ class WarehouseController extends Controller
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'phone' => 'nullable|string',
+            'max_rooms' => 'nullable|integer|min:1',
+            'capacity_units' => 'nullable|numeric',
             'status' => 'in:active,inactive',
         ]);
 

@@ -104,6 +104,10 @@ export class AdminStockService {
     return this.api.get(`admin/warehouse-locations/${locationId}/products`);
   }
 
+  getProductsByCabinet(cabinetId: number): Observable<any> {
+    return this.api.get(`admin/warehouse-cabinets/${cabinetId}/products`);
+  }
+
   getManufacturers(): Observable<any> {
     return this.api.get('admin/manufacturers');
   }
@@ -143,8 +147,19 @@ export class AdminStockService {
     });
   }
   activateProduct(id: number): Observable<any> {
-  return this.api.put(`admin/products/${id}/activate`, {});
-}
+    return this.api.put(`admin/products/${id}/activate`, {});
+  }
+
+  getProductHistory(productId: number, params?: { page?: number; per_page?: number }): Observable<any> {
+    let path = `admin/products/${productId}/history`;
+    if (params) {
+      const q: string[] = [];
+      if (params.page) q.push(`page=${params.page}`);
+      if (params.per_page) q.push(`per_page=${params.per_page}`);
+      if (q.length) path += `?${q.join('&')}`;
+    }
+    return this.api.get(path);
+  }
 
   private toFormData(payload: any): FormData {
     const formData = new FormData();

@@ -171,7 +171,12 @@
             <label>Emplacement</label>
             <select [(ngModel)]="item.warehouse_location_id" (ngModelChange)="onLocationSelected(item)">
               <option [ngValue]="null">Sélectionner un emplacement</option>
-              <option *ngFor="let l of item.locations" [ngValue]="l.id">{{ l.code || l.name || ('#' + l.id) }}</option>
+              <option *ngFor="let l of item.locations" 
+                      [ngValue]="l.id" 
+                      [disabled]="l.isFull || (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units)">
+                {{ l.code || l.name || ('#' + l.id) }} 
+                {{ l.isFull ? '(Plein)' : (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units ? '(Insuffisant)' : '') }}
+              </option>
             </select>
           </div>
 
@@ -179,7 +184,12 @@
             <label>Armoire</label>
             <select [(ngModel)]="item.cabinet_id" (ngModelChange)="onCabinetSelected(item)">
               <option [ngValue]="null">Aucune</option>
-              <option *ngFor="let c of item.cabinets" [ngValue]="c.id">{{ c.name || c.code || ('#' + c.id) }}</option>
+              <option *ngFor="let c of item.cabinets" 
+                      [ngValue]="c.id" 
+                      [disabled]="c.isFull || (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units)">
+                {{ c.name || c.code || ('#' + c.id) }} 
+                {{ c.isFull ? '(Plein)' : (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units ? '(Insuffisant)' : '') }}
+              </option>
             </select>
           </div>
 

@@ -299,13 +299,20 @@ class ConsumableRequestController extends Controller
             // Notify responsables that this item awaits physical confirmation
             try {
                 $responsables = User::query()
+                    ->where('id', '!=', Auth::id()) // Ne pas notifier celui qui vient d'approuver
                     ->where(function ($q) {
                         $q->whereHas('roles', function ($rq) {
-                            $rq->whereRaw("LOWER(name) IN (?, ?)", ['responsable de stock', 'responsable']);
+                            $rq->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
+                                'responsable de stock', 'responsable', 'gestionnaire', 'administrateur', 'validateur'
+                            ]);
                         })
-                        ->orWhereRaw("LOWER(role) IN (?, ?)", ['responsable de stock', 'responsable']);
+                        ->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", [
+                            'responsable de stock', 'responsable', 'gestionnaire', 'administrateur', 'validateur'
+                        ]);
                     })
                     ->get();
+
+                Log::info("Notification approbation - Responsables trouvés : " . $responsables->pluck('email')->implode(', '));
 
                 foreach ($responsables as $responsable) {
                     $responsable->notify(new \App\Notifications\ConsumableRequestNotification($consumableRequest->fresh()));
@@ -313,6 +320,7 @@ class ConsumableRequestController extends Controller
             } catch (\Throwable $e) {
                 Log::error('Failed to notify responsables on approve', ['err' => $e->getMessage()]);
             }
+
         });
 
         return response()->json([

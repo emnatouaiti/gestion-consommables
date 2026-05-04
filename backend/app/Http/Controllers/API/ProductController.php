@@ -210,17 +210,6 @@ class ProductController extends Controller
             }
         }
 
-        // If no reference provided, generate a unique one automatically
-        if (empty($data['reference'])) {
-            $base = isset($data['title']) ? preg_replace('/[^A-Za-z0-9]/', '', strtoupper($data['title'])) : 'PRD';
-            $base = substr($base, 0, 10) ?: 'PRD';
-            do {
-                $suffix = strtoupper(substr(uniqid(), -6));
-                $candidate = $base . '-' . $suffix;
-            } while (Product::where('reference', $candidate)->exists());
-
-            $data['reference'] = $candidate;
-        }
         $supplierIds = $data['supplier_ids'] ?? [];
         unset($data['supplier_ids']);
 
@@ -543,34 +532,123 @@ class ProductController extends Controller
         $fabricant = trim((string)$request->get('fabricant', ''));
         $marque = trim((string)$request->get('marque', ''));
         $model = trim((string)$request->get('model', ''));
+        $categoryId = $request->get('categorie_id');
 
-        // Build a slightly more developed short description (1-2 sentences)
-        $parts = [];
-        $main = $title;
-        if ($marque) $main .= ' — ' . $marque;
-        if ($model) $main .= ' ' . $model;
-        if ($fabricant) $main .= ' (' . $fabricant . ')';
+        $apiKey = config('services.gemini.key');
+        
+        if ($apiKey) {
+            \Illuminate\Support\Facades\Log::info("Attempting Gemini AI generation for: {$title}");
+            try {
+                $prompt = "Génère une description courte (environ 150 caractères) et une description longue et détaillée (environ 500-1000 caractères) RÉDIGÉES EXCLUSIVEMENT EN FRANÇAIS pour le produit suivant : \n";
+                $prompt .= "Titre: {$title}\n";
+                if ($fabricant) $prompt .= "Fabricant: {$fabricant}\n";
+                if ($marque) $prompt .= "Marque: {$marque}\n";
+                if ($model) $prompt .= "Modèle: {$model}\n";
+                $prompt .= "\nInstructions :\n";
+                $prompt .= "1. Le ton doit être professionnel et technique.\n";
+                $prompt .= "2. Décris l'utilité, les caractéristiques et les avantages du produit.\n";
+                $prompt .= "3. Réponds UNIQUEMENT au format JSON brut suivant (pas de texte avant ou après) :\n";
+                $prompt .= "{\"short_description\": \"...\", \"description\": \"...\"}";
 
-        $sentence1 = $main . '.';
-        $sentence2 = 'Idéal pour un usage professionnel, il offre robustesse et une prise en main simple.';
+                $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={$apiKey}", [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt]
+                            ]
+                        ]
+                    ],
+                    'generationConfig' => [
+                        'temperature' => 0.7,
+                        'topK' => 40,
+                        'topP' => 0.95,
+                        'maxOutputTokens' => 2048,
+                        'responseMimeType' => 'application/json',
+                    ]
+                ]);
 
-        $short = $sentence1 . ' ' . $sentence2;
+                if ($response->successful()) {
+                    $result = $response->json();
+                    $text = $result['candidates'][0]['content']['parts'][0]['text'] ?? '';
+                    \Illuminate\Support\Facades\Log::info("Gemini Raw Text: " . $text);
+                    
+                    // Clean potential markdown
+                    $text = preg_replace('/```json\s*|\s*```/', '', $text);
+                    $aiData = json_decode($text, true);
 
-        $description = "Le produit \"" . $title . "\"";
-        if ($fabricant) {
-            $description .= " fabriqué par " . $fabricant . ",";
+                    if ($aiData && isset($aiData['short_description']) && isset($aiData['description'])) {
+                        \Illuminate\Support\Facades\Log::info("Gemini AI generation successful");
+                        return response()->json($aiData);
+                    } else {
+                        \Illuminate\Support\Facades\Log::error("Gemini AI returned invalid JSON format: " . $text);
+                    }
+                } else {
+                    \Illuminate\Support\Facades\Log::error("Gemini API failed with status {$response->status()}: " . $response->body());
+                }
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::error("Gemini Exception: " . $e->getMessage());
+            }
+        } else {
+            \Illuminate\Support\Facades\Log::warning("Gemini API Key missing in config/services.php");
         }
-        if ($marque) {
-            $description .= " de la marque " . $marque . ",";
+
+        // --- FALLBACK LOGIC ---
+        $categoryName = '';
+        if ($categoryId) {
+            $categoryName = \App\Models\Category::find($categoryId)?->title ?: '';
         }
-        if ($model) {
-            $description .= " modèle " . $model . ".";
+
+        $short = "{$title}";
+        if ($marque) $short .= " ({$marque})";
+        if ($categoryName) $short .= " - Catégorie: {$categoryName}";
+        $short .= ". Consommable fiable pour usage intensif.";
+
+        $description = "Le produit \"{$title}\"";
+        if ($fabricant) $description .= " conçu par {$fabricant}";
+        if ($marque) $description .= " sous la marque {$marque}";
+        if ($model) $description .= " (Modèle: {$model})";
+        
+        $description .= " est une solution de haute qualité";
+        if ($categoryName) $description .= " dans la gamme des {$categoryName}";
+        
+        $description .= ". Ce consommable a été sélectionné pour sa performance constante et sa durabilité. ";
+        $description .= "Il s'intègre parfaitement dans vos processus opérationnels quotidiens, garantissant une efficacité optimale et une gestion simplifiée de votre stock.";
+        
+        if ($categoryName == 'Informatique' || $categoryName == 'Bureautique') {
+            $description .= " Compatible avec les standards du secteur, il répond aux exigences techniques les plus strictes.";
         }
-        $description .= " Ce produit est conçu pour répondre aux besoins de vos opérations de stock: robustesse, facilité d'utilisation et maintenance réduite. Il convient pour une utilisation en environnement professionnel et peut être stocké facilement. Personnalisez la description selon les spécifications techniques si nécessaire.";
 
         return response()->json([
             'short_description' => $short,
             'description' => $description,
         ]);
+    }
+    /**
+     * Return the full stock movement history for a specific product.
+     */
+    public function history(int $id)
+    {
+        $product = Product::findOrFail($id);
+
+        $limit = request()->get('per_page', 10);
+
+        $history = \App\Models\StockMovementLine::with([
+            'movement' => function ($q) {
+                $q->with([
+                    'creator:id,nomprenom',
+                    'validator:id,nomprenom',
+                    'sourceWarehouseLocation:id,name,code',
+                    'destinationWarehouseLocation:id,name,code',
+                    'sourceCabinet:id,name',
+                    'destinationCabinet:id,name',
+                    'document'
+                ]);
+            }
+        ])
+        ->where('product_id', $id)
+        ->orderBy('created_at', 'desc')
+        ->paginate($limit);
+
+        return response()->json($history);
     }
 }

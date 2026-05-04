@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\WarehouseCabinet;
+use App\Models\WarehouseRoom;
 use Illuminate\Http\Request;
 
 class WarehouseCabinetController extends Controller
@@ -39,8 +40,16 @@ class WarehouseCabinetController extends Controller
             'code' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'capacity_units' => 'nullable|numeric',
             'status' => 'in:active,inactive',
         ]);
+
+        $room = WarehouseRoom::findOrFail($validated['room_id']);
+        if ($room->max_cabinets > 0 && $room->cabinets()->count() >= $room->max_cabinets) {
+            return response()->json([
+                'message' => "La salle '{$room->name}' a atteint sa capacité maximale de {$room->max_cabinets} armoires."
+            ], 422);
+        }
 
         return WarehouseCabinet::create($validated);
     }
@@ -57,6 +66,7 @@ class WarehouseCabinetController extends Controller
             'code' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
+            'capacity_units' => 'nullable|numeric',
             'status' => 'in:active,inactive',
         ]);
 
@@ -68,5 +78,23 @@ class WarehouseCabinetController extends Controller
     {
         $cabinet->delete();
         return response()->noContent();
+    }
+
+    public function products(WarehouseCabinet $cabinet)
+    {
+        $stocks = \App\Models\ProductStock::with(['product.category'])
+            ->whereHas('product', fn($q) => $q->where('status', 'active'))
+            ->where('cabinet_id', $cabinet->id)
+            ->get();
+
+        $products = $stocks->map(function ($stock) {
+            $prod = $stock->product;
+            if ($prod) {
+                $prod->local_quantity = $stock->quantity;
+            }
+            return $prod;
+        })->filter()->values();
+
+        return response()->json(['data' => $products]);
     }
 }

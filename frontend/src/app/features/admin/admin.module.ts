@@ -21,6 +21,7 @@ import { ProductStocksComponent } from './product-stocks/product-stocks.componen
 import { ProductsByLocationComponent } from './products-by-location/products-by-location.component';
 import { ProductsByWarehouseComponent } from './products-by-warehouse/products-by-warehouse.component';
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
+import { ProductsByCabinetComponent } from './products-by-cabinet/products-by-cabinet.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
 import { UnitsComponent } from './units/units.component';
 import { StockMovementsComponent } from './stock-movements/stock-movements.component';
@@ -33,6 +34,7 @@ import { MiniThreadsComponent } from './chat/mini-threads.component';
 import { BarcodeScannerComponent } from '../../shared/barcode-scanner/barcode-scanner.component';
 import { ProductBatchLifecycleComponent } from './components/product-batch-lifecycle/product-batch-lifecycle.component';
 import { StockFormComponent } from './components/stock-form/stock-form.component';
+import { Storage3dViewerComponent } from './components/storage-3d-viewer/storage-3d-viewer.component';
 
 @NgModule({
   declarations: [
@@ -48,6 +50,7 @@ import { StockFormComponent } from './components/stock-form/stock-form.component
     WarehousesComponent,
     ProductStocksComponent,
     ProductsByLocationComponent,
+    ProductsByCabinetComponent,
     ProductsByWarehouseComponent,
     ProductsByRoomComponent,
   ],
@@ -73,7 +76,8 @@ import { StockFormComponent } from './components/stock-form/stock-form.component
     DocumentsComponent,
     ChatComponent,
     ThreadWidgetComponent,
-    MiniThreadsComponent
+    MiniThreadsComponent,
+    Storage3dViewerComponent
   ],
   providers: [
     // empty on purpose; keeps module extensible

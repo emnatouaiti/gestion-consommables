@@ -18,6 +18,7 @@ import { ModelesComponent } from './modeles/modeles.component';
 import { ReferencesComponent } from './references/references.component';
 import { ProductStocksComponent } from './product-stocks/product-stocks.component';
 import { ProductsByLocationComponent } from './products-by-location/products-by-location.component';
+import { ProductsByCabinetComponent } from './products-by-cabinet/products-by-cabinet.component';
 import { ProductsByWarehouseComponent } from './products-by-warehouse/products-by-warehouse.component';
 import { ProductsByRoomComponent } from './products-by-room/products-by-room.component';
 import { SuppliersComponent } from './suppliers/suppliers.component';
@@ -158,7 +159,12 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { roles: managerAndAgent }
       },
-
+      {
+        path: 'cabinet/:cabinetId/products',
+        component: ProductsByCabinetComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerAndAgent }
+      },
       {
         path: 'room/:roomId/products',
         component: ProductsByRoomComponent,

@@ -40,8 +40,18 @@ class WarehouseRoomController extends Controller
             'description' => 'nullable|string',
             'type' => 'nullable|string',
             'capacity_volume' => 'nullable|numeric',
+            'capacity_units' => 'nullable|numeric',
+            'max_locations' => 'nullable|integer|min:1',
+            'max_cabinets' => 'nullable|integer|min:1',
             'status' => 'in:active,inactive',
         ]);
+
+        $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
+        if ($warehouse->max_rooms > 0 && $warehouse->rooms()->count() >= $warehouse->max_rooms) {
+            return response()->json([
+                'message' => "Le dépôt '{$warehouse->name}' a atteint sa capacité maximale de {$warehouse->max_rooms} salles."
+            ], 422);
+        }
 
         return WarehouseRoom::create($validated);
     }
@@ -59,6 +69,9 @@ class WarehouseRoomController extends Controller
             'description' => 'nullable|string',
             'type' => 'nullable|string',
             'capacity_volume' => 'nullable|numeric',
+            'capacity_units' => 'nullable|numeric',
+            'max_locations' => 'nullable|integer|min:1',
+            'max_cabinets' => 'nullable|integer|min:1',
             'status' => 'in:active,inactive',
         ]);
 

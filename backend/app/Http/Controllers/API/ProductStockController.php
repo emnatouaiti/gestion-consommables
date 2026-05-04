@@ -77,6 +77,22 @@ class ProductStockController extends Controller
             return response()->json(['message' => 'Choisissez un emplacement ou une armoire.'], 422);
         }
 
+        $quantityDiff = $validated['quantity'] - $stock->quantity;
+
+        if ($quantityDiff > 0) {
+            if (!empty($validated['warehouse_location_id'])) {
+                $loc = \App\Models\WarehouseLocation::find($validated['warehouse_location_id']);
+                if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $quantityDiff) > $loc->capacity_units) {
+                    return response()->json(['message' => 'Capacité maximale dépassée pour cet emplacement.'], 422);
+                }
+            } elseif (!empty($validated['cabinet_id'])) {
+                $cab = \App\Models\WarehouseCabinet::find($validated['cabinet_id']);
+                if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $quantityDiff) > $cab->capacity_units) {
+                    return response()->json(['message' => 'Capacité maximale dépassée pour cette armoire.'], 422);
+                }
+            }
+        }
+
         $validated['last_updated'] = now();
 
         $stock->update($validated);
@@ -101,6 +117,18 @@ class ProductStockController extends Controller
 
         if (empty($validated['warehouse_location_id']) && empty($validated['cabinet_id'])) {
             return response()->json(['message' => 'Choisissez un emplacement ou une armoire.'], 422);
+        }
+
+        if (!empty($validated['warehouse_location_id'])) {
+            $loc = \App\Models\WarehouseLocation::find($validated['warehouse_location_id']);
+            if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $validated['quantity']) > $loc->capacity_units) {
+                return response()->json(['message' => 'Capacité maximale dépassée pour cet emplacement.'], 422);
+            }
+        } elseif (!empty($validated['cabinet_id'])) {
+            $cab = \App\Models\WarehouseCabinet::find($validated['cabinet_id']);
+            if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $validated['quantity']) > $cab->capacity_units) {
+                return response()->json(['message' => 'Capacité maximale dépassée pour cette armoire.'], 422);
+            }
         }
 
         $validated['last_updated'] = now();
@@ -157,6 +185,16 @@ class ProductStockController extends Controller
                 $cabinetDisplay = trim($locationCode . ' ' . $locationName);
             }
 
+            $capacity = null;
+            $current = null;
+            if ($storageType === 'location' && $stock->warehouseLocation) {
+                $capacity = $stock->warehouseLocation->capacity_units;
+                $current = $stock->warehouseLocation->current_units;
+            } elseif ($storageType === 'cabinet' && $stock->warehouseCabinet) {
+                $capacity = $stock->warehouseCabinet->capacity_units;
+                $current = $stock->warehouseCabinet->current_units;
+            }
+
             return [
                 'id' => $stock->id,
                 'warehouse' => $warehouse?->name,
@@ -175,6 +213,8 @@ class ProductStockController extends Controller
                 'supplier_name' => $supplier?->name,
                 'expiration_date' => $stock->expiration_date,
                 'batch_number' => $stock->batch_number,
+                'capacity_units' => $capacity,
+                'current_units' => $current,
             ];
         });
 

@@ -17,6 +17,10 @@ class WarehouseRoom extends Model
         'description',
         'type',
         'capacity_volume',
+        'capacity_units',
+        'current_units',
+        'max_locations',
+        'max_cabinets',
         'status',
     ];
 

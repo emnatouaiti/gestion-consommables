@@ -4,6 +4,7 @@ namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
 use App\Models\WarehouseLocation;
+use App\Models\WarehouseRoom;
 use Illuminate\Http\Request;
 
 class WarehouseLocationController extends Controller
@@ -34,13 +35,20 @@ class WarehouseLocationController extends Controller
     {
         $validated = $request->validate([
             'room_id' => 'required|exists:warehouse_rooms,id',
-            'code' => 'required|string|unique:warehouse_locations,code',
+            'code' => 'nullable|string|unique:warehouse_locations,code',
             'name' => 'required|string',
             'description' => 'nullable|string',
             'type' => 'nullable|string',
             'capacity_units' => 'nullable|numeric',
             'status' => 'in:active,inactive',
         ]);
+
+        $room = WarehouseRoom::findOrFail($validated['room_id']);
+        if ($room->max_locations > 0 && $room->locations()->count() >= $room->max_locations) {
+            return response()->json([
+                'message' => "La salle '{$room->name}' a atteint sa capacité maximale de {$room->max_locations} emplacements."
+            ], 422);
+        }
 
         return WarehouseLocation::create($validated);
     }
@@ -54,7 +62,7 @@ class WarehouseLocationController extends Controller
     {
         $validated = $request->validate([
             'room_id' => 'required|exists:warehouse_rooms,id',
-            'code' => 'required|string|unique:warehouse_locations,code,' . $location->id,
+            'code' => 'nullable|string|unique:warehouse_locations,code,' . $location->id,
             'name' => 'required|string',
             'description' => 'nullable|string',
             'type' => 'nullable|string',
@@ -74,8 +82,20 @@ class WarehouseLocationController extends Controller
 
     public function getProducts(WarehouseLocation $location)
     {
-        return $location->load(['products' => function ($query) {
-            $query->where('status', 'active')->with(['category', 'stocks']);
-        }])->products;
+        $stocks = \App\Models\ProductStock::with(['product.category'])
+            ->whereHas('product', fn($q) => $q->where('status', 'active'))
+            ->where('warehouse_location_id', $location->id)
+            ->get();
+
+        $products = $stocks->map(function ($stock) {
+            $prod = $stock->product;
+            if ($prod) {
+                // Ensure we have the local quantity for the 3D viewer
+                $prod->local_quantity = $stock->quantity;
+            }
+            return $prod;
+        })->filter()->values();
+
+        return response()->json(['data' => $products]);
     }
 }

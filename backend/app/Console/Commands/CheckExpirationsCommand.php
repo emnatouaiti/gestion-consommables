@@ -15,7 +15,7 @@ use Illuminate\Console\Command;
  */
 class CheckExpirationsCommand extends Command
 {
-    protected $signature = 'expirations:check {--verbose : Afficher les détails} {--days-before=7 : Jours avant alerte}';
+    protected $signature = 'expirations:process {--verbose : Afficher les détails} {--days-before=7 : Jours avant alerte}';
     protected $description = 'Vérifier tous les produits pour les expirations et créer les alertes';
 
     public function handle(ExpirationManagementService $expirationService): int

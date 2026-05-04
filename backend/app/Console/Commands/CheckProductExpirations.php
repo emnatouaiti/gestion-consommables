@@ -15,14 +15,14 @@ class CheckProductExpirations extends Command
      *
      * @var string
      */
-    protected $signature = 'expirations:check';
+    protected $signature = 'expirations:alert';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Vérifie les produits expirés ou proches de l\'expiration et alerte les responsables';
+    protected $description = 'Scanne les stocks et envoie des alertes email pour les produits expirés';
 
     /**
      * Execute the console command.
@@ -32,7 +32,11 @@ class CheckProductExpirations extends Command
         $today = Carbon::today();
         
         // Find stocks with expiration dates and quantity > 0
-        $stocks = ProductStock::with('product')
+        $stocks = ProductStock::with([
+            'product', 
+            'warehouseLocation.room.warehouse', 
+            'warehouseCabinet.room.warehouse'
+        ])
             ->whereNotNull('expiration_date')
             ->where('quantity', '>', 0)
             ->get();
@@ -65,18 +69,39 @@ class CheckProductExpirations extends Command
 
         if (count($expiringSoon) === 0 && count($expired) === 0) {
             $this->info('Aucun produit expiré ou proche de l\'expiration.');
+            \Illuminate\Support\Facades\Log::info("Scan Expiration : Aucun produit problématique détecté.");
             return;
         }
 
-        // Notify Responsables and Administrateurs
+        // Notify Responsables and Administrateurs (Robust search)
         $responsables = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['Administrateur', 'Responsable de stock', 'Responsable', 'Gestionnaire']);
-        })->get();
+            $query->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
+                'administrateur', 
+                'responsable de stock', 
+                'responsable', 
+                'gestionnaire', 
+                'validateur'
+            ]);
+        })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", [
+            'administrateur', 
+            'responsable de stock', 
+            'responsable', 
+            'gestionnaire', 
+            'validateur'
+        ])->get();
+
+        if ($responsables->isEmpty()) {
+            $this->error("Aucun utilisateur responsable trouvé.");
+            \Illuminate\Support\Facades\Log::warning("Alerte Expiration : Aucun utilisateur trouvé avec les rôles administratifs.");
+            return;
+        }
+
+        \Illuminate\Support\Facades\Log::info("Envoi d'alertes expiration à : " . $responsables->pluck('email')->implode(', '));
 
         foreach ($responsables as $user) {
             $user->notify(new ProductExpirationAlert($expiringSoon, $expired));
         }
 
-        $this->info(count($expiringSoon) . ' lots expirent bientôt et ' . count($expired) . ' lots sont expirés. Notifications envoyées à ' . $responsables->count() . ' utilisateurs.');
+        $this->info(count($expiringSoon) . ' lots expirent bientôt et ' . count($expired) . ' lots sont expirés. Notifications envoyées.');
     }
 }

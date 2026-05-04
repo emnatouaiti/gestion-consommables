@@ -63,6 +63,16 @@ class StockMovement extends Model
         return $this->belongsTo(WarehouseLocation::class, 'destination_warehouse_location_id');
     }
 
+    public function sourceCabinet(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseCabinet::class, 'source_cabinet_id');
+    }
+
+    public function destinationCabinet(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseCabinet::class, 'destination_cabinet_id');
+    }
+
     public function supplier(): BelongsTo
     {
         return $this->belongsTo(Supplier::class, 'supplier_id');

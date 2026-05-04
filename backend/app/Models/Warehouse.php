@@ -21,6 +21,9 @@ class Warehouse extends Model
         'longitude',
         'phone',
         'status',
+        'max_rooms',
+        'capacity_units',
+        'current_units',
     ];
 
     public function rooms(): HasMany
