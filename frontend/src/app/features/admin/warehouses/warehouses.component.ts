@@ -41,12 +41,12 @@ export class WarehousesComponent implements OnInit {
   editingCabinetId: number | null = null;
 
   show3DViewerModal = false;
-  viewerData = {
+  viewerData: { title: string; capacity: number; current: number; type: 'warehouse' | 'room' | 'location' | 'cabinet'; id: number | null } = {
     title: '',
     capacity: 0,
     current: 0,
-    type: 'location' as 'location' | 'cabinet',
-    id: null as number | null
+    type: 'location',
+    id: null
   };
 
   warehouseForm = {
@@ -114,7 +114,6 @@ export class WarehousesComponent implements OnInit {
     max_cabinets: null as number | null,
     status: 'active'
   };
-
   locationForm = {
     code: '',
     name: '',
@@ -805,10 +804,10 @@ export class WarehousesComponent implements OnInit {
     this.router.navigate(['/admin/cabinet', cabinet.id, 'products']);
   }
 
-  open3DViewer(type: 'location' | 'cabinet', item: any): void {
+  open3DViewer(type: 'warehouse' | 'room' | 'location' | 'cabinet', item: any): void {
     this.viewerData = {
-      title: type === 'cabinet' ? (item.name || item.code) : (item.code + ' ' + item.name),
-      capacity: item.capacity_units || 100,
+      title: item.name || item.code || 'Stockage',
+      capacity: item.capacity_units || 0,
       current: item.current_units || 0,
       type: type,
       id: item.id

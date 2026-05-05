@@ -1,7 +1,8 @@
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { Router } from '@angular/router';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 
 @Component({
@@ -12,6 +13,8 @@ import { AdminWarehouseService } from '../services/admin-warehouse.service';
   styleUrls: ['./documents.component.css']
 })
 export class DocumentsComponent implements OnInit {
+  private router = inject(Router);
+
   documents: any[] = [];
   file: File | null = null;
   title = '';
@@ -71,7 +74,7 @@ export class DocumentsComponent implements OnInit {
       next: (res: any) => {
         const rawDocs = Array.isArray(res) ? res : [];
         // Filtrer pour ne garder que ce qui est lié à l'OCR/Livraison
-        this.documents = rawDocs.filter((d: any) => 
+        this.documents = rawDocs.filter((d: any) =>
           d.type === 'bon_livraison' || d.type === 'document' || !d.type
         );
         this.isLoading = false;
@@ -89,22 +92,45 @@ export class DocumentsComponent implements OnInit {
 
   loadCategories(): void {
     if (!isPlatformBrowser(this.platformId)) return;
+
+    // Try admin endpoint first
     this.http.get('/api/admin/categories?status=active').subscribe({
       next: (res: any) => {
         this.categories = Array.isArray(res) ? res : [];
         if (this.categories.length === 0) {
+          // Try tree mode as fallback
           this.http.get('/api/admin/categories?tree=1').subscribe({
+            next: (tree: any) => { this.categories = Array.isArray(tree) ? tree : []; },
+            error: () => { this.loadCategoriesPublic(); }
+          });
+        }
+      },
+      error: (err: any) => {
+        // If admin endpoint fails (403 or other), try public endpoint
+        if (err?.status === 403) {
+          this.loadCategoriesPublic();
+          return;
+        }
+        this.loadCategoriesPublic();
+      }
+    });
+  }
+
+  private loadCategoriesPublic(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+
+    // Fallback to public categories endpoint for users without admin role
+    this.http.get('/api/categories/public?status=active').subscribe({
+      next: (res: any) => {
+        this.categories = Array.isArray(res) ? res : [];
+        if (this.categories.length === 0) {
+          this.http.get('/api/categories/public?tree=1').subscribe({
             next: (tree: any) => { this.categories = Array.isArray(tree) ? tree : []; },
             error: () => { this.categories = []; }
           });
         }
       },
-      error: (err: any) => {
-        // Roles like Agent may not have access to categories endpoint; avoid noisy fallback call.
-        if (err?.status === 403) {
-          this.categories = [];
-          return;
-        }
+      error: () => {
         this.categories = [];
       }
     });
@@ -242,7 +268,11 @@ export class DocumentsComponent implements OnInit {
     this.isLoading = true;
     this.http.post(`/api/admin/documents/${doc.id}/apply`, { items, auto_create_product: autoCreateProduct }).subscribe({
       next: (res: any) => {
-        this.message = res?.message || 'Document applique au stock.';
+        const isPending = res?.message?.toLowerCase().includes('validation');
+        this.message = res?.message || 'Document appliqué au stock.';
+        if (isPending) {
+          this.message += ' Vous pouvez suivre l\'état de vos mouvements dans l\'onglet "Mouvements".';
+        }
         this.error = '';
         this.showEditLines = null;
         this.locationConfirmation = null;
@@ -250,6 +280,13 @@ export class DocumentsComponent implements OnInit {
         setTimeout(() => this.load(), 500);
         this.isLoading = false;
         this.cdr.detectChanges();
+
+        // Si c'est en attente, on redirige après un court délai pour que l'utilisateur voit le message
+        if (isPending) {
+           setTimeout(() => {
+             this.router.navigate(['/admin/mouvements-stock']);
+           }, 2000);
+        }
       },
       error: (err) => {
         const suggested = err?.error?.suggested_products || err?.suggested_products || err?.error?.suggested_product || err?.suggested_product;

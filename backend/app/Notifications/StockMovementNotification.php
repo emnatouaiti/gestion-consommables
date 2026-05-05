@@ -18,29 +18,46 @@ class StockMovementNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        if (Schema::hasTable('notifications')) {
-            return ['database'];
-        }
-
-        return [];
+        $channels = ['database', 'mail'];
+        return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)
-            ->subject('Mouvement de stock enregistre')
-            ->line("Un mouvement de stock ({$this->movement->type}) a ete enregistre.")
-            ->action('Voir mouvements', url('/admin/mouvements-stock'));
+        $statusLabel = $this->movement->status === 'pending_validation' ? 'EN ATTENTE DE VALIDATION' : 'EXÉCUTÉ';
+        $typeLabel = strtoupper($this->movement->movement_type);
+        $creator = $this->movement->creator->nomprenom ?? 'Un agent';
+
+        $mail = (new MailMessage)
+            ->subject("[$statusLabel] Mouvement de stock : {$this->movement->reference}")
+            ->greeting("Bonjour {$notifiable->nomprenom},")
+            ->line("Un nouveau mouvement de stock a été enregistré par **$creator**.")
+            ->line("**Référence :** {$this->movement->reference}")
+            ->line("**Type :** $typeLabel")
+            ->line("**Statut actuel :** $statusLabel");
+
+        if ($this->movement->status === 'pending_validation') {
+            $mail->line("Ce mouvement nécessite votre validation pour impacter les stocks physiques.")
+                ->action('Valider le mouvement', url(config('app.frontend_url', 'http://localhost:4200') . '/admin/validation-mouvements'));
+        } else {
+            $mail->action('Consulter le mouvement', url(config('app.frontend_url', 'http://localhost:4200') . '/admin/mouvements-stock'));
+        }
+
+        return $mail->line('Merci d\'utiliser notre plateforme de gestion.');
     }
 
     public function toArray(object $notifiable): array
     {
         return [
+            'type' => 'stock_movement',
             'movement_id' => $this->movement->id,
-            'type' => $this->movement->type,
+            'movement_type' => $this->movement->movement_type,
             'reference' => $this->movement->reference,
-            'related_request_id' => $this->movement->related_request_id,
-            'url' => '/admin/mouvements-stock',
+            'status' => $this->movement->status,
+            'creator' => $this->movement->creator->nomprenom ?? 'Un agent',
+            'url' => '/admin/validation-mouvements',
+            'title' => 'Validation de mouvement',
+            'message' => "Mouvement {$this->movement->reference} en attente par " . ($this->movement->creator->nomprenom ?? 'un agent'),
         ];
     }
 }

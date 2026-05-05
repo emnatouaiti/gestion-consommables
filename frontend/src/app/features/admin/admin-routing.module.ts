@@ -147,6 +147,12 @@ const routes: Routes = [
         canActivate: [RoleGuard],
         data: { roles: managerAndAgent }
       },
+      {
+        path: 'validation-mouvements',
+        component: StockMovementsComponent,
+        canActivate: [RoleGuard],
+        data: { roles: managerRoles, mode: 'validation' }
+      },
 
       {
         path: 'chat',

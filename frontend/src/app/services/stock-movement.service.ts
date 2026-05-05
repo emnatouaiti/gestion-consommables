@@ -56,12 +56,20 @@ export class StockMovementService {
     return this.api.delete(`${this.apiPath}/${id}`);
   }
 
-  validate(id: number): Observable<any> {
-    return this.api.put(`${this.apiPath}/${id}/validate`, {});
+  validate(id: number, notes?: string): Observable<any> {
+    return this.api.put(`${this.apiPath}/${id}/validate`, { notes });
+  }
+
+  approve(id: number, notes?: string): Observable<any> {
+    return this.api.put(`${this.apiPath}/${id}/approve`, { notes });
   }
 
   cancel(id: number, reason?: string): Observable<any> {
     return this.api.put(`${this.apiPath}/${id}/cancel`, { reason });
+  }
+
+  reject(id: number, notes?: string): Observable<any> {
+    return this.api.post(`${this.apiPath}/${id}/reject`, { notes });
   }
 
   getProducts(): Observable<any> {

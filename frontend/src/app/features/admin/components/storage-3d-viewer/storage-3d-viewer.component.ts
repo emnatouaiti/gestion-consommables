@@ -2,6 +2,7 @@ import { Component, ElementRef, Input, OnDestroy, OnInit, ViewChild, ChangeDetec
 import { CommonModule } from '@angular/common';
 import * as THREE from 'three';
 import { AdminStockService } from '../../services/admin-stock.service';
+import { AdminWarehouseService } from '../../services/admin-warehouse.service';
 
 @Component({
   selector: 'app-storage-3d-viewer',
@@ -20,7 +21,7 @@ import { AdminStockService } from '../../services/admin-stock.service';
       </div>
 
       <!-- Hint -->
-      <div class="hint-bar">🖱️ Glisser pour tourner · Molette pour zoomer · Clic sur un produit pour ses détails</div>
+      <div class="hint-bar">{{ hintText }}</div>
 
       <!-- Top-left stats -->
       <div class="overlay-stats" [class.warn]="percentage>=70 && percentage<90" [class.danger]="percentage>=90">
@@ -49,7 +50,7 @@ import { AdminStockService } from '../../services/admin-stock.service';
       </div>
 
       <!-- Legend -->
-      <div class="legend-panel" *ngIf="!isLoading && uniqueProducts.length > 0">
+      <div class="legend-panel" *ngIf="!isLoading && type !== 'room' && type !== 'warehouse' && uniqueProducts.length > 0">
         <div class="legend-title">📦 Produits</div>
         <div class="legend-list">
           <div class="legend-item" *ngFor="let p of uniqueProducts">
@@ -60,8 +61,35 @@ import { AdminStockService } from '../../services/admin-stock.service';
         </div>
       </div>
 
+      <!-- Navigation Bar (for rooms) -->
+      <div class="nav-bar" *ngIf="viewStack.length > 0">
+        <button class="btn-back" (click)="goBack()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+          {{ backLabel }}
+        </button>
+      </div>
+
+      <!-- Room Stats -->
+      <div class="room-overlay" *ngIf="type === 'room' && !isLoading">
+        <div class="room-title">Configuration de la Salle</div>
+        <div class="room-meta">
+          <span>{{ roomCabinets.length }} Armoires</span>
+          <span>{{ roomLocations.length }} Emplacements</span>
+        </div>
+      </div>
+
+      <div class="room-overlay" *ngIf="type === 'warehouse' && !isLoading">
+        <div class="room-title">Plan 3D du Dépôt</div>
+        <div class="room-meta">
+          <span>{{ warehouseRooms.length }} Salles</span>
+          <span>Cliquez une salle pour l'ouvrir</span>
+        </div>
+      </div>
+
       <!-- Empty -->
-      <div class="empty-overlay" *ngIf="!isLoading && products.length===0">
+      <div class="empty-overlay" *ngIf="!isLoading && type !== 'warehouse' && type !== 'room' && products.length===0">
         📭 Aucun produit stocké ici
       </div>
 
@@ -79,74 +107,78 @@ import { AdminStockService } from '../../services/admin-stock.service';
     </div>
   `,
   styles: [`
-    .viewer-wrap { position: relative; font-family: 'Inter', sans-serif; user-select: none; }
-    .viewer-container { width: 100%; height: 560px; border-radius: 14px; overflow: hidden; cursor: grab; }
+    .viewer-wrap { position: relative; font-family: 'Inter', system-ui, sans-serif; user-select: none; background: #0a192f; border-radius: 14px; box-shadow: inset 0 0 80px rgba(0,0,0,0.5); }
+    .viewer-container { width: 100%; height: 600px; border-radius: 14px; overflow: hidden; cursor: grab; }
     .viewer-container:active { cursor: grabbing; }
-    .hint-bar { text-align: center; font-size: 11px; color: #94a3b8; padding: 6px 0 2px; }
+    .hint-bar { text-align: center; font-size: 11px; color: #475569; padding: 8px 0; background: rgba(15, 23, 42, 0.4); border-bottom-left-radius: 14px; border-bottom-right-radius: 14px; }
 
     .overlay-stats {
-      position: absolute; top: 14px; left: 14px;
-      background: rgba(255,255,255,0.94); backdrop-filter: blur(10px);
-      padding: 12px 16px; border-radius: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.15); pointer-events: none; min-width: 190px;
-      border-left: 4px solid #22c55e; transition: border-color .3s;
+      position: absolute; top: 20px; left: 20px;
+      background: rgba(255,255,255,0.05); backdrop-filter: blur(16px);
+      padding: 16px 20px; border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.1);
+      min-width: 210px; transition: all .4s cubic-bezier(.16,1,.3,1); color: white;
     }
-    .overlay-stats.warn { border-left-color: #f59e0b; }
-    .overlay-stats.danger { border-left-color: #ef4444; }
-    .overlay-title { font-weight: 800; font-size: 14px; color: #1e293b; margin-bottom: 8px; }
-    .cap-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
-    .cap-label { font-size: 11px; color: #64748b; font-weight: 600; text-transform: uppercase; }
-    .cap-value { font-size: 13px; font-weight: 700; }
-    .c-green { color: #16a34a; } .c-yellow { color: #d97706; } .c-red { color: #dc2626; }
-    .cap-bar-wrap { background: #e2e8f0; border-radius: 4px; height: 7px; overflow: hidden; margin-bottom: 4px; }
-    .cap-bar { height: 100%; border-radius: 4px; transition: width 0.6s; }
-    .bar-green  { background: linear-gradient(90deg, #22c55e, #16a34a); }
-    .bar-yellow { background: linear-gradient(90deg, #f59e0b, #d97706); }
-    .bar-red    { background: linear-gradient(90deg, #ef4444, #dc2626); animation: pulse 1s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.7} }
-    .cap-pct { font-size: 11px; color: #64748b; font-weight: 600; }
-    .cap-alert { font-size: 11px; font-weight: 700; } .cap-alert.warn { color: #d97706; }
+    .overlay-title { font-weight: 800; font-size: 15px; color: #fff; margin-bottom: 12px; letter-spacing: -0.3px; }
+    .cap-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .cap-label { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
+    .cap-value { font-size: 14px; font-weight: 800; }
+    .c-green { color: #4ade80; } .c-yellow { color: #fbbf24; } .c-red { color: #f87171; }
+    .cap-bar-wrap { background: rgba(255,255,255,0.1); border-radius: 6px; height: 6px; overflow: hidden; margin-bottom: 6px; }
+    .cap-bar { height: 100%; border-radius: 6px; transition: width 0.8s ease-out; }
+    .bar-green  { background: #22c55e; }
+    .bar-yellow { background: #f59e0b; }
+    .bar-red    { background: #ef4444; box-shadow: 0 0 10px #ef4444; }
+    .cap-pct { font-size: 11px; color: rgba(255,255,255,0.6); font-weight: 600; }
 
     .loading-overlay {
       position: absolute; inset: 0; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 12px;
-      background: rgba(13,27,42,0.6); color: white; font-size: 14px; font-weight: 500;
-      border-radius: 14px;
+      align-items: center; justify-content: center; gap: 16px;
+      background: rgba(10, 25, 47, 0.8); backdrop-filter: blur(8px);
+      color: #64ffda; font-size: 16px; font-weight: 600; z-index: 100;
     }
-    .spinner { width: 36px; height: 36px; border: 3px solid rgba(255,255,255,.2); border-top-color: white; border-radius: 50%; animation: spin .8s linear infinite; }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { width: 44px; height: 44px; border: 3px solid rgba(100, 255, 218, 0.1); border-top-color: #64ffda; border-radius: 50%; animation: spin 1s infinite cubic-bezier(.55,0,.1,1); }
 
     .legend-panel {
-      position: absolute; top: 14px; right: 14px;
-      background: rgba(255,255,255,0.94); backdrop-filter: blur(10px);
-      padding: 12px 14px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-      max-height: 320px; overflow-y: auto; min-width: 160px; max-width: 210px;
+      position: absolute; top: 20px; right: 20px;
+      background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(12px);
+      padding: 16px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      max-height: 350px; overflow-y: auto; width: 220px; border: 1px solid rgba(255,255,255,0.1);
     }
-    .legend-title { font-size: 12px; font-weight: 800; color: #1e293b; text-transform: uppercase; margin-bottom: 8px; }
-    .legend-item { display: flex; align-items: center; gap: 7px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
-    .legend-item:last-child { border: none; }
-    .legend-color { width: 13px; height: 13px; border-radius: 3px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.12); }
-    .legend-name { font-size: 12px; color: #334155; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .legend-qty { font-size: 11px; font-weight: 700; color: #64748b; }
-
-    .empty-overlay {
-      position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-      background: rgba(255,255,255,.88); backdrop-filter: blur(6px);
-      padding: 8px 18px; border-radius: 20px; font-size: 13px; font-weight: 600; color: #64748b;
-    }
+    .legend-title { font-size: 11px; font-weight: 800; color: #64ffda; text-transform: uppercase; margin-bottom: 12px; letter-spacing: 1px; }
+    .legend-item { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .legend-color { width: 14px; height: 14px; border-radius: 4px; flex-shrink: 0; box-shadow: 0 0 5px rgba(0,0,0,0.3); }
+    .legend-name { font-size: 12px; color: #ccd6f6; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .legend-qty { font-size: 11px; font-weight: 700; color: #8892b0; }
 
     .product-popup {
-      position: absolute; background: white; border-radius: 12px;
-      box-shadow: 0 8px 30px rgba(0,0,0,0.18); padding: 14px 16px;
-      min-width: 200px; max-width: 250px; z-index: 20;
-      border-top: 3px solid #3b82f6; animation: popIn .15s ease;
+      position: absolute; background: rgba(17, 34, 64, 0.95); backdrop-filter: blur(12px);
+      border-radius: 16px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); padding: 20px;
+      min-width: 240px; z-index: 200; border: 1px solid #64ffda44; color: #ccd6f6;
+      animation: popIn 0.3s var(--ease-out);
     }
-    @keyframes popIn { from { opacity:0; transform: scale(.95); } to { opacity:1; transform: scale(1); } }
-    .popup-close { position: absolute; top: 8px; right: 10px; background: none; border: none; cursor: pointer; font-size: 14px; color: #94a3b8; }
-    .popup-title { font-weight: 800; font-size: 14px; color: #1e293b; margin-bottom: 10px; padding-right: 20px; }
-    .popup-row { display: flex; justify-content: space-between; font-size: 12px; padding: 4px 0; border-bottom: 1px solid #f1f5f9; }
-    .popup-row span:first-child { color: #64748b; font-weight: 600; }
-    .popup-row span:last-child { color: #1e293b; font-weight: 700; }
+    .popup-title { font-weight: 800; font-size: 16px; color: #64ffda; margin-bottom: 14px; }
+    .popup-row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    .popup-row span:first-child { color: #8892b0; }
+    .popup-row span:last-child { color: #fff; font-weight: 700; }
+
+    .nav-bar { position: absolute; bottom: 30px; left: 30px; z-index: 10; }
+    .btn-back { 
+      background: #64ffda11; backdrop-filter: blur(8px);
+      color: #64ffda; border: 1px solid #64ffda33; padding: 12px 20px; border-radius: 50px;
+      display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700;
+      cursor: pointer; transition: all 0.3s ease;
+    }
+    .btn-back:hover { background: #64ffda; color: #0a192f; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(100, 255, 218, 0.3); }
+
+    .room-overlay {
+      position: absolute; top: 20px; left: 20px;
+      background: rgba(10, 25, 47, 0.85); backdrop-filter: blur(12px);
+      padding: 16px 24px; border-radius: 18px; color: #fff;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1);
+    }
+    .room-title { font-weight: 800; font-size: 17px; margin-bottom: 6px; color: #64ffda; }
+    .room-meta { display: flex; gap: 15px; font-size: 13px; color: #8892b0; font-weight: 500; }
   `]
 })
 export class Storage3dViewerComponent implements OnInit, OnDestroy {
@@ -156,7 +188,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   @Input() capacityUnits: number = 100;
   @Input() currentUnits: number = 0;
   @Input() storageId: number | null = null;
-  @Input() type: 'location' | 'cabinet' = 'location';
+  @Input() type: 'warehouse' | 'room' | 'location' | 'cabinet' = 'location';
 
   percentage = 0;
   products: any[] = [];
@@ -165,19 +197,39 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   selectedProduct: any = null;
   popupX = 0; popupY = 0;
 
+  roomCabinets: any[] = [];
+  roomLocations: any[] = [];
+  warehouseRooms: any[] = [];
+  viewStack: any[] = [];
+
+  get backLabel(): string {
+    const previous = this.viewStack[this.viewStack.length - 1];
+    return previous?.type === 'warehouse' ? 'Retour au dépôt' : 'Retour à la salle';
+  }
+
+  get hintText(): string {
+    if (this.type === 'warehouse') return '🖱️ Glisser pour tourner · Molette pour zoomer · Clic sur une salle pour l\'ouvrir';
+    if (this.type === 'room') return '🖱️ Glisser pour tourner · Molette pour zoomer · Clic sur une armoire/emplacement';
+    return '🖱️ Glisser pour tourner · Molette pour zoomer · Clic sur un produit pour ses détails';
+  }
+
   private scene!: THREE.Scene;
   private camera!: THREE.PerspectiveCamera;
   private renderer!: THREE.WebGLRenderer;
   private animationId: number | null = null;
   private group!: THREE.Group;
-  private clickableMeshes: { mesh: THREE.Mesh; product: any }[] = [];
+  private clickableMeshes: { mesh: THREE.Mesh; data: any; type: string }[] = [];
 
   // Orbit state
   private isDragging = false;
   private prevMouse = { x: 0, y: 0 };
   private spherical = { theta: 0.4, phi: 1.1, radius: 9 };
 
-  constructor(private stockService: AdminStockService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private stockService: AdminStockService, 
+    private warehouseService: AdminWarehouseService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit() {
     this.percentage = this.capacityUnits > 0 ? (this.currentUnits / this.capacityUnits) * 100 : 0;
@@ -188,6 +240,19 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   ngOnDestroy() {
     if (this.animationId !== null) cancelAnimationFrame(this.animationId);
     if (this.renderer) this.renderer.dispose();
+  }
+
+  /* ── Navigation ── */
+  goBack() {
+    const prev = this.viewStack.pop();
+    if (prev) {
+      this.type = prev.type;
+      this.storageId = prev.id;
+      this.title = prev.title;
+      this.capacityUnits = prev.capacity;
+      this.currentUnits = prev.current;
+      this.fetchProducts();
+    }
   }
 
   /* ── Mouse orbit ── */
@@ -204,7 +269,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   }
   onWheel(e: WheelEvent) {
     e.preventDefault();
-    this.spherical.radius = Math.max(3, Math.min(20, this.spherical.radius + e.deltaY * 0.01));
+    this.spherical.radius = Math.max(3, Math.min(25, this.spherical.radius + e.deltaY * 0.01));
     this.updateCamera();
   }
   private updateCamera() {
@@ -214,10 +279,11 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       radius * Math.cos(phi) + 2,
       radius * Math.sin(phi) * Math.cos(theta)
     );
-    this.camera.lookAt(0, this.type === 'cabinet' ? 3 : 1, 0);
+    const targetY = this.type === 'cabinet' ? 3 : (this.type === 'room' || this.type === 'warehouse' ? 0 : 1);
+    this.camera.lookAt(0, targetY, 0);
   }
 
-  /* ── Click on product ── */
+  /* ── Click on 3D Object ── */
   onCanvasClick(e: MouseEvent) {
     if (!this.renderer) return;
     const rect = this.renderer.domElement.getBoundingClientRect();
@@ -229,11 +295,28 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     raycaster.setFromCamera(mouse, this.camera);
     const meshes = this.clickableMeshes.map(c => c.mesh);
     const hits = raycaster.intersectObjects(meshes);
+
     if (hits.length > 0) {
       const hit = hits[0].object as THREE.Mesh;
       const found = this.clickableMeshes.find(c => c.mesh === hit);
-      if (found) {
-        this.selectedProduct = found.product;
+      if (!found) return;
+
+      if (this.type === 'warehouse' || this.type === 'room') {
+        this.viewStack.push({
+          type: this.type,
+          id: this.storageId,
+          title: this.title,
+          capacity: this.capacityUnits,
+          current: this.currentUnits
+        });
+        this.type = found.type as any;
+        this.storageId = found.data.id;
+        this.title = found.data.name || found.data.code;
+        this.capacityUnits = found.data.capacity_units || 0;
+        this.currentUnits = found.data.current_units || 0;
+        this.fetchProducts();
+      } else {
+        this.selectedProduct = found.data;
         this.popupX = e.offsetX + 12;
         this.popupY = e.offsetY + 12;
         this.cdr.detectChanges();
@@ -247,29 +330,33 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   private initScene() {
     const container = this.viewerContainer.nativeElement;
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x0d1b2a);
-    this.scene.fog = new THREE.FogExp2(0x0d1b2a, 0.04);
+    this.scene.background = new THREE.Color(0x0a192f);
+    this.scene.fog = new THREE.FogExp2(0x0a192f, 0.03);
 
-    this.camera = new THREE.PerspectiveCamera(50, container.clientWidth / (container.clientHeight || 560), 0.1, 200);
+    this.camera = new THREE.PerspectiveCamera(50, container.clientWidth / (container.clientHeight || 560), 0.1, 250);
     this.updateCamera();
 
-    this.renderer = new THREE.WebGLRenderer({ antialias: true });
+    this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     this.renderer.setSize(container.clientWidth, container.clientHeight || 560);
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(this.renderer.domElement);
 
-    // Lights
-    this.scene.add(new THREE.AmbientLight(0x557799, 0.9));
-    const key = new THREE.DirectionalLight(0xffffff, 1.4);
-    key.position.set(6, 12, 8); key.castShadow = true; this.scene.add(key);
-    const fill = new THREE.DirectionalLight(0x6699cc, 0.5);
-    fill.position.set(-6, 6, -4); this.scene.add(fill);
-    const rim = new THREE.DirectionalLight(0xffddaa, 0.3);
-    rim.position.set(0, -3, 6); this.scene.add(rim);
+    this.scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+    const mainLight = new THREE.SpotLight(0xffffff, 2);
+    mainLight.position.set(10, 20, 10);
+    mainLight.castShadow = true;
+    mainLight.shadow.mapSize.width = 1024;
+    mainLight.shadow.mapSize.height = 1024;
+    this.scene.add(mainLight);
 
-    // Grid floor
-    this.scene.add(new THREE.GridHelper(30, 30, 0x1e3a5f, 0x1e3a5f));
+    const fillLight = new THREE.PointLight(0x4488ff, 1);
+    fillLight.position.set(-10, 5, -10);
+    this.scene.add(fillLight);
+
+    const grid = new THREE.GridHelper(40, 40, 0x233554, 0x112240);
+    this.scene.add(grid);
 
     this.animate();
   }
@@ -280,11 +367,25 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   }
 
   /* ── Fetch & build ── */
-  private fetchProducts() {
+  fetchProducts() {
     this.isLoading = true;
+    this.selectedProduct = null;
+    this.cdr.detectChanges();
+
+    if (this.type === 'warehouse') {
+      this.fetchWarehouseRooms();
+      return;
+    }
+
+    if (this.type === 'room') {
+      this.fetchRoomData();
+      return;
+    }
+
     const req$ = this.type === 'cabinet'
       ? this.stockService.getProductsByCabinet(this.storageId as number)
       : this.stockService.getProductsByLocation(this.storageId as number);
+    
     req$.subscribe({
       next: (res: any) => {
         this.products = res.data || res || [];
@@ -303,13 +404,177 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
   }
 
+  private fetchRoomData() {
+    if (!this.storageId) return;
+    
+    import('rxjs').then(({ forkJoin }) => {
+      forkJoin({
+        cabinets: this.warehouseService.listCabinets(this.storageId as number),
+        locations: this.warehouseService.listLocations(this.storageId as number)
+      }).subscribe({
+        next: (res: any) => {
+          this.roomCabinets = res.cabinets.data || res.cabinets || [];
+          this.roomLocations = res.locations.data || res.locations || [];
+          this.isLoading = false;
+          this.buildScene();
+          this.cdr.detectChanges();
+        },
+        error: () => { this.isLoading = false; this.buildScene(); this.cdr.detectChanges(); }
+      });
+    });
+  }
+
+  private fetchWarehouseRooms() {
+    if (!this.storageId) return;
+
+    this.warehouseService.listRooms(this.storageId as number).subscribe({
+      next: (res: any) => {
+        this.warehouseRooms = res?.data || res || [];
+        this.products = [];
+        this.uniqueProducts = [];
+        this.roomCabinets = [];
+        this.roomLocations = [];
+        this.isLoading = false;
+        this.buildScene();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.warehouseRooms = [];
+        this.isLoading = false;
+        this.buildScene();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
   private buildScene() {
     if (this.group) this.scene.remove(this.group);
     this.clickableMeshes = [];
     this.group = new THREE.Group();
     this.scene.add(this.group);
 
-    // Frame color by capacity
+    if (this.type === 'warehouse') {
+      this.buildWarehouseScene();
+      this.spherical.radius = 18;
+    } else if (this.type === 'room') {
+      this.buildRoomScene();
+      this.spherical.radius = 15;
+    } else {
+      this.buildSingleEntityScene();
+      this.spherical.radius = 9;
+    }
+    this.updateCamera();
+  }
+
+  private buildWarehouseScene() {
+    const total = this.warehouseRooms.length;
+    if (total === 0) return;
+
+    const boxW = 2.2;
+    const boxH = 1.6;
+    const boxD = 1.8;
+    const gap = 1.1;
+    const cols = Math.ceil(Math.sqrt(total));
+    const rows = Math.ceil(total / cols);
+    const startX = -((cols - 1) * (boxW + gap)) / 2;
+    const startZ = -((rows - 1) * (boxD + gap)) / 2;
+
+    this.warehouseRooms.forEach((room, idx) => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const px = startX + col * (boxW + gap);
+      const pz = startZ + row * (boxD + gap);
+      const roomColor = parseInt(this.toHex(room?.name || `room-${idx}`), 16);
+      const mat = new THREE.MeshStandardMaterial({
+        color: roomColor,
+        roughness: 0.45,
+        metalness: 0.25,
+        emissive: roomColor,
+        emissiveIntensity: 0.14
+      });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(boxW, boxH, boxD), mat);
+      mesh.position.set(px, boxH / 2, pz);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+      this.clickableMeshes.push({ mesh, data: room, type: 'room' });
+      this.addLabel(room?.name || room?.code || `Salle ${idx + 1}`, px, boxH + 0.45, pz);
+    });
+  }
+
+  private buildRoomScene() {
+    const BOX_W = 1.2, BOX_D = 1.0;
+    const GAP = 1.5;
+    
+    const total = this.roomCabinets.length + this.roomLocations.length;
+    const cols = Math.ceil(Math.sqrt(total));
+    const startX = -((cols - 1) * (BOX_W + GAP)) / 2;
+    const startZ = -((cols - 1) * (BOX_D + GAP)) / 2;
+
+    const frameMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.8, roughness: 0.2 });
+    const locMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xf59e0b, emissiveIntensity: 0.2 });
+
+    let idx = 0;
+    
+    this.roomCabinets.forEach(c => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const h = 4;
+      const px = startX + col * (BOX_W + GAP);
+      const pz = startZ + row * (BOX_D + GAP);
+      
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, h, BOX_D), frameMat);
+      mesh.position.set(px, h/2, pz);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      this.group.add(mesh);
+      this.clickableMeshes.push({ mesh, data: c, type: 'cabinet' });
+
+      // Label
+      this.addLabel(c.name || c.code, px, h + 0.5, pz);
+      idx++;
+    });
+
+    this.roomLocations.forEach(l => {
+      const col = idx % cols;
+      const row = Math.floor(idx / cols);
+      const px = startX + col * (BOX_W + GAP);
+      const pz = startZ + row * (BOX_D + GAP);
+
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, 0.1, BOX_D), locMat);
+      mesh.position.set(px, 0.05, pz);
+      this.group.add(mesh);
+      this.clickableMeshes.push({ mesh, data: l, type: 'location' });
+
+      // Label
+      this.addLabel(l.name || l.code, px, 0.6, pz);
+      idx++;
+    });
+  }
+
+  private addLabel(text: string, x: number, y: number, z: number) {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    canvas.width = 256;
+    canvas.height = 64;
+    ctx.fillStyle = 'rgba(10, 25, 47, 0.8)';
+    if (ctx.roundRect) { ctx.roundRect(0, 0, 256, 64, 12); ctx.fill(); } else { ctx.fillRect(0,0,256,64); }
+    ctx.font = 'bold 28px Inter';
+    ctx.fillStyle = '#64ffda';
+    ctx.textAlign = 'center';
+    ctx.fillText(text, 128, 42);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({ map: texture, transparent: true });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.position.set(x, y, z);
+    sprite.scale.set(3, 0.75, 1);
+    this.group.add(sprite);
+  }
+
+  private buildSingleEntityScene() {
+    this.percentage = this.capacityUnits > 0 ? (this.currentUnits / this.capacityUnits) * 100 : 0;
     let frameColor = 0x607d8b;
     if (this.percentage >= 90) frameColor = 0xc0392b;
     else if (this.percentage >= 70) frameColor = 0xe67e22;
@@ -325,17 +590,15 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
 
   /* ── Cabinet: tall wardrobe with 5 shelves ── */
   private buildCabinet(frame: THREE.Material, shelf: THREE.Material) {
-    // Calculate dimensions based on capacity
-    // Target: exactly capacityUnits slots
-    const N = 5; // 5 shelves
-    const targetPerShelf = Math.ceil(this.capacityUnits / N);
-    const cols = Math.ceil(Math.sqrt(targetPerShelf * (2.2/5))); // Try to keep ratio
+    const N = 5;
+    const targetPerShelf = Math.ceil(this.capacityUnits / N) || 10;
+    const cols = Math.ceil(Math.sqrt(targetPerShelf * 0.4));
     const rows = Math.ceil(targetPerShelf / cols);
 
     const BOX_W = 0.42, BOX_D = 0.38, GAP = 0.06, T = 0.12;
     const W = cols * (BOX_W + GAP) + T * 2;
     const D = rows * (BOX_D + GAP) + T * 2;
-    const H = 8; // Keep height fixed at 8m for realism
+    const H = 6;
 
     const box = (w: number, h: number, d: number, mat: THREE.Material) =>
       new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);
@@ -347,154 +610,81 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     const base = box(W + T*2, T, D, frame); base.position.set(0, 0, 0); this.group.add(base);
 
     const shH = H / N;
-    for (let i = 0; i < N; i++) {
-      const s = box(W - T, T, D - T, shelf);
-      s.position.set(0, i * shH + T/2, 0);
+    for (let i = 1; i < N; i++) {
+      const s = box(W - T, 0.05, D - T, shelf);
+      s.position.set(0, i * shH, 0);
       this.group.add(s);
-    }
-
-    // Glow edge if near/over capacity
-    if (this.percentage >= 70) {
-      const glowColor = this.percentage >= 90 ? 0xff3333 : 0xff9900;
-      const gMat = new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.5 });
-      const gLeft = new THREE.Mesh(new THREE.BoxGeometry(T*0.5, H, D), gMat); gLeft.position.set(-W/2, H/2, 0);
-      const gRight = new THREE.Mesh(new THREE.BoxGeometry(T*0.5, H, D), gMat); gRight.position.set(W/2, H/2, 0);
-      this.group.add(gLeft, gRight);
     }
   }
 
-  /* ── Location: floor zone for large items (chairs, boxes, etc.) ── */
+  /* ── Location: floor zone ── */
   private buildFloorZone() {
-    // Calculate dimensions based on capacity
+    const cap = this.capacityUnits || 1;
+    const cols = Math.ceil(Math.sqrt(cap * 1.3));
+    const rows = Math.ceil(cap / cols);
     const BOX_W = 1.0, BOX_D = 0.85, GAP = 0.35, T = 0.08;
-    const cols = Math.ceil(Math.sqrt(this.capacityUnits * (8/6)));
-    const rows = Math.ceil(this.capacityUnits / cols);
 
     const W = cols * (BOX_W + GAP) + T * 2;
     const D = rows * (BOX_D + GAP) + T * 2;
 
     const borderColor = this.percentage >= 90 ? 0xef4444 : this.percentage >= 70 ? 0xf59e0b : 0x22c55e;
     const borderMat = new THREE.MeshStandardMaterial({ color: borderColor, roughness: 0.4, metalness: 0.3 });
-    const floorMat  = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, roughness: 0.9, transparent: true, opacity: 0.5 });
+    const floorMat  = new THREE.MeshStandardMaterial({ color: 0x1e3a5f, transparent: true, opacity: 0.3 });
 
-    // Floor tile
     const floor = new THREE.Mesh(new THREE.BoxGeometry(W, T, D), floorMat);
     floor.position.set(0, 0, 0);
     this.group.add(floor);
 
-    // Border lines (4 sides, colored by capacity)
-    const borderH = 0.18;
-    const front = new THREE.Mesh(new THREE.BoxGeometry(W + T*2, borderH, T), borderMat); front.position.set(0, borderH/2, D/2); this.group.add(front);
-    const back  = new THREE.Mesh(new THREE.BoxGeometry(W + T*2, borderH, T), borderMat); back.position.set(0, borderH/2, -D/2); this.group.add(back);
-    const left  = new THREE.Mesh(new THREE.BoxGeometry(T, borderH, D), borderMat); left.position.set(-W/2, borderH/2, 0); this.group.add(left);
-    const right = new THREE.Mesh(new THREE.BoxGeometry(T, borderH, D), borderMat); right.position.set(W/2, borderH/2, 0); this.group.add(right);
-
-    // Corner posts
-    const postMat = new THREE.MeshStandardMaterial({ color: borderColor, roughness: 0.3, metalness: 0.5 });
-    const postH = 0.8;
-    for (const [sx, sz] of [[-1,1],[1,1],[1,-1],[-1,-1]] as [number,number][]) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, postH, 8), postMat);
-      post.position.set(sx * W/2, postH/2, sz * D/2);
-      this.group.add(post);
-      // Top cap
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), postMat);
-      cap.position.set(sx * W/2, postH, sz * D/2);
-      this.group.add(cap);
-    }
-
-    // Dashed grid lines on floor
-    const lineMat = new THREE.LineBasicMaterial({ color: borderColor, transparent: true, opacity: 0.25 });
-    for (let x = -W/2 + (BOX_W + GAP); x < W/2; x += (BOX_W + GAP)) {
-      const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(x, T/2+0.01, -D/2), new THREE.Vector3(x, T/2+0.01, D/2)]);
-      this.group.add(new THREE.Line(geo, lineMat));
-    }
-    for (let z = -D/2 + (BOX_D + GAP); z < D/2; z += (BOX_D + GAP)) {
-      const geo = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-W/2, T/2+0.01, z), new THREE.Vector3(W/2, T/2+0.01, z)]);
-      this.group.add(new THREE.Line(geo, lineMat));
-    }
-
-    // Glow overlay if near/over capacity
-    if (this.percentage >= 70) {
-      const glowColor = this.percentage >= 90 ? 0xff2222 : 0xff9900;
-      const gMat = new THREE.MeshBasicMaterial({ color: glowColor, transparent: true, opacity: 0.08 });
-      const gFloor = new THREE.Mesh(new THREE.BoxGeometry(W, T, D), gMat);
-      gFloor.position.set(0, T/2 + 0.01, 0);
-      this.group.add(gFloor);
-    }
+    const borderH = 0.15;
+    const f = new THREE.Mesh(new THREE.BoxGeometry(W+T*2, borderH, T), borderMat); f.position.set(0, borderH/2, D/2); this.group.add(f);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(W+T*2, borderH, T), borderMat); b.position.set(0, borderH/2, -D/2); this.group.add(b);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(T, borderH, D), borderMat); l.position.set(-W/2, borderH/2, 0); this.group.add(l);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(T, borderH, D), borderMat); r.position.set(W/2, borderH/2, 0); this.group.add(r);
   }
 
-  /* ── Place products: 1 cube per real unit (qty=5 → 5 cubes) ── */
+  /* ── Place products ── */
   private placeProducts() {
     if (this.products.length === 0) return;
 
     const isCabinet = this.type === 'cabinet';
-    const T = isCabinet ? 0.12 : 0.08;
+    const cap = this.capacityUnits || 1;
+    const N_SHELVES = isCabinet ? 5 : 1;
+    const targetPerShelf = Math.ceil(cap / N_SHELVES);
+    const cols = Math.ceil(Math.sqrt(targetPerShelf * (isCabinet ? 0.4 : 1.3)));
+    const rows = Math.ceil(targetPerShelf / cols);
+
     const BOX_W = isCabinet ? 0.42 : 1.0;
-    const BOX_H = isCabinet ? 0.38 : 0.95;
+    const BOX_H = isCabinet ? 0.38 : 0.6;
     const BOX_D = isCabinet ? 0.38 : 0.85;
     const GAP   = isCabinet ? 0.06 : 0.35;
-    const N_SHELVES = isCabinet ? 5 : 1;
+    const T = 0.12;
+    const H = 6;
+    const SHELF_H = H / N_SHELVES;
 
-    // Redetermine dimensions to match build functions
-    let cols, rows;
-    if (isCabinet) {
-      const targetPerShelf = Math.ceil(this.capacityUnits / N_SHELVES);
-      cols = Math.ceil(Math.sqrt(targetPerShelf * (2.2/5)));
-      rows = Math.ceil(targetPerShelf / cols);
-    } else {
-      cols = Math.ceil(Math.sqrt(this.capacityUnits * (8/6)));
-      rows = Math.ceil(this.capacityUnits / cols);
-    }
+    const startX = -((cols * (BOX_W + GAP)) / 2) + BOX_W/2;
+    const startZ = -((rows * (BOX_D + GAP)) / 2) + BOX_D/2;
 
-    const W = cols * (BOX_W + GAP) + T * 2;
-    const D = rows * (BOX_D + GAP) + T * 2;
-    const SHELF_H = isCabinet ? (8 / N_SHELVES) : 0;
-
-    const maxSlots = cols * rows * N_SHELVES;
-
-    const startX = -((W - T * 2) / 2) + BOX_W / 2;
-    const startZ = -((D - T * 2) / 2) + BOX_D / 2;
-
-    // Build flat list: exactly 1 entry per real unit
     const renderList: any[] = [];
     for (const p of this.products) {
-      const qty = p.local_quantity || p.stock_quantity || 1;
-      for (let i = 0; i < qty; i++) {
-        renderList.push(p);
-        if (renderList.length >= maxSlots) break;
-      }
-      if (renderList.length >= maxSlots) break;
+      const q = p.local_quantity || p.stock_quantity || 1;
+      for (let i = 0; i < q; i++) renderList.push(p);
     }
 
-    // Place each cube in its slot
     renderList.forEach((product, idx) => {
-      const shelf      = Math.floor(idx / (cols * rows));
-      const posInShelf = idx % (cols * rows);
-      const row        = Math.floor(posInShelf / cols);
-      const col        = posInShelf % cols;
-      if (shelf >= N_SHELVES) return;
+      if (idx >= cap) return;
+      const shelf = Math.floor(idx / (cols * rows));
+      const pos = idx % (cols * rows);
+      const r = Math.floor(pos / cols);
+      const c = pos % cols;
 
-      const yBase    = isCabinet ? (shelf * SHELF_H + T / 2) : 0.08;
+      const y = isCabinet ? (shelf * SHELF_H + 0.1) : 0.1;
       const colorInt = parseInt(this.toHex(product.title || String(product.id)), 16);
-      const mat = new THREE.MeshStandardMaterial({ color: colorInt, roughness: 0.3, metalness: 0.1 });
-      const geo = new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D);
-      const mesh = new THREE.Mesh(geo, mat);
-      mesh.position.set(
-        startX + col * (BOX_W + GAP),
-        yBase + BOX_H / 2,
-        startZ + row * (BOX_D + GAP)
-      );
+      const mat = new THREE.MeshStandardMaterial({ color: colorInt, roughness: 0.4, metalness: 0.2 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(BOX_W, BOX_H, BOX_D), mat);
+      mesh.position.set(startX + c * (BOX_W+GAP), y + BOX_H/2, startZ + r * (BOX_D+GAP));
       mesh.castShadow = true;
       this.group.add(mesh);
-
-      const edges = new THREE.LineSegments(
-        new THREE.EdgesGeometry(geo),
-        new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.2 })
-      );
-      edges.position.copy(mesh.position);
-      this.group.add(edges);
-
-      this.clickableMeshes.push({ mesh, product });
+      this.clickableMeshes.push({ mesh, data: product, type: 'product' });
     });
   }
 
@@ -503,7 +693,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     let hash = 0;
     for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash);
     const hue = Math.abs(hash) % 360;
-    const { r, g, b } = this.hsl(hue / 360, 0.72, 0.52);
+    const { r, g, b } = this.hsl(hue / 360, 0.7, 0.5);
     return r.toString(16).padStart(2,'0') + g.toString(16).padStart(2,'0') + b.toString(16).padStart(2,'0');
   }
 

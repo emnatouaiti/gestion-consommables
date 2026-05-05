@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\StockMovement;
 use App\Models\StockMovementLine;
+use App\Models\User;
+use App\Models\Document;
+use App\Notifications\StockMovementResponseNotification;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use App\Models\ProductStock;
 use App\Models\AuditLog;
 use App\Models\Product;
-use App\Models\ProductStock;
-use App\Models\User;
-use App\Notifications\StockMovementNotification;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -85,140 +88,178 @@ class StockMovementController extends Controller
         return response()->json($movement);
     }
 
-    public function validateMovement($id)
+    /**
+     * Final step: Execute the movement (update stock)
+     */
+    public function validateMovement(Request $request, $id)
     {
-        $movement = StockMovement::with('lines')->findOrFail($id);
+        $user = Auth::user();
+        $movement = StockMovement::with('lines.product')->findOrFail($id);
+
         if ($movement->status === 'executed') {
-            return response()->json(['message' => 'Already executed.'], 422);
+            return response()->json(['message' => 'Ce mouvement est déjà exécuté.'], 400);
         }
-        if ($movement->status === 'cancelled') {
-            return response()->json(['message' => 'Cannot execute a cancelled movement.'], 422);
+
+        // If it's pending_validation, only managers can execute directly
+        if ($movement->status === 'pending_validation') {
+            if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
+                return response()->json(['message' => 'Ce mouvement doit d\'abord être approuvé par un responsable.'], 403);
+            }
+        } elseif ($movement->status !== 'approved') {
+             return response()->json(['message' => 'Ce mouvement doit être approuvé avant d\'être exécuté.'], 400);
         }
+
         if ($movement->lines->count() === 0) {
-            return response()->json(['message' => 'Legacy static movement cannot be executed.'], 422);
+            return response()->json(['message' => 'Mouvement vide.'], 422);
         }
 
-        DB::transaction(function () use ($movement) {
-            foreach ($movement->lines as $line) {
-                $product = \App\Models\Product::lockForUpdate()->find($line->product_id);
-                if (!$product) continue;
+        DB::transaction(function () use ($movement, $user, $request) {
+            $this->executeMovementInternal($movement, $user);
 
-                $qty = (int) $line->quantity;
-
-                // Source deduction (out/transfer) - support warehouse locations and cabinets
-                if ($movement->movement_type === 'out' && ($movement->source_warehouse_location_id || $movement->source_cabinet_id)) {
-                    if ($movement->source_warehouse_location_id) {
-                        $sourceStock = ProductStock::where('product_id', $product->id)
-                            ->where('warehouse_location_id', $movement->source_warehouse_location_id)
-                            ->lockForUpdate()
-                            ->first();
-                    } else {
-                        $sourceStock = ProductStock::where('product_id', $product->id)
-                            ->where('cabinet_id', $movement->source_cabinet_id)
-                            ->lockForUpdate()
-                            ->first();
-                    }
-
-                    $available = (int) ($sourceStock?->quantity ?? 0);
-                    if ($qty > $available) {
-                        throw ValidationException::withMessages([
-                            'lines' => ["Stock insuffisant pour {$product->title} (dispo: {$available}, demande: {$qty})."],
-                        ]);
-                    }
-
-                    if ($sourceStock) {
-                        $sourceStock->quantity = $available - $qty;
-                        $sourceStock->last_updated = now();
-                        $sourceStock->save();
-                    }
-                }
-
-                // Destination add (in/transfer) - support warehouse locations and cabinets
-                if ($movement->destination_warehouse_location_id || $movement->destination_cabinet_id) {
-                    if ($movement->destination_warehouse_location_id) {
-                        $destStock = ProductStock::where('product_id', $product->id)
-                            ->where('warehouse_location_id', $movement->destination_warehouse_location_id)
-                            ->lockForUpdate()
-                            ->first();
-                    } else {
-                        $destStock = ProductStock::where('product_id', $product->id)
-                            ->where('cabinet_id', $movement->destination_cabinet_id)
-                            ->lockForUpdate()
-                            ->first();
-                    }
-
-                    if (!$destStock) {
-                        $createData = [
-                            'product_id' => $product->id,
-                            'supplier_id' => $movement->supplier_id,
-                            'quantity' => 0,
-                            'notes' => null,
-                            'last_updated' => now(),
-                        ];
-                        if ($movement->destination_warehouse_location_id) {
-                            $createData['warehouse_location_id'] = $movement->destination_warehouse_location_id;
-                        } else {
-                            $createData['cabinet_id'] = $movement->destination_cabinet_id;
-                        }
-
-                        $destStock = ProductStock::create($createData);
-                        // Lock the created row for consistent update within the txn.
-                        $destStock = ProductStock::where('id', $destStock->id)->lockForUpdate()->first();
-                    }
-
-                    $destStock->quantity = (int) $destStock->quantity + $qty;
-                    if ($movement->supplier_id && !$destStock->supplier_id) {
-                        $destStock->supplier_id = $movement->supplier_id;
-                    }
-                    $destStock->last_updated = now();
-                    $destStock->save();
-                }
-
-                // Keep legacy aggregate column in sync for other screens.
-                $product->stock_quantity = (int) $product->stocks()->sum('quantity');
-                $product->save();
+            // Update associated document if exists
+            if ($movement->document_id) {
+                Document::where('id', $movement->document_id)->update(['status' => 'applied']);
             }
 
-            $movement->status = 'executed';
-            if (Schema::hasColumn('stock_movements', 'executed_at')) {
-                $movement->executed_at = now();
+            // Generate/Update PDF if needed (optional here since approved already did it)
+            if (!$movement->response_pdf_path) {
+                $this->generateResponsePdf($movement, $request->input('notes'));
             }
-            if (Schema::hasColumn('stock_movements', 'validated_by')) {
-                $movement->validated_by = Auth::id();
-            }
-            $movement->save();
         });
 
-        return response()->json($movement->fresh([
-            'lines.product',
-            'creator',
-            'validator',
-            'supplier',
-            'sourceWarehouseLocation.room.warehouse',
-            'destinationWarehouseLocation.room.warehouse',
-        ]));
+        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
     }
 
-    public function cancelMovement($id, Request $request)
+    /**
+     * Intermediate step: Approve without updating stock
+     */
+    public function approve(Request $request, $id)
     {
+        $user = Auth::user();
+        if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
+            return response()->json(['message' => 'Non autorisé.'], 403);
+        }
+
         $movement = StockMovement::findOrFail($id);
-        if ($movement->status === 'cancelled') {
-            return response()->json(['message' => 'Already cancelled.'], 422);
-        }
-        if ($movement->status === 'executed') {
-            return response()->json(['message' => 'Cannot cancel an executed movement.'], 422);
-        }
-        if ($movement->lines()->count() === 0) {
-            return response()->json(['message' => 'Legacy static movement cannot be cancelled.'], 422);
+        if ($movement->status !== 'pending_validation') {
+            return response()->json(['message' => 'Ce mouvement n\'est pas en attente de validation.'], 400);
         }
 
-        $movement->status = 'cancelled';
-        if (Schema::hasColumn('stock_movements', 'cancel_reason')) {
-            $movement->cancel_reason = $request->input('reason');
-        }
-        $movement->save();
+        DB::transaction(function() use ($movement, $request, $user) {
+            $movement->update([
+                'response_notes' => $request->input('notes'),
+                'validated_by' => $user->id
+            ]);
 
-        return response()->json(['message' => 'Movement cancelled.']);
+            // Execute the movement directly
+            $this->executeMovementInternal($movement, $user);
+
+            // Generate PDF and notify agent
+            $this->generateResponsePdf($movement, $request->input('notes'));
+            
+            if ($movement->creator) {
+                $movement->creator->notify(new StockMovementResponseNotification($movement));
+            }
+
+            // Audit log
+            try {
+                AuditLog::create([
+                    'user_id' => $user->id,
+                    'action' => 'stock_movement.approve',
+                    'description' => "Mouvement {$movement->reference} approuvé et exécuté",
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+            } catch (\Throwable $e) {}
+        });
+
+        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
+    }
+
+    /**
+     * Reject a pending movement
+     */
+    public function reject(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
+            return response()->json(['message' => 'Non autorisé.'], 403);
+        }
+
+        $movement = StockMovement::findOrFail($id);
+        if ($movement->status !== 'pending_validation') {
+            return response()->json(['message' => 'Ce mouvement n\'est pas en attente.'], 400);
+        }
+
+        DB::transaction(function() use ($movement, $request, $user) {
+            $movement->update([
+                'status' => 'cancelled',
+                'rejected_at' => now(),
+                'validated_by' => $user->id,
+                'response_notes' => $request->input('notes')
+            ]);
+
+            if ($movement->document_id) {
+                Document::where('id', $movement->document_id)->update(['status' => 'rejected']);
+            }
+
+            // Generate PDF and notify agent
+            $this->generateResponsePdf($movement, $request->input('notes'));
+            
+            if ($movement->creator) {
+                $movement->creator->notify(new StockMovementResponseNotification($movement));
+            }
+
+            // Audit log
+            try {
+                AuditLog::create([
+                    'user_id' => $user->id,
+                    'action' => 'stock_movement.reject',
+                    'description' => "Mouvement {$movement->reference} rejeté : " . $request->input('notes'),
+                    'ip_address' => $request->ip(),
+                    'user_agent' => $request->userAgent(),
+                ]);
+            } catch (\Throwable $e) {}
+        });
+
+        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
+    }
+
+    /**
+     * Generate a PDF for the response
+     */
+    private function generateResponsePdf(StockMovement $movement, $notes = null)
+    {
+        $movement->load(['lines.product', 'creator', 'validator']);
+        $movement->response_notes = $notes; // Temporary set if not saved yet
+        
+        $pdf = Pdf::loadView('pdf.movement_response', ['movement' => $movement]);
+        
+        $filename = 'responses/decision_' . $movement->id . '_' . time() . '.pdf';
+        Storage::disk('public')->put($filename, $pdf->output());
+        
+        $movement->update(['response_pdf_path' => $filename]);
+    }
+
+    /**
+     * Helper to check user roles robustly
+     */
+    private function userHasAnyRole($user, array $roles): bool
+    {
+        if (!$user) return false;
+        
+        // Check spatie roles
+        foreach ($roles as $role) {
+            if ($user->hasRole($role)) return true;
+        }
+
+        // Check direct role column (LOWER case)
+        $userRole = Str::lower($user->role);
+        foreach ($roles as $role) {
+            if ($userRole === Str::lower($role)) return true;
+        }
+
+        return false;
     }
 
     public function store(Request $request)
@@ -246,64 +287,32 @@ class StockMovementController extends Controller
             'lines.*.quantity'   => 'required|integer|min:1',
         ]);
 
-        $productIds = collect((array) $request->input('lines'))
-            ->pluck('product_id')
-            ->map(fn ($v) => (int) $v)
-            ->unique()
-            ->values()
-            ->all();
-
-        $inactive = Product::query()
-            ->whereIn('id', $productIds)
-            ->where('status', '!=', 'active')
-            ->pluck('title')
-            ->values()
-            ->all();
-
+        $movementType = $request->input('movement_type', $request->input('type'));
+        
+        // 1. Inactive products check
+        $productIds = collect($request->input('lines'))->pluck('product_id')->all();
+        $inactive = Product::whereIn('id', $productIds)->where('status', '!=', 'active')->pluck('title')->all();
         if (count($inactive) > 0) {
-            $list = implode(', ', $inactive);
-            throw ValidationException::withMessages([
-                'lines' => ["Impossible d'utiliser des produits inactifs: {$list}. Activez-les pour continuer."],
-            ]);
+            throw ValidationException::withMessages(['lines' => ["Produits inactifs détectés : " . implode(', ', $inactive)]]);
         }
 
-        // For entrée: supplier required. For sortie: source location required. For transfer: both required.
-        $movementType = $request->input('movement_type', $request->input('type'));
+        // 2. Logic validations
         if ($movementType === 'in' && !$request->filled('supplier_id')) {
             throw ValidationException::withMessages(['supplier_id' => ['Le fournisseur est requis pour une entrée.']]);
         }
-        // For source/destination allow either a location or a cabinet id.
         if (in_array($movementType, ['out', 'transfer']) && !$request->filled('source_warehouse_location_id') && !$request->filled('source_cabinet_id')) {
-            throw ValidationException::withMessages(['source_warehouse_location_id' => ['L\'emplacement source ou l\'armoire source est requis.']]);
+            throw ValidationException::withMessages(['source_warehouse_location_id' => ['L\'emplacement source est requis.']]);
         }
         if (in_array($movementType, ['in', 'transfer']) && !$request->filled('destination_warehouse_location_id') && !$request->filled('destination_cabinet_id')) {
-            throw ValidationException::withMessages(['destination_warehouse_location_id' => ['L\'emplacement destination ou l\'armoire destination est requis.']]);
+            throw ValidationException::withMessages(['destination_warehouse_location_id' => ['L\'emplacement destination est requis.']]);
         }
 
-        // Prevent source == destination when both refer to the same exact location/cabinet
-        if (
-            (
-                $request->filled('source_warehouse_location_id')
-                && $request->filled('destination_warehouse_location_id')
-                && (int) $request->input('source_warehouse_location_id') === (int) $request->input('destination_warehouse_location_id')
-            ) || (
-                $request->filled('source_cabinet_id')
-                && $request->filled('destination_cabinet_id')
-                && (int) $request->input('source_cabinet_id') === (int) $request->input('destination_cabinet_id')
-            )
-        ) {
-            throw ValidationException::withMessages([
-                'destination_warehouse_location_id' => ['La destination doit etre differente de la source.'],
-            ]);
-        }
-
-        $movementType = $request->input('movement_type', $request->input('type'));
-        $reference = $request->input('reference');
-        if (!$reference) {
-            $reference = 'SMV-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4));
-        }
+        $reference = $request->input('reference') ?: 'SMV-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4));
 
         $movement = DB::transaction(function () use ($request, $user, $movementType, $reference) {
+            $isManager = $this->userHasAnyRole($user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+            $status = $isManager ? 'executed' : 'pending_validation';
+
             $movementData = [
                 'movement_type' => $movementType,
                 'reference'     => $reference,
@@ -312,8 +321,7 @@ class StockMovementController extends Controller
                 'notes'         => $request->input('notes'),
                 'motif'         => $request->input('motif'),
                 'destination_text' => $request->input('destination_text'),
-                'status'        => 'draft',
-                'planned_at'    => Schema::hasColumn('stock_movements', 'planned_at') ? now() : null,
+                'status'        => $status,
                 'supplier_id'   => $request->input('supplier_id'),
                 'supplier_contact_id' => $request->input('supplier_contact_id'),
                 'source_warehouse_location_id'      => $request->input('source_warehouse_location_id'),
@@ -322,6 +330,10 @@ class StockMovementController extends Controller
                 'destination_cabinet_id'            => $request->input('destination_cabinet_id'),
                 'document_id'   => $request->input('document_id'),
             ];
+
+            if (Schema::hasColumn('stock_movements', 'planned_at')) {
+                $movementData['planned_at'] = now();
+            }
 
             if ($request->hasFile('in_image')) {
                 $movementData['in_image_path'] = $request->file('in_image')->store('stock-movements/in', 'public');
@@ -332,18 +344,17 @@ class StockMovementController extends Controller
 
             $movement = StockMovement::create($movementData);
 
-            $lines = collect($request->input('lines'))->map(fn ($line) => [
+            $linesData = collect($request->input('lines'))->map(fn ($line) => [
                 'product_id' => (int) $line['product_id'],
                 'quantity' => (int) $line['quantity'],
             ])->all();
 
-            $movement->lines()->createMany($lines);
+            $movement->lines()->createMany($linesData);
 
-            // Associer automatiquement les documents aux produits
+            // Document association (OCR support)
             $imagePath = $movement->in_image_path ?: $movement->out_image_path;
             if ($imagePath) {
-                $uniqueProductIds = collect($lines)->pluck('product_id')->unique();
-                foreach ($uniqueProductIds as $pid) {
+                foreach (collect($linesData)->pluck('product_id')->unique() as $pid) {
                     \App\Models\Document::create([
                         'user_id'      => $user ? $user->id : null,
                         'product_id'   => $pid,
@@ -357,43 +368,129 @@ class StockMovementController extends Controller
                 }
             }
 
+            if ($status === 'executed') {
+                $updateData = [];
+                if (Schema::hasColumn('stock_movements', 'validated_by')) $updateData['validated_by'] = $user->id;
+                if (Schema::hasColumn('stock_movements', 'executed_at')) $updateData['executed_at'] = now();
+                if (!empty($updateData)) $movement->update($updateData);
+                
+                $this->applyStockChanges($movement);
+            }
+
             return $movement;
         });
 
-        // Audit log
+        // Audit Log
         try {
             AuditLog::create([
                 'user_id' => $user?->id,
                 'action' => 'stock_movement.create',
-                'description' => "Mouvement {$movement->id} de type {$movement->movement_type} cree par user {$user?->id}",
+                'description' => "Flux {$movement->reference} créé ({$movement->status})",
                 'ip_address' => $request->ip(),
                 'user_agent' => $request->userAgent(),
             ]);
-        } catch (\Throwable $e) {
-            Log::error('Failed to create audit log for stock movement', ['err' => $e->getMessage()]);
-        }
+        } catch (\Throwable $e) {}
 
-        // Notify admins and related request owner (if any)
+        // Notifications
         try {
-            $admins = User::whereHas('roles', function ($q) { $q->whereRaw("LOWER(name) = 'administrateur'"); })->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new StockMovementNotification($movement));
-            }
+            $responsables = User::whereHas('roles', function ($q) { 
+                $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']); 
+            })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur'])->get();
 
-            if ($movement->related_request_id) {
-                $req = \App\Models\ConsumableRequest::find($movement->related_request_id);
-                if ($req && $req->user_id) {
-                    $owner = User::find($req->user_id);
-                    if ($owner) {
-                        $owner->notify(new StockMovementNotification($movement));
-                    }
+            foreach ($responsables as $resp) {
+                if ($user && $resp->id !== $user->id) {
+                    $resp->notify(new StockMovementNotification($movement));
                 }
             }
         } catch (\Throwable $e) {
-            Log::error('Failed to send stock movement notifications', ['err' => $e->getMessage()]);
+            Log::error('Stock Movement Notification failed', ['err' => $e->getMessage()]);
         }
 
         return response()->json($movement->load('lines.product', 'creator', 'validator'), 201);
+    }
+
+    /**
+     * Internal method to apply stock changes
+     */
+    private function executeMovementInternal(StockMovement $movement, User $user)
+    {
+        $movement->loadMissing('lines.product');
+
+        foreach ($movement->lines as $line) {
+            $product = $line->product;
+            if (!$product) continue;
+            $product->lockForUpdate();
+
+            $qty = (int) $line->quantity;
+
+            // Sortie / Transfert (Source)
+            if (in_array($movement->movement_type, ['out', 'transfer'])) {
+                $sourceStock = null;
+                if ($movement->source_warehouse_location_id) {
+                    $sourceStock = ProductStock::where('product_id', $product->id)
+                        ->where('warehouse_location_id', $movement->source_warehouse_location_id)
+                        ->lockForUpdate()
+                        ->first();
+                } elseif ($movement->source_cabinet_id) {
+                    $sourceStock = ProductStock::where('product_id', $product->id)
+                        ->where('cabinet_id', $movement->source_cabinet_id)
+                        ->lockForUpdate()
+                        ->first();
+                }
+
+                $available = (int) ($sourceStock?->quantity ?? 0);
+                if ($qty > $available) {
+                    throw ValidationException::withMessages([
+                        'lines' => ["Stock insuffisant pour {$product->title} (Disponible: {$available}, Demandé: {$qty})."],
+                    ]);
+                }
+
+                if ($sourceStock) {
+                    $sourceStock->decrement('quantity', $qty);
+                    $sourceStock->update(['last_updated' => now()]);
+                }
+            }
+
+            // Entrée / Transfert (Destination)
+            if (in_array($movement->movement_type, ['in', 'transfer'])) {
+                $destStock = null;
+                $query = ProductStock::where('product_id', $product->id);
+                
+                if ($movement->destination_warehouse_location_id) {
+                    $query->where('warehouse_location_id', $movement->destination_warehouse_location_id);
+                } else {
+                    $query->where('cabinet_id', $movement->destination_cabinet_id);
+                }
+                
+                $destStock = $query->lockForUpdate()->first();
+
+                if (!$destStock) {
+                    $destStock = ProductStock::create([
+                        'product_id' => $product->id,
+                        'warehouse_location_id' => $movement->destination_warehouse_location_id,
+                        'cabinet_id' => $movement->destination_cabinet_id,
+                        'supplier_id' => $movement->supplier_id,
+                        'quantity' => $qty,
+                        'last_updated' => now(),
+                    ]);
+                } else {
+                    $destStock->increment('quantity', $qty);
+                    if ($movement->supplier_id && !$destStock->supplier_id) {
+                        $destStock->update(['supplier_id' => $movement->supplier_id]);
+                    }
+                    $destStock->update(['last_updated' => now()]);
+                }
+            }
+
+            // Sync global stock
+            $product->update(['stock_quantity' => (int) $product->stocks()->sum('quantity')]);
+        }
+
+        $movement->update([
+            'status' => 'executed',
+            'executed_at' => now(),
+            'validated_by' => $user->id
+        ]);
     }
 
     public function update($id, Request $request)

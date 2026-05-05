@@ -57,6 +57,7 @@
             </button>
           </div>
           <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D dépôt" (click)="open3DViewer('warehouse', warehouse)">3D</button>
             <button class="btn mini" title="Voir les produits" (click)="viewWarehouseProducts(warehouse)">📦</button>
             <button class="btn mini" (click)="openEditWarehouseModal(warehouse)">✎</button>
             <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)">✕</button>
@@ -98,6 +99,7 @@
           <div class="item-title">{{ room.name }}</div>
           <div class="item-meta">{{ room.type || 'Standard' }}</div>
           <div class="item-actions" (click)="$event.stopPropagation()">
+            <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('room', room)">3D</button>
             <button class="btn mini" title="Voir les produits" (click)="viewRoomProducts(room)">📦</button>
             <button class="btn mini" (click)="openEditRoomModal(room)">✎</button>
             <button class="btn mini danger" (click)="deleteRoom(room.id)">✕</button>

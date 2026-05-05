@@ -36,9 +36,21 @@
       </div>
       <div class="stat-body">
         <span class="stat-value pending">{{ countByStatus('pending') }}</span>
-        <span class="stat-label">En attente</span>
+        <span class="stat-label">En attente OCR</span>
       </div>
-      <div class="stat-badge pending" *ngIf="countByStatus('pending') > 0">!</div>
+    </div>
+
+    <div class="stat-card clickable" (click)="filterByStatus('pending_validation')" [class.active-filter]="statusFilter === 'pending_validation'">
+      <div class="stat-icon pending-validation" style="background: #fff7ed; color: #c2410c;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+      </div>
+      <div class="stat-body">
+        <span class="stat-value" style="color: #c2410c;">{{ countByStatus('pending_validation') }}</span>
+        <span class="stat-label">Attente Validation</span>
+      </div>
+      <div class="stat-badge pending" *ngIf="countByStatus('pending_validation') > 0" style="background: #c2410c;">!</div>
     </div>
 
     <div class="stat-card clickable" (click)="filterByStatus('applied')" [class.active-filter]="statusFilter === 'applied'">
@@ -484,8 +496,9 @@
             <div class="doc-info">
               <strong>#{{ d.id }} — {{ d.title || d.path }}</strong>
               <span class="type" *ngIf="d.type">{{ d.type }}</span>
-              <span class="direction" [class]="d.direction">{{ d.direction }}</span>
-              <span class="status" [class]="d.status">{{ d.status }}</span>
+              <span class="status" [class]="d.status">
+                {{ d.status === 'pending_validation' ? 'Validation en attente' : (d.status === 'applied' ? 'Appliqué' : d.status) }}
+              </span>
               <span class="type">Fournisseur: {{ d.supplier?.name || 'Non associe' }}</span>
             </div>
             <div class="ocr-count">
@@ -615,8 +628,8 @@
                 </button>
               </div>
               <button class="btn primary" (click)="apply(d)"
-                [disabled]="d.status === 'applied' || isLoading || !d.ocr_lines?.length"
-                *ngIf="d.status !== 'applied'">
+                [disabled]="d.status === 'applied' || d.status === 'pending_validation' || isLoading || !d.ocr_lines?.length"
+                *ngIf="d.status !== 'applied' && d.status !== 'pending_validation'">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
@@ -627,6 +640,13 @@
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
                 Document appliqué au stock
+              </span>
+              <span class="applied-badge pending" *ngIf="d.status === 'pending_validation'" style="background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                Application soumise à validation
               </span>
             </div>
 

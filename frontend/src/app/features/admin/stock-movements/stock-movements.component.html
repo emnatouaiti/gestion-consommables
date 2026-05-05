@@ -38,7 +38,7 @@
         <select [(ngModel)]="filters.status" (change)="applyFilters()">
           <option value="">Tous les statuts</option>
           <option value="draft">Brouillon</option>
-          <option value="validated">Validé (Attente)</option>
+          <option value="pending_validation">En attente de validation</option>
           <option value="executed">Exécuté (Final)</option>
           <option value="cancelled">Annulé</option>
         </select>
@@ -112,12 +112,17 @@
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               </button>
-              <button *ngIf="m.status === 'draft'" class="btn-icon success" (click)="validate(m)" title="Valider">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="18" height="18">
+              <button *ngIf="m.status === 'pending_validation' && isResponsible"
+                      class="btn-icon success"
+                      (click)="validate(m)"
+                      [disabled]="m.executing"
+                      title="Valider">
+                <svg *ngIf="!m.executing" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" width="18" height="18">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
+                <span *ngIf="m.executing" class="spinner-tiny"></span>
               </button>
-              <button *ngIf="m.status === 'draft'" class="btn-icon danger" (click)="cancel(m)" title="Annuler">
+              <button *ngIf="(m.status === 'pending_validation' || m.status === 'draft') && isResponsible" class="btn-icon danger" (click)="cancel(m)" title="Annuler">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -158,7 +163,7 @@
       </div>
 
       <form class="modal-body scrollable" (submit)="$event.preventDefault(); submitCreate()">
-        
+
         <!-- STEP 1: TYPE & INFOS GENERALES -->
         <div class="form-section">
           <h3>Informations Générales</h3>
@@ -250,7 +255,7 @@
         <!-- STEP 3: EMPLACEMENTS -->
         <div class="form-section">
           <h3>Logistique & Emplacements</h3>
-          
+
           <!-- SOURCE (OUT or TRANSFER) -->
           <div class="location-box source" *ngIf="newMovement.movement_type !== 'in'">
             <label class="section-label">Source du stock</label>
@@ -320,7 +325,7 @@
             <h3>Produits & Quantités</h3>
             <button type="button" class="btn-text" (click)="addLine()">+ Ajouter un produit</button>
           </div>
-          
+
           <div class="lines-list">
             <div *ngFor="let line of newMovement.lines; let i = index" class="line-row">
               <div class="field flex-grow">
@@ -440,6 +445,9 @@
             <a *ngIf="selectedMovement.document" [href]="getDocumentUrl(selectedMovement.document.path)" target="_blank" class="doc-chip ocr">
               📄 Document OCR (#{{ selectedMovement.document.id }})
             </a>
+            <a *ngIf="selectedMovement.response_pdf_path" [href]="getDocumentUrl(selectedMovement.response_pdf_path)" target="_blank" class="doc-chip decision">
+              📜 Décision (PDF)
+            </a>
           </div>
         </div>
 
@@ -469,6 +477,155 @@
           </table>
         </div>
       </div>
+      <footer class="modal-footer" *ngIf="isResponsible || selectedMovement.status === 'approved'" style="border-top: 1px solid #e2e8f0; padding: 1.25rem 2rem; display: flex; justify-content: flex-end; gap: 1rem; background: #f8fafc; border-radius: 0 0 16px 16px;">
+        <!-- Manager actions for pending -->
+        <ng-container *ngIf="selectedMovement.status === 'pending_validation' && isResponsible">
+          <button class="btn btn-danger" (click)="reject(selectedMovement)">
+            Rejeter
+          </button>
+          <button class="btn btn-primary" (click)="approve(selectedMovement)">
+            Approuver
+          </button>
+        </ng-container>
+
+        <!-- Apply to stock (Agent or Manager) if approved -->
+        <button class="btn btn-success" *ngIf="selectedMovement.status === 'approved'" (click)="validate(selectedMovement)">
+          Appliquer au stock
+        </button>
+
+        <button class="btn btn-neutral" (click)="cancel(selectedMovement)" *ngIf="selectedMovement.status === 'pending_validation'">
+          Annuler
+        </button>
+      </footer>
+    </div>
+  <!-- DECISION MODAL (APPROVE/REJECT) -->
+  <div class="modal-overlay decision-overlay" *ngIf="approvingMovement">
+    <div class="modal-card decision-modal">
+      <header class="modal-header" [class.reject-header]="rejectionMode">
+        <div class="header-icon">
+          <svg *ngIf="!rejectionMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <svg *ngIf="rejectionMode" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+        <div class="header-text">
+          <h2>{{ rejectionMode ? 'Rejeter le mouvement' : 'Approuver le mouvement' }}</h2>
+          <p>{{ approvingMovement.reference }}</p>
+        </div>
+        <button class="close-btn" (click)="closeDecisionModal()">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="decision-summary">
+          <div class="summary-item">
+            <span class="label">Type:</span>
+            <span [class]="'badge ' + typeClass(approvingMovement.movement_type)">{{ typeLabel(approvingMovement.movement_type) }}</span>
+          </div>
+          <div class="summary-item">
+            <span class="label">Articles:</span>
+            <strong>{{ approvingMovement.lines?.length || 0 }} produits</strong>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="required-label" *ngIf="rejectionMode">Motif du rejet (Obligatoire)</label>
+          <label *ngIf="!rejectionMode">Commentaires / Instructions (Optionnel)</label>
+          <textarea [(ngModel)]="responseNotes" name="notes" rows="4"
+                    [placeholder]="rejectionMode ? 'Expliquez pourquoi ce mouvement est refusé...' : 'Ajoutez des précisions qui apparaîtront sur le PDF...'"
+                    class="decision-textarea"></textarea>
+        </div>
+
+        <div class="warning-box" *ngIf="!rejectionMode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+          <p><strong>Action irréversible :</strong> Le stock sera mis à jour dès la validation.</p>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button class="btn btn-neutral" (click)="closeDecisionModal()">Annuler</button>
+        <button [class]="rejectionMode ? 'btn btn-danger' : 'btn btn-primary'"
+                (click)="submitDecision()"
+                [disabled]="submittingDecision || (rejectionMode && !responseNotes.trim())">
+          <span *ngIf="!submittingDecision">{{ rejectionMode ? 'Confirmer le Rejet' : 'Confirmer l\'Approbation' }}</span>
+          <span *ngIf="submittingDecision" class="spinner-small"></span>
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- CONFIRMATION MODAL (VALIDATE/CANCEL) -->
+  <div class="modal-overlay confirmation-overlay" *ngIf="confirmationModal">
+    <div class="modal-card confirmation-modal" [class]="'modal-' + confirmationModal.type">
+      <header class="modal-header">
+        <div class="header-icon" [class]="'icon-' + confirmationModal.icon">
+          <svg *ngIf="confirmationModal.icon === 'check'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <svg *ngIf="confirmationModal.icon === 'x'" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="28" height="28">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </div>
+        <div class="header-text">
+          <h2>{{ confirmationModal.title }}</h2>
+          <p>{{ confirmationModal.movement.reference }}</p>
+        </div>
+        <button class="close-btn" (click)="closeConfirmationModal()" [disabled]="confirmationInProgress">&times;</button>
+      </header>
+
+      <div class="modal-body">
+        <p class="confirmation-message">{{ confirmationModal.message }}</p>
+
+        <!-- Raison d'annulation (si applicable) -->
+        <div class="field" *ngIf="confirmationModal.showReason">
+          <label>Motif / Commentaires (Optionnel)</label>
+          <textarea [(ngModel)]="confirmationModal.reason"
+                    name="reason"
+                    rows="3"
+                    placeholder="Expliquez la raison de l'annulation..."
+                    class="confirmation-textarea"
+                    [disabled]="confirmationInProgress"></textarea>
+        </div>
+
+        <!-- Détails du mouvement -->
+        <div class="confirmation-details">
+          <div class="detail-item">
+            <span class="label">Type:</span>
+            <span [class]="'badge ' + typeClass(confirmationModal.movement.movement_type)">
+              {{ typeLabel(confirmationModal.movement.movement_type) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <span class="label">Articles:</span>
+            <strong>{{ confirmationModal.movement.lines?.length || 0 }} produit(s)</strong>
+          </div>
+          <div class="detail-item">
+            <span class="label">Quantité totale:</span>
+            <strong>{{ getTotalQuantity(confirmationModal.movement.lines) }}</strong>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button class="btn btn-neutral" (click)="closeConfirmationModal()" [disabled]="confirmationInProgress">
+          Annuler
+        </button>
+        <button [class]="confirmationModal.type === 'cancel' ? 'btn btn-danger' : 'btn btn-success'"
+                (click)="submitConfirmation()"
+                [disabled]="confirmationInProgress">
+          <span *ngIf="!confirmationInProgress">
+            {{ confirmationModal.type === 'cancel' ? 'Oui, Annuler' : 'Oui, Appliquer' }}
+          </span>
+          <span *ngIf="confirmationInProgress" class="spinner-small"></span>
+        </button>
+      </footer>
     </div>
   </div>
 </div>

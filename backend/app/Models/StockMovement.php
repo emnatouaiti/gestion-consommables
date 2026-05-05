@@ -31,6 +31,9 @@ class StockMovement extends Model
         'document_id',
         'in_image_path',
         'out_image_path',
+        'response_pdf_path',
+        'response_notes',
+        'rejected_at',
     ];
 
     protected $casts = [

@@ -69,6 +69,9 @@ Route::prefix('api')->group(function () {
     // PUBLIC AUDIT LOG - Accessible without authentication
     Route::get('audit-logs/public', [AdminController::class, 'publicAuditLogs']);
 
+    // PUBLIC CATEGORIES - Accessible to authenticated users for OCR workflows
+    Route::middleware('auth:sanctum')->get('categories/public', [CategoryController::class, 'index']);
+
     Route::post('register', [AuthController::class, 'register']);
     Route::post('login', [AuthController::class, 'login']);
     Route::get('auth/google', [SocialAuthController::class, 'redirectToGoogle']);
@@ -106,7 +109,9 @@ Route::prefix('api')->group(function () {
             Route::put('/{id}', [\App\Http\Controllers\StockMovementController::class, 'update']);
             Route::delete('/{id}', [\App\Http\Controllers\StockMovementController::class, 'destroy']);
             Route::put('/{id}/validate', [\App\Http\Controllers\StockMovementController::class, 'validateMovement']);
+            Route::put('/{id}/approve', [\App\Http\Controllers\StockMovementController::class, 'approve']);
             Route::put('/{id}/cancel', [\App\Http\Controllers\StockMovementController::class, 'cancelMovement']);
+            Route::post('/{id}/reject', [\App\Http\Controllers\StockMovementController::class, 'reject']);
         });
 
         // Chat
@@ -123,7 +128,7 @@ Route::prefix('api')->group(function () {
         // Section: ADMIN ONLY
         Route::middleware('role:Administrateur')->group(function () {
             Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
-            
+
             Route::get('admin/users', [UserManagementController::class, 'index']);
             Route::post('admin/users', [UserManagementController::class, 'store']);
             Route::get('admin/users/{id}', [UserManagementController::class, 'show']);
@@ -143,7 +148,7 @@ Route::prefix('api')->group(function () {
         });
 
         // Section: REDUCED ADMIN & RESPONSABLE
-        Route::middleware('role:Responsable de stock|Responsable|Gestionnaire')->group(function () {
+        Route::middleware('role:Responsable de stock|Responsable|Gestionnaire|Agent de stock|Agent')->group(function () {
             Route::get('admin/categories', [CategoryController::class, 'index']);
             Route::post('admin/categories', [CategoryController::class, 'store']);
             Route::get('admin/categories/{id}', [CategoryController::class, 'show']);
@@ -245,7 +250,7 @@ Route::prefix('api')->group(function () {
             Route::get('admin/products/{product}/expiration/expiring-soon', [\App\Http\Controllers\API\ExpirationController::class, 'getExpiringSoon']);
             Route::get('admin/products/{product}/expiration-events', [\App\Http\Controllers\API\ExpirationController::class, 'getEvents']);
         });
-            
+
         // OCR specific to Agent & Responsable
         Route::middleware('role:Agent de stock|Agent|Responsable de stock|Responsable|Gestionnaire')->group(function () {
             Route::get('admin/documents', [DocumentController::class, 'index']);

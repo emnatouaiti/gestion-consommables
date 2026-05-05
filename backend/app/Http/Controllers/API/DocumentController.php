@@ -14,9 +14,37 @@ use App\Models\ProductStock;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
+use App\Notifications\StockMovementNotification;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Log;
 
 class DocumentController extends Controller
 {
+    /**
+     * Helper to check user roles robustly
+     */
+    private function userHasAnyRole($user, array $roles): bool
+    {
+        if (!$user) return false;
+        
+        // Check spatie roles
+        if (method_exists($user, 'hasRole')) {
+            foreach ($roles as $role) {
+                if ($user->hasRole($role)) return true;
+            }
+        }
+
+        // Check direct role column (LOWER case)
+        $userRole = Str::lower($user->role ?? '');
+        foreach ($roles as $role) {
+            if ($userRole === Str::lower($role)) return true;
+        }
+
+        return false;
+    }
+
     public function index(Request $request)
     {
         $query = Document::with(['product:id,title,reference,has_expiration', 'supplier:id,name', 'warehouse:id,name'])
@@ -342,97 +370,98 @@ class DocumentController extends Controller
             }
         }
 
-        foreach ($prepareActions as $action) {
-            $product = $action['product'];
-            $locId   = $action['warehouse_location_id'] ?? null;
-            $cabinetId = $action['cabinet_id'] ?? null;
-            if (!$product) {
-                if (!$locId && !$cabinetId) {
-                    return response()->json(['message' => 'Choisissez soit un emplacement, soit une armoire pour ce produit.'], 422);
-                }
-                $catId = $action['category_id'];
-                $product = Product::create([
-                    'status'        => 'active',
-                    'title'         => $action['title'],
-                    'reference'     => $action['reference'] !== '' ? $action['reference'] : strtoupper(Str::slug($action['title'])) . '-' . Str::random(4),
-                    'seuil_min'     => 0,
-                    'stock_quantity'=> 0,
-                    'categorie_id'  => $catId,
-                    'photo'         => $document->path,
-                ]);
+        $user = $request->user();
+        $isManager = $this->userHasAnyRole($user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
 
-                if ($validSupplierId) {
+        DB::transaction(function () use ($prepareActions, $document, $validSupplierId, $isManager, $user) {
+            foreach ($prepareActions as $action) {
+                $product = $action['product'];
+                $locId   = $action['warehouse_location_id'] ?? null;
+                $cabinetId = $action['cabinet_id'] ?? null;
+                
+                if (!$product) {
+                    if (!$locId && !$cabinetId) {
+                        throw new \Exception('Choisissez soit un emplacement, soit une armoire pour ce produit.');
+                    }
+                    $catId = $action['category_id'];
+                    $product = Product::create([
+                        'status'        => 'active',
+                        'title'         => $action['title'],
+                        'reference'     => $action['reference'] !== '' ? $action['reference'] : strtoupper(Str::slug($action['title'])) . '-' . Str::random(4),
+                        'seuil_min'     => 0,
+                        'stock_quantity'=> 0,
+                        'categorie_id'  => $catId,
+                        'photo'         => $document->path,
+                    ]);
+
+                    if ($validSupplierId) {
+                        $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
+                    }
+                } elseif ($validSupplierId) {
                     $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
                 }
-            } elseif ($validSupplierId) {
-                $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
-            }
 
-            $quantity = $action['quantity'];
-            $dir = $action['direction'];
-            if ($product && $quantity > 0) {
-                if ($dir === 'in') {
-                    $product->increment('stock_quantity', $quantity);
-                } elseif ($dir === 'out') {
-                    $product->decrement('stock_quantity', $quantity);
-                }
+                $quantity = $action['quantity'];
+                $dir = $action['direction'];
 
-                // Mettre à jour le stock par emplacement si fourni
-                if ($locId || $cabinetId) {
-                    $ps = ProductStock::firstOrNew(
-                        [
+                // ONLY update stock if Manager
+                if ($isManager && $product && $quantity > 0) {
+                    if ($dir === 'in') {
+                        $product->increment('stock_quantity', $quantity);
+                    } elseif ($dir === 'out') {
+                        $product->decrement('stock_quantity', $quantity);
+                    }
+
+                    if ($locId || $cabinetId) {
+                        $ps = ProductStock::firstOrNew([
                             'product_id' => $product->id,
                             'warehouse_location_id' => $locId ?: null,
                             'cabinet_id' => $cabinetId ?: null,
                             'batch_number' => $action['batch_number'] ?: null,
                             'expiration_date' => $action['expiration_date'] ?: null,
-                        ]
-                    );
-                    if (!$ps->exists || !$ps->supplier_id) {
-                        $ps->supplier_id = $validSupplierId;
+                        ]);
+                        if (!$ps->exists || !$ps->supplier_id) {
+                            $ps->supplier_id = $validSupplierId;
+                        }
+                        if ($cabinetId && !$locId) {
+                            $ps->cabinet_id = $cabinetId;
+                            $ps->warehouse_location_id = null;
+                        }
+                        if ($action['expiration_date']) $ps->expiration_date = $action['expiration_date'];
+                        if ($action['batch_number']) $ps->batch_number = $action['batch_number'];
+                        
+                        $delta = $dir === 'in' ? $quantity : -$quantity;
+                        $ps->quantity = max(0, (int)($ps->quantity ?? 0) + $delta);
+                        $ps->last_updated = now();
+                        $ps->save();
                     }
-                    if ($cabinetId && !$locId) {
-                        $ps->cabinet_id = $cabinetId;
-                        $ps->warehouse_location_id = null;
-                    }
-                    if ($action['expiration_date']) {
-                        $ps->expiration_date = $action['expiration_date'];
-                    }
-                    if ($action['batch_number']) {
-                        $ps->batch_number = $action['batch_number'];
-                    }
-                    $delta = $dir === 'in' ? $quantity : -$quantity;
-                    $ps->quantity = max(0, (int)($ps->quantity ?? 0) + $delta);
-                    $ps->last_updated = now();
-                    $ps->save();
+                }
+                if ($product) {
+                    $document->product_id = $document->product_id ?: $product->id;
                 }
             }
-            if ($product) {
-                $document->product_id = $document->product_id ?: $product->id;
+
+            $document->status = $isManager ? 'applied' : 'pending_validation';
+            if ($document->direction === 'unknown') {
+                $document->direction = $this->guessDirection((string) $document->ocr_text);
             }
-        }
+            if ($document->direction === 'unknown' && $document->type === 'bon_livraison') {
+                $document->direction = 'in';
+            }
+            $document->save();
 
-        $document->status = 'applied';
-        if ($document->direction === 'unknown') {
-            $document->direction = $this->guessDirection((string) $document->ocr_text);
-        }
-        if ($document->direction === 'unknown' && $document->type === 'bon_livraison') {
-            $document->direction = 'in';
-        }
-        $document->save();
-
-        // Create stock movement for this document operation.
-        try {
+            // Create stock movement
             $movementType = in_array($document->direction, ['in', 'out']) ? $document->direction : 'in';
             $movement = StockMovement::create([
                 'movement_type' => $movementType,
                 'reference' => 'DOC-' . $document->id,
-                'created_by' => optional($request->user())->id,
-                'status' => 'executed',
+                'created_by' => $user?->id,
+                'status' => $isManager ? 'executed' : 'pending_validation',
                 'supplier_id' => $document->supplier_id,
                 'document_id' => $document->id,
                 'in_image_path' => $movementType === 'in' ? $document->path : null,
                 'out_image_path' => $movementType === 'out' ? $document->path : null,
+                'notes' => 'Généré par OCR Document: ' . $document->title
             ]);
 
             foreach ($prepareActions as $action) {
@@ -444,12 +473,27 @@ class DocumentController extends Controller
                     ]);
                 }
             }
-        } catch (\Throwable $e) {
-            // OK si echec, on ne bloque pas l'application du document
-            logger()->error('StockMovement creation failed for document apply', ['document_id' => $document->id, 'error' => $e->getMessage()]);
-        }
 
-        return response()->json(['message' => 'Document appliqué', 'document' => $document->fresh()]);
+            // Notify if pending
+            if (!$isManager) {
+                try {
+                    $responsables = User::whereHas('roles', function ($q) { 
+                        $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']); 
+                    })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur'])->get();
+
+                    foreach ($responsables as $resp) {
+                        if ($user && $resp->id !== $user->id) {
+                            $resp->notify(new StockMovementNotification($movement));
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('OCR Approval Notification failed', ['err' => $e->getMessage()]);
+                }
+            }
+        });
+
+        $msg = $isManager ? 'Document appliqué' : 'Application soumise à validation';
+        return response()->json(['message' => $msg, 'document' => $document->fresh()]);
     }
 
     public function update(Request $request, int $id)

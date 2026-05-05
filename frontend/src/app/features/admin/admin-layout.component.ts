@@ -343,6 +343,9 @@ get userInitials(): string {
     if (data?.type === 'capacity_alert') {
       return (data.title || 'Alerte Capacité') + ': ' + (data.message || 'Espace saturé');
     }
+    if (data?.type === 'stock_movement') {
+      return (data.title || 'Mouvement') + ': ' + (data.message || data.reference);
+    }
     const item = data?.item_name || 'Article';
     const qty = data?.requested_quantity ?? '-';
     return `${item} (${qty})`;
@@ -351,6 +354,7 @@ get userInitials(): string {
   onNotificationClick(notification: any): void {
     const data = notification?.data || {};
     const requestId = data?.consumable_request_id;
+    const movementId = data?.movement_id;
     const target = data?.action_url || data?.url || '/admin/validation-demandes';
     this.notificationsOpen = false;
 
@@ -359,15 +363,17 @@ get userInitials(): string {
       return;
     }
 
+    if (movementId && target === '/admin/validation-mouvements') {
+      this.router.navigate(['/admin/mouvements-stock'], { queryParams: { status: 'pending_validation', id: movementId } });
+      return;
+    }
+
     this.router.navigateByUrl(target);
   }
 
   private redirectAdminRootToFirstMenu(): void {
     const isAdminRoot = this.router.url === '/admin' || this.router.url === '/admin/';
-
-    if (!isAdminRoot) {
-      return;
-    }
+    if (!isAdminRoot) return;
 
     const firstRoute = this.navSections[0]?.items[0]?.route;
     if (firstRoute) {
@@ -399,7 +405,3 @@ get userInitials(): string {
     });
   }
 }
-
-
-
-

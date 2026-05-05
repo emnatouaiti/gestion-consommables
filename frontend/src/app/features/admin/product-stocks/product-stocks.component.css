@@ -688,26 +688,26 @@
    DOCUMENTS SECTION
 ══════════════════════════════════════════════════════════════ */
 /* ===== DOCUMENTS STYLES ===== */
-.docs-header { 
-  display: flex; 
-  flex-direction: column; 
-  gap: 12px; 
+.docs-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
   padding-bottom: 15px;
 }
 
-.docs-actions-top { 
-  display: flex; 
-  align-items: center; 
-  justify-content: space-between; 
-  width: 100%; 
-  gap: 15px; 
+.docs-actions-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 15px;
   flex-wrap: wrap;
 }
 
-.docs-filter { 
-  display: flex; 
-  align-items: center; 
-  gap: 8px; 
+.docs-filter {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .docs-filter label {

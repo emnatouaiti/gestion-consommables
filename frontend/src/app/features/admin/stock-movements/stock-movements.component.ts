@@ -5,7 +5,9 @@ import { StockMovementService } from '../../../services/stock-movement.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { AdminStockService } from '../services/admin-stock.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
+import { ActivatedRoute } from '@angular/router';
 
 const MOTIFS_IN  = ['Achat', 'Retour fournisseur', 'Don', 'Inventaire (ajustement)', 'Transfert entrant', 'Autre'];
 const MOTIFS_OUT = ['Consommation interne', 'Livraison client', 'Retour client', 'Transfert sortant', 'Perte/Casse', 'Inventaire (ajustement)', 'Autre'];
@@ -57,6 +59,17 @@ export class StockMovementsComponent implements OnInit {
   newMovement: any = this.emptyForm();
   selectedFileName: string | null = null;
 
+  /* ─── Decision Modal state ─── */
+  approvingMovement: any = null;
+  rejectionMode = false;
+  responseNotes = '';
+  submittingDecision = false;
+
+  /* ─── Confirmation Modal state ─── */
+  confirmationModal: any = null;
+  confirmationCallback: (() => void) | null = null;
+  confirmationInProgress = false;
+
   private emptyForm(): any {
     return {
       movement_type: 'in',
@@ -88,13 +101,36 @@ export class StockMovementsComponent implements OnInit {
     private warehouseService: AdminWarehouseService,
     private supplierService: SupplierService,
     private stockService: AdminStockService,
+    public auth: AuthService,
+    private route: ActivatedRoute,
     @Inject(PLATFORM_ID) private platformId: Object,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
+  get isResponsible(): boolean {
+    const user = this.auth.currentUser();
+    return this.auth.userHasAnyRole(user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+  }
+
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-    this.load();
+
+    this.route.queryParams.subscribe(params => {
+      if (params['status']) {
+        this.filters.status = params['status'];
+      }
+      if (params['id']) {
+        this.openDetails({ id: params['id'] });
+      }
+      this.load();
+    });
+
+    this.route.data.subscribe(data => {
+      if (data['mode'] === 'validation') {
+        this.filters.status = 'pending_validation';
+        this.load();
+      }
+    });
   }
 
   /* ────────────────── LIST ────────────────── */
@@ -125,14 +161,140 @@ export class StockMovementsComponent implements OnInit {
   nextPage(): void { if (this.page < this.lastPage) { this.page++; this.load(); } }
 
   validate(m: any): void {
-    if (!confirm('Valider et exécuter ce mouvement de stock ?')) return;
-    this.svc.validate(m.id).subscribe({ next: () => this.load(), error: () => alert('Erreur lors de la validation.') });
+    this.confirmationModal = {
+      type: 'validate',
+      title: 'Appliquer au Stock',
+      message: 'Mettre à jour les quantités physiques avec ce mouvement ?',
+      movement: m,
+      icon: 'check'
+    };
+    this.confirmationCallback = () => this.executeValidate(m);
+    this.cdr.detectChanges();
+  }
+
+  private executeValidate(m: any): void {
+    this.confirmationInProgress = true;
+    m.executing = true;
+    this.cdr.detectChanges();
+
+    this.svc.validate(m.id).subscribe({
+      next: () => {
+        this.message = 'Stock mis à jour avec succès.';
+        this.selectedMovement = null;
+        m.executing = false;
+        this.confirmationInProgress = false;
+        this.confirmationModal = null;
+        this.load();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        m.executing = false;
+        this.confirmationInProgress = false;
+        alert(err?.error?.message || 'Erreur lors de l\'exécution.');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  openApproveModal(m: any): void {
+    this.approvingMovement = m;
+    this.rejectionMode = false;
+    this.responseNotes = '';
+  }
+
+  openRejectModal(m: any): void {
+    this.approvingMovement = m;
+    this.rejectionMode = true;
+    this.responseNotes = '';
+  }
+
+  closeDecisionModal(): void {
+    this.approvingMovement = null;
+    this.responseNotes = '';
+  }
+
+  submitDecision(): void {
+    if (!this.approvingMovement) return;
+
+    if (this.rejectionMode && !this.responseNotes.trim()) {
+      alert('Un motif est obligatoire pour rejeter un mouvement.');
+      return;
+    }
+
+    this.submittingDecision = true;
+    const obs = this.rejectionMode
+      ? this.svc.reject(this.approvingMovement.id, this.responseNotes)
+      : this.svc.approve(this.approvingMovement.id, this.responseNotes);
+
+    obs.subscribe({
+      next: () => {
+        this.message = this.rejectionMode ? 'Mouvement rejeté.' : 'Mouvement approuvé et exécuté.';
+        this.approvingMovement = null;
+        this.submittingDecision = false;
+        this.load();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        alert(err?.error?.message || 'Erreur lors du traitement.');
+        this.submittingDecision = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  approve(m: any): void {
+    this.openApproveModal(m);
+  }
+
+  reject(m: any): void {
+    this.openRejectModal(m);
+  }
+
+  closeConfirmationModal(): void {
+    this.confirmationModal = null;
+    this.confirmationCallback = null;
+    this.cdr.detectChanges();
+  }
+
+  submitConfirmation(): void {
+    if (this.confirmationCallback) {
+      this.confirmationCallback();
+    }
   }
 
   cancel(m: any): void {
-    if (!confirm('Annuler ce mouvement ?')) return;
-    const reason = prompt("Motif d'annulation (optionnel) :") ?? undefined;
-    this.svc.cancel(m.id, reason).subscribe({ next: () => this.load(), error: () => alert('Erreur.') });
+    this.confirmationModal = {
+      type: 'cancel',
+      title: 'Annuler le Mouvement',
+      message: 'Êtes-vous sûr de vouloir annuler ce mouvement de stock ?',
+      movement: m,
+      icon: 'x',
+      showReason: true,
+      reason: ''
+    };
+    this.confirmationCallback = () => this.executeCancel(m);
+    this.cdr.detectChanges();
+  }
+
+  private executeCancel(m: any): void {
+    this.confirmationInProgress = true;
+    this.cdr.detectChanges();
+
+    const reason = this.confirmationModal?.reason || undefined;
+    this.svc.cancel(m.id, reason).subscribe({
+      next: () => {
+        this.message = 'Mouvement annulé.';
+        this.confirmationInProgress = false;
+        this.confirmationModal = null;
+        this.load();
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.confirmationInProgress = false;
+        alert('Erreur lors de l\'annulation.');
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   openDetails(m: any): void {
@@ -284,26 +446,26 @@ export class StockMovementsComponent implements OnInit {
     this.message = '';
     const validLines = (this.newMovement.lines || []).filter((l: any) => Number(l.product_id) > 0 && Number(l.quantity) >= 1);
     if (validLines.length === 0) { this.message = 'Ajoutez au moins un produit valide.'; return; }
-    
+
     this.loading = true;
     this.cdr.detectChanges();
 
     const type = this.newMovement.movement_type;
 
     if (type === 'in' && !Number(this.newMovement.supplier_id)) {
-      this.message = 'Sélectionnez le fournisseur.'; 
+      this.message = 'Sélectionnez le fournisseur.';
       this.loading = false;
-      return; 
+      return;
     }
     if ((type === 'out' || type === 'transfer') && !Number(this.newMovement.source_warehouse_location_id)) {
-      this.message = 'Sélectionnez l\'emplacement source (dépôt → salle → emplacement).'; 
+      this.message = 'Sélectionnez l\'emplacement source (dépôt → salle → emplacement).';
       this.loading = false;
-      return; 
+      return;
     }
     if ((type === 'in' || type === 'transfer') && !Number(this.newMovement.destination_warehouse_location_id)) {
-      this.message = 'Sélectionnez l\'emplacement de destination.'; 
+      this.message = 'Sélectionnez l\'emplacement de destination.';
       this.loading = false;
-      return; 
+      return;
     }
     if (type === 'transfer' && Number(this.newMovement.source_warehouse_location_id) === Number(this.newMovement.destination_warehouse_location_id)) {
       this.message = 'La destination doit être différente de la source.';
@@ -377,20 +539,22 @@ export class StockMovementsComponent implements OnInit {
 
   statusClass(status: string): string {
     switch (status) {
-      case 'executed':  return 'tag-success';
-      case 'cancelled': return 'tag-danger';
-      case 'validated': return 'tag-info';
-      default:          return 'tag-neutral';
+      case 'executed':           return 'tag-success';
+      case 'cancelled':          return 'tag-danger';
+      case 'pending_validation': return 'tag-warning';
+      case 'approved':           return 'tag-info';
+      default:                   return 'tag-neutral';
     }
   }
 
   statusLabel(status: string): string {
     switch (status) {
-      case 'draft':     return 'Brouillon';
-      case 'validated': return 'Validé';
-      case 'executed':  return 'Exécuté';
-      case 'cancelled': return 'Annulé';
-      default:          return status;
+      case 'draft':              return 'Brouillon';
+      case 'pending_validation': return 'Attente Validation';
+      case 'approved':           return 'Approuvé (Attente exécution)';
+      case 'executed':           return 'Exécuté';
+      case 'cancelled':          return 'Annulé / Rejeté';
+      default:                   return status;
     }
   }
 
@@ -406,6 +570,11 @@ export class StockMovementsComponent implements OnInit {
     if (!path) return '#';
     const clean = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
     return `/api/docs/${clean}`;
+  }
+
+  getTotalQuantity(lines: any[]): number {
+    if (!Array.isArray(lines)) return 0;
+    return lines.reduce((total, line) => total + (Number(line.quantity) || 0), 0);
   }
 
   private buildSummary(movement: any): { short: string; full: string } {

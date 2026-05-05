@@ -113,6 +113,7 @@ reactivateProduct: any | null = null;
     if (this.canWrite) {
       this.loadUnits();
     }
+    this.loadSuppliers();
     this.loadBrands();
     this.loadAll();
   }
@@ -181,7 +182,7 @@ reactivateProduct: any | null = null;
     if (!isPlatformBrowser(this.platformId)) return;
     this.supplierService.getSuppliers().subscribe({
       next: (res: any) => {
-        this.suppliers = res || [];
+        this.suppliers = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []);
         this.cdr.detectChanges();
       },
       error: () => this.suppliers = []
