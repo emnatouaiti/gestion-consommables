@@ -11,8 +11,8 @@ export class ConsumableRequestService {
 
   constructor(private apiService: ApiService) {}
 
-  getRequests(): Observable<any> {
-    return this.apiService.get(this.apiPath);
+  getRequests(params?: any): Observable<any> {
+    return this.apiService.get(this.apiPath, params);
   }
 
   getProducts(): Observable<any> {
@@ -31,9 +31,8 @@ export class ConsumableRequestService {
     return this.apiService.delete(`${this.apiPath}/${id}`);
   }
 
-  approveRequest(id: number, approvedQuantity?: number): Observable<any> {
-    const payload = approvedQuantity !== undefined ? { approved_quantity: approvedQuantity } : {};
-    return this.apiService.put(`${this.apiPath}/${id}/approve`, payload);
+  approveRequest(id: number, payload?: { approved_quantity?: number; approved_quantities?: Record<number, number> }): Observable<any> {
+    return this.apiService.put(`${this.apiPath}/${id}/approve`, payload || {});
   }
 
   rejectRequest(id: number, reason?: string): Observable<any> {

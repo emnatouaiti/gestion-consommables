@@ -500,7 +500,7 @@ export class DocumentsComponent implements OnInit {
     }
 
     const items = this.productConfirmation.items.map((item: any) => {
-      const found = required.find((prod: any) => prod.title === item.title && prod.reference === item.reference);
+      const found = required.find((prod: any) => prod.title === item.title && (prod.reference || '') === (item.reference || ''));
       if (!found) return item;
 
       return {

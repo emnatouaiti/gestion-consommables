@@ -20,6 +20,8 @@ class ProductStock extends Model
         'notes',
         'batch_number',
         'expiration_date',
+        'batch_status',
+        'last_expiration_check',
         'last_updated',
     ];
 

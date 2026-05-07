@@ -13,8 +13,14 @@ class ConsumableRequestNotification extends Notification
 {
     use Queueable;
 
-    public function __construct(public ConsumableRequest $consumableRequest)
+    public $requests;
+
+    public function __construct($requests)
     {
+        // Handle both single model or collection/array
+        $this->requests = is_array($requests) || $requests instanceof \Illuminate\Support\Collection 
+            ? collect($requests) 
+            : collect([$requests]);
     }
 
     public function via(object $notifiable): array
@@ -24,81 +30,93 @@ class ConsumableRequestNotification extends Notification
             $channels[] = 'database';
         }
         
-        // Always send email to director as requested
         $channels[] = 'mail';
-
         return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        $user = $this->consumableRequest->user;
-        $status = Str::lower($this->consumableRequest->status);
-        $isOwner = $notifiable->id === $this->consumableRequest->user_id;
+        $firstRequest = $this->requests->first();
+        if (!$firstRequest) return (new MailMessage)->line("Erreur de notification.");
+
+        $user = $firstRequest->user;
+        $status = Str::lower($firstRequest->status);
+        $isOwner = $notifiable->id === $firstRequest->user_id;
         
         $isApproval = $status === 'approved_pending_exit';
         $isRejected = $status === 'rejected';
+        $isPending = $status === 'pending' || $status === 'validated_by_manager';
         
         $frontendUrl = "http://localhost:4200/consumable-requests";
-        $adminUrl = "http://localhost:4200/admin/gerer-produits";
         
-        $itemTitle = $this->consumableRequest->item_name ?: 'Consommable';
+        $itemTitle = $this->requests->count() > 1 
+            ? $this->requests->count() . " articles" 
+            : ($firstRequest->item_name ?: 'Consommable');
+
         $subject = "Mise à jour de votre demande : " . $itemTitle;
         if ($isApproval) $subject = $isOwner ? "Demande Approuvée : " . $itemTitle : "Ordre de sortie : " . $itemTitle;
         if ($isRejected) $subject = "Demande Refusée : " . $itemTitle;
+        if ($isPending && !$isOwner) $subject = "Nouvelle demande à valider : " . $itemTitle;
 
         $mail = (new MailMessage)
             ->subject($subject)
             ->greeting("Bonjour {$notifiable->nomprenom},");
 
-        if ($status === 'approved_pending_exit') {
+        if ($isApproval) {
             if ($isOwner) {
-                // Message for the Employee
-                $mail->line("Bonne nouvelle ! Votre demande de consommable a été approuvée par le Directeur.")
-                    ->line("Article : {$itemTitle}")
-                    ->line("Quantité Approuvée : {$this->consumableRequest->approved_quantity}")
-                    ->line("Vous recevrez votre matériel prochainement après confirmation du Responsable Logistique.")
+                $mail->line("Bonne nouvelle ! Votre demande de consommable a été approuvée par le Directeur.");
+                $mail->line("Articles approuvés :");
+                foreach ($this->requests as $req) {
+                    $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                }
+                $mail->line("Vous recevrez votre matériel prochainement après confirmation du Responsable Logistique.")
                     ->action("Voir mes demandes", $frontendUrl);
             } else {
-                // Message for the Responsible / Manager
                 $mail->line("Une nouvelle demande de consommable a été approuvée par la Direction et attend votre confirmation de sortie.")
-                    ->line("Demandeur : {$user->nomprenom}")
-                    ->line("Article : {$itemTitle}")
-                    ->line("Quantité à sortir : {$this->consumableRequest->approved_quantity}")
-                    ->line("Veuillez valider la sortie physique dans votre tableau de bord.")
+                    ->line("Demandeur : {$user->nomprenom}");
+                $mail->line("Articles à sortir :");
+                foreach ($this->requests as $req) {
+                    $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                }
+                $mail->line("Veuillez valider la sortie physique dans votre tableau de bord.")
                     ->action("Gérer les sorties", "http://localhost:4200/admin/validation-demandes");
             }
         } elseif ($status === 'approved') {
             $mail->subject('Sortie de consommable confirmée - ' . $itemTitle)
-                ->line($isOwner ? 'Votre demande de consommable a été finalisée et la sortie physique a été enregistrée.' : 'La sortie physique pour la demande de ' . $user->nomprenom . ' a été confirmée.')
-                ->line('Article : ' . $itemTitle)
-                ->line('Quantité sortie : ' . ($this->consumableRequest->approved_quantity ?: $this->consumableRequest->requested_quantity))
-                ->action("Consulter la demande", $isOwner ? $frontendUrl : "http://localhost:4200/admin/validation-demandes");
-        } elseif ($status === 'rejected') {
-            $reason = $this->consumableRequest->reject_reason ?: 'Non spécifiée';
+                ->line($isOwner ? 'Votre demande de consommable a été finalisée et la sortie physique a été enregistrée.' : 'La sortie physique pour la demande de ' . $user->nomprenom . ' a été confirmée.');
+            $mail->line("Articles livrés :");
+            foreach ($this->requests as $req) {
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+            }
+            $mail->action("Consulter la demande", $isOwner ? $frontendUrl : "http://localhost:4200/admin/validation-demandes");
+        } elseif ($isRejected) {
+            $reason = $firstRequest->reject_reason ?: 'Non spécifiée';
             $mail->subject('Demande de consommable refusée - ' . $itemTitle)
-                ->line('Nous vous informons que votre demande de consommable a été refusée.')
-                ->line('Article : ' . $itemTitle)
-                ->line('Raison du refus : ' . $reason)
+                ->line('Nous vous informons que votre demande de consommable a été refusée.');
+            $mail->line("Articles concernés :");
+            foreach ($this->requests as $req) {
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . $req->requested_quantity . ")");
+            }
+            $mail->line('Raison du refus : ' . $reason)
                 ->action("Consulter la demande", $frontendUrl);
         } else {
-            // Notification for Director (New Request)
-            $mail->subject("Mise à jour de votre demande : " . $itemTitle)
-                ->line("Une nouvelle demande de consommable a été créée par {$user->nomprenom}.")
-                ->line("Article : {$itemTitle}")
-                ->line("Quantité Demandée : {$this->consumableRequest->requested_quantity}")
-                ->action("Valider la demande", "http://localhost:4200/admin/validation-demandes")
+            // Notification for Director / Manager (Validation)
+            $mail->line("Une nouvelle demande de consommable a été créée par {$user->nomprenom}.");
+            $mail->line("Liste des articles demandés :");
+            foreach ($this->requests as $req) {
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . $req->requested_quantity . ")");
+            }
+            $mail->action("Valider la demande", "http://localhost:4200/admin/validation-demandes")
                 ->line("Merci d'approuver ou de rejeter cette demande.");
         }
 
-        $mail->salutation("Regards,\nETAP");
+        $mail->salutation("Cordialement,\nL'équipe Logistique");
 
-        // Attach PDF if it exists
-        if ($this->consumableRequest->pdf_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($this->consumableRequest->pdf_path)) {
-            $fileName = basename($this->consumableRequest->pdf_path);
-            
-            $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($this->consumableRequest->pdf_path), [
-                'as' => $fileName,
+        // Attach PDF if it exists in any of the requests (usually same for batch)
+        $reqWithPdf = $this->requests->first(fn($r) => $r->pdf_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
+        if ($reqWithPdf) {
+            $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($reqWithPdf->pdf_path), [
+                'as' => basename($reqWithPdf->pdf_path),
                 'mime' => 'application/pdf',
             ]);
         }
@@ -108,12 +126,13 @@ class ConsumableRequestNotification extends Notification
 
     public function toArray(object $notifiable): array
     {
+        $first = $this->requests->first();
         return [
-            'consumable_request_id' => $this->consumableRequest->id,
-            'item_name' => $this->consumableRequest->item_name,
-            'requested_quantity' => $this->consumableRequest->requested_quantity,
-            'user_id' => $this->consumableRequest->user_id,
+            'consumable_request_id' => $first->id,
+            'item_name' => $this->requests->count() > 1 ? $this->requests->count() . " articles" : $first->item_name,
+            'user_id' => $first->user_id,
             'url' => '/admin/validation-demandes',
         ];
     }
 }
+

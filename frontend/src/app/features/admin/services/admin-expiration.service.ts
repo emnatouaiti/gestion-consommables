@@ -51,7 +51,7 @@ export class AdminExpirationService {
    * Force la consommation d'un stock expiré (admin only)
    */
   forceConsumeExpired(stockId: number, justification: string): Observable<any> {
-    return this.api.post(`${this.apiBase}/stocks/${stockId}/force-consume`, {
+    return this.api.post(`${this.apiBase}/expirations/${stockId}/force-consume`, {
       justification
     });
   }
@@ -68,5 +68,23 @@ export class AdminExpirationService {
    */
   getExpirationEvents(productId: number): Observable<any[]> {
     return this.api.get(`${this.apiBase}/products/${productId}/expiration-events`);
+  }
+
+  /**
+   * Élimine un lot (admin only)
+   */
+  eliminateBatch(stockId: number, justification: string): Observable<any> {
+    return this.api.post(`${this.apiBase}/expirations/${stockId}/eliminate`, {
+      justification
+    });
+  }
+
+  /**
+   * Retourne un lot au fournisseur (admin only)
+   */
+  returnToSupplierBatch(stockId: number, justification: string): Observable<any> {
+    return this.api.post(`${this.apiBase}/expirations/${stockId}/return-supplier`, {
+      justification
+    });
   }
 }

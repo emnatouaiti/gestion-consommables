@@ -59,17 +59,9 @@
 
         <div class="messages">
             <div class="success-msg" *ngIf="successMessage">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polyline points="20 6 9 17 4 12" />
-                </svg>
                 {{ successMessage }}
             </div>
             <div class="error-msg" *ngIf="errorMessage">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
                 {{ errorMessage }}
             </div>
         </div>
@@ -137,20 +129,8 @@
                         </svg>
                         Docs ({{ getDocCount(supplier.id) }})
                     </button>
-                    <button class="btn-icon circle edit" (click)="openEditModal(supplier)" title="Modifier">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                    </button>
-                    <button class="btn-icon circle danger" (click)="deleteSupplier(supplier.id)" title="Supprimer">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3 6 5 6 21 6" />
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            <line x1="10" y1="11" x2="10" y2="17" />
-                            <line x1="14" y1="11" x2="14" y2="17" />
-                        </svg>
-                    </button>
+                    <button class="btn secondary sm" (click)="openEditModal(supplier)">Modifier</button>
+                    <button class="btn danger sm" (click)="deleteSupplier(supplier.id)">Supprimer</button>
                 </div>
             </div>
 
@@ -271,20 +251,8 @@
                                             <circle cx="12" cy="7" r="4" />
                                         </svg>
                                     </button>
-                                    <button class="btn-icon circle edit sm" (click)="openEditModal(supplier)" title="Modifier">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                                            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                                        </svg>
-                                    </button>
-                                    <button class="btn-icon circle danger sm" (click)="deleteSupplier(supplier.id)" title="Supprimer">
-                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                            <polyline points="3 6 5 6 21 6" />
-                                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                                            <line x1="10" y1="11" x2="10" y2="17" />
-                                            <line x1="14" y1="11" x2="14" y2="17" />
-                                        </svg>
-                                    </button>
+                                    <button class="btn secondary sm" (click)="openEditModal(supplier)">Modifier</button>
+                                    <button class="btn danger sm" (click)="deleteSupplier(supplier.id)">Supprimer</button>
                                 </div>
                             </td>
                         </tr>
@@ -302,7 +270,7 @@
     <div class="modal-box details-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
             <h2>Détails: {{ selectedSupplier?.name }}</h2>
-            <button class="modal-close" (click)="closeProductsModal()">✕</button>
+            <button class="modal-close" (click)="closeProductsModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-content scrollable-content">
             <div class="detail-section">
@@ -361,7 +329,7 @@
                     <textarea [(ngModel)]="newReviewContent" placeholder="Écrire un avis..." class="form-control" rows="2"></textarea>
                     <div class="review-controls">
                         <select [(ngModel)]="newReviewRating" class="form-control rating-select">
-                            <option [ngValue]="5">⭐⭐⭐⭐⭐ (5)</option>
+                            <option [ngValue]="5">5 étoiles (Excellent)</option>
                             <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
                             <option [ngValue]="3">⭐⭐⭐ (3)</option>
                             <option [ngValue]="2">⭐⭐ (2)</option>
@@ -413,7 +381,7 @@
     <div class="modal-box details-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
             <h2>Contacts: {{ contactsSupplierName }}</h2>
-            <button class="modal-close" (click)="closeContactsModal()">✖</button>
+            <button class="modal-close" (click)="closeContactsModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-content scrollable-content">
             <div class="detail-section contacts-section">
@@ -479,50 +447,38 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
-     Modal — Contact Ajouter / Modifier
+     Modal — Documents OCR Liste
 ══════════════════════════════════════════════════════════════ -->
-<div class="modal-backdrop" *ngIf="showContactModal" (click)="closeContactModal()">
-    <div class="modal-box" (click)="$event.stopPropagation()">
+<div class="modal-backdrop" *ngIf="showDocsModal" (click)="closeDocsModal()">
+    <div class="modal-box details-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
-            <h2>{{ editingContactId ? 'Modifier' : 'Ajouter' }} un contact</h2>
-            <button class="modal-close" (click)="closeContactModal()">✖</button>
+            <h2>Documents OCR: {{ docsSupplierName }}</h2>
+            <button class="modal-close" (click)="closeDocsModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-        <div class="modal-content">
-            <form (ngSubmit)="saveContact()">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Nom du contact *</label>
-                        <input type="text" [(ngModel)]="contactForm.name" name="contact_name" class="form-control"
-                            placeholder="Ex: Ahmed Ben Salah" required />
-                    </div>
-                    <div class="form-group">
-                        <label>Poste / Rôle</label>
-                        <input type="text" [(ngModel)]="contactForm.role" name="contact_role" class="form-control"
-                            placeholder="Ex: Responsable achats" />
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Téléphone</label>
-                        <input type="tel" [(ngModel)]="contactForm.phone" name="contact_phone" class="form-control" />
-                    </div>
-                    <div class="form-group">
-                        <label>Email</label>
-                        <input type="email" [(ngModel)]="contactForm.email" name="contact_email" class="form-control" />
+        <div class="modal-content scrollable-content">
+            <div class="detail-section">
+                <div class="docs-mini-grid" *ngIf="docsForSupplier.length; else noDocsList">
+                    <div class="doc-mini-card" *ngFor="let doc of docsForSupplier">
+                        <div class="doc-icon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                            </svg>
+                        </div>
+                        <div class="doc-info">
+                            <strong>{{ doc.original_filename }}</strong>
+                            <span>Reçu le {{ doc.created_at | date:'dd/MM/yyyy' }}</span>
+                        </div>
+                        <a [href]="'/api/admin/documents/' + doc.id + '/download'" class="btn secondary sm" target="_blank">Ouvrir</a>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label>Notes</label>
-                    <textarea [(ngModel)]="contactForm.notes" name="contact_notes" class="form-control" rows="3"></textarea>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" (click)="closeContactModal()">Annuler</button>
-                    <button type="submit" class="btn primary" [disabled]="isLoading">
-                        <span class="btn-spinner" *ngIf="isLoading"></span>
-                        Enregistrer
-                    </button>
-                </div>
-            </form>
+                <ng-template #noDocsList>
+                    <div class="empty-mini">Aucun document trouvé.</div>
+                </ng-template>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn primary" (click)="closeDocsModal()">Fermer</button>
         </div>
     </div>
 </div>
@@ -534,35 +490,40 @@
     <div class="modal-box" (click)="$event.stopPropagation()">
         <div class="modal-header">
             <h2>{{ editingSupplierId ? 'Modifier' : 'Ajouter' }} un Fournisseur</h2>
-            <button class="modal-close" (click)="closeModal()">✕</button>
+            <button class="modal-close" (click)="closeModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
         <div class="modal-content">
-            <form (ngSubmit)="saveSupplier()">
+            <form (ngSubmit)="saveSupplier()" [formGroup]="supplierForm">
                 <div class="form-group">
-                    <label>Nom du fournisseur *</label>
-                    <input type="text" [(ngModel)]="supplierForm.name" name="name" class="form-control"
-                        placeholder="Ex: ABC Logistique" required />
+                    <label [class.is-invalid]="supplierForm.get('name')?.invalid && supplierForm.get('name')?.touched">
+                        Nom du fournisseur *
+                    </label>
+                    <input type="text" formControlName="name" class="form-control"
+                        placeholder="Ex: ABC Logistique" [class.is-invalid]="supplierForm.get('name')?.invalid && supplierForm.get('name')?.touched" />
+                    <div class="invalid-feedback" *ngIf="supplierForm.get('name')?.invalid && supplierForm.get('name')?.touched">
+                        Le nom est obligatoire (min. 2 caractères).
+                    </div>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
                         <label>Téléphone</label>
-                        <input type="tel" [(ngModel)]="supplierForm.phone" name="phone" class="form-control" />
+                        <input type="tel" formControlName="phone" class="form-control" />
                     </div>
                     <div class="form-group">
                         <label>Email</label>
-                        <input type="email" [(ngModel)]="supplierForm.email" name="email" class="form-control" />
+                        <input type="email" formControlName="email" class="form-control" />
                     </div>
                 </div>
                 <div class="form-group">
                     <label>Notes / Informations supplémentaires</label>
-                    <textarea [(ngModel)]="supplierForm.notes" name="notes" class="form-control" rows="3"></textarea>
+                    <textarea formControlName="notes" class="form-control" rows="3"></textarea>
                 </div>
                 <div class="form-group">
                     <label>Produits fournis</label>
                     <div class="products-selection">
                         <div class="product-checkbox" *ngFor="let product of availableProducts">
                             <input type="checkbox" [id]="'product-' + product.id" [(ngModel)]="product.selected"
-                                (change)="onProductToggle(product)" name="products" class="form-check-input" />
+                                [ngModelOptions]="{standalone: true}" (change)="onProductToggle(product)" class="form-check-input" />
                             <label [for]="'product-' + product.id" class="form-check-label">
                                 {{ product.title }} (Réf: {{ product.reference }})
                             </label>
@@ -584,22 +545,18 @@
                                     <polyline points="17 8 12 3 7 8" />
                                     <line x1="12" y1="3" x2="12" y2="15" />
                                 </svg>
-                                {{ photoPreview ? 'Changer l\'image' : 'Choisir une image' }}
+                                Choisir une image
                             </label>
+                            <span class="file-name" *ngIf="photoPreview">Image sélectionnée</span>
                         </div>
                     </div>
                 </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn" (click)="closeModal()">Annuler</button>
-                    <button type="submit" class="btn primary" [disabled]="isLoading">
+                    <button type="submit" class="btn primary" [disabled]="isLoading || supplierForm.invalid">
                         <span class="btn-spinner" *ngIf="isLoading"></span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                            stroke-width="2" *ngIf="!isLoading">
-                            <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
-                            <polyline points="17 21 17 13 7 13 7 21" />
-                            <polyline points="7 3 7 8 15 8" />
-                        </svg>
-                        Enregistrer
+                        {{ editingSupplierId ? 'Mettre à jour' : 'Créer le fournisseur' }}
                     </button>
                 </div>
             </form>
@@ -608,76 +565,47 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════════════
-     Modal — Documents
+     Modal — Contact Ajouter / Modifier
 ══════════════════════════════════════════════════════════════ -->
-<div class="modal-backdrop" *ngIf="showDocsModal" (click)="closeDocsModal()">
-    <div class="modal-box details-modal" (click)="$event.stopPropagation()">
+<div class="modal-backdrop" *ngIf="showContactModal" (click)="closeContactModal()">
+    <div class="modal-box" (click)="$event.stopPropagation()">
         <div class="modal-header">
-            <h2>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--etap-500)">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="16" y1="13" x2="8" y2="13" />
-                    <line x1="16" y1="17" x2="8" y2="17" />
-                    <polyline points="10 9 9 9 8 9" />
-                </svg>
-                Documents — {{ docsSupplierName }}
-            </h2>
-            <button class="modal-close" (click)="closeDocsModal()">✕</button>
+            <h2>{{ editingContactId ? 'Modifier' : 'Ajouter' }} un Contact</h2>
+            <button class="modal-close" (click)="closeContactModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
         </div>
-
-        <div class="modal-content scrollable-content">
-            <!-- Aucun document -->
-            <div class="empty-mini" *ngIf="docsForSupplier.length === 0">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="opacity:.3; margin-bottom:8px">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                </svg>
-                Aucun document disponible pour ce fournisseur.
-            </div>
-
-            <!-- Liste des documents -->
-            <ul class="docs-list" *ngIf="docsForSupplier.length > 0">
-                <li *ngFor="let doc of docsForSupplier; let i = index">
-                    <div class="doc-header">
-                        <div class="doc-index">{{ i + 1 }}</div>
-                        <div class="doc-body">
-                            <div class="doc-title">{{ doc.title || doc.path }}</div>
-                            <div class="doc-meta-row">
-                                <span class="doc-tag" *ngIf="doc.type">
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
-                                        <line x1="7" y1="7" x2="7.01" y2="7" />
-                                    </svg>
-                                    {{ doc.type }}
-                                </span>
-                                <span class="doc-tag direction" *ngIf="doc.direction">
-                                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <line x1="5" y1="12" x2="19" y2="12" />
-                                        <polyline points="12 5 19 12 12 19" />
-                                    </svg>
-                                    {{ doc.direction }}
-                                </span>
-                            </div>
-                        </div>
-                        <button class="btn secondary sm" (click)="downloadDoc(doc)" title="Télécharger">
-                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
-                            Télécharger
-                        </button>
+        <div class="modal-content">
+            <form (ngSubmit)="saveContact()" [formGroup]="contactForm">
+                <div class="form-group">
+                    <label [class.is-invalid]="contactForm.get('name')?.invalid && contactForm.get('name')?.touched">Nom complet *</label>
+                    <input type="text" formControlName="name" class="form-control" [class.is-invalid]="contactForm.get('name')?.invalid && contactForm.get('name')?.touched" />
+                    <div class="invalid-feedback" *ngIf="contactForm.get('name')?.invalid && contactForm.get('name')?.touched">Nom requis.</div>
+                </div>
+                <div class="form-group">
+                    <label>Rôle / Poste</label>
+                    <input type="text" formControlName="role" class="form-control" placeholder="Ex: Responsable logistique" />
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Téléphone</label>
+                        <input type="tel" formControlName="phone" class="form-control" />
                     </div>
-                </li>
-            </ul>
-        </div>
-
-        <div class="modal-footer">
-            <span class="docs-total" *ngIf="docsForSupplier.length > 0">
-                {{ docsForSupplier.length }} document{{ docsForSupplier.length > 1 ? 's' : '' }}
-            </span>
-            <button class="btn primary" (click)="closeDocsModal()">Fermer</button>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input type="email" formControlName="email" class="form-control" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Notes</label>
+                    <textarea formControlName="notes" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" (click)="closeContactModal()">Annuler</button>
+                    <button type="submit" class="btn primary" [disabled]="isLoading || contactForm.invalid">
+                        <span class="btn-spinner" *ngIf="isLoading"></span>
+                        Enregistrer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

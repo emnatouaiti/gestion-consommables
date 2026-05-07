@@ -12,16 +12,25 @@
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
         .footer { margin-top: 50px; font-size: 12px; text-align: right; }
-        .signature-box { margin-top: 40px; display: flex; justify-content: space-between; }
         .signature { border-top: 1px solid #000; width: 200px; text-align: center; padding-top: 5px; }
+        .refus-box { margin-top: 15px; padding: 15px; border: 2px solid #dc2626; background: #fef2f2; color: #dc2626; border-radius: 8px; }
+        .badge-approved { color: #16a34a; font-weight: bold; }
+        .badge-rejected { color: #dc2626; font-weight: bold; }
+        .badge-pending  { color: #d97706; font-weight: bold; }
     </style>
 </head>
 <body>
+
+    {{-- ===== EN-TETE ===== --}}
     <div class="header">
         <table style="border: none; width: 100%;">
             <tr>
                 <td style="border: none; width: 50%; text-align: left;">
-                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents(public_path('images/etap-logo.png'))) }}" alt="Logo ETAP" style="height: 60px;">
+                    @php $logoPath = public_path('images/etap-logo.png'); @endphp
+                    @if(file_exists($logoPath))
+                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents($logoPath)) }}"
+                             alt="Logo ETAP" style="height: 60px;">
+                    @endif
                 </td>
                 <td style="border: none; width: 50%; text-align: right;">
                     <h2 style="margin: 0; color: #004a99;">Consotracker</h2>
@@ -30,79 +39,132 @@
             </tr>
         </table>
         <hr style="border: 1px solid #004a99; margin-top: 10px;">
+
         @php
-            $statuses = collect($requests)->pluck('status')->map(fn($s) => strtolower((string)$s));
-            
-            $allRejected = $statuses->every(fn($s) => $s === 'rejected');
-            $allApproved = $statuses->every(fn($s) => $s === 'approved');
-            $anyApproved = $statuses->contains('approved') || $statuses->contains('approved_pending_exit');
-            $anyRejected = $statuses->contains('rejected');
-            
-            $title = $forceTitle ?? 'BON DE DEMANDE DE CONSOMMABLES';
-            $titleColor = '#004a99';
-            
-            if (!isset($forceTitle) || !$forceTitle) {
-                if ($allRejected) {
-                    $title = 'BON DE REFUS DE CONSOMMABLES';
-                    $titleColor = '#dc2626';
-                } elseif ($allApproved) {
-                    $title = 'BON DE SORTIE DE CONSOMMABLES';
-                    $titleColor = '#16a34a';
-                } elseif ($anyRejected && $anyApproved) {
-                    $title = 'DEMANDE DE CONSOMMABLES (PARTIELLEMENT TRAITÉE)';
-                    $titleColor = '#ea580c';
-                } elseif ($anyApproved) {
-                    $title = 'BON DE DEMANDE APPROUVÉ';
-                    $titleColor = '#004a99';
-                }
+            /*
+             * $requests doit contenir UNIQUEMENT les articles
+             * de la demande / du lot concerne (filtre fait dans le controller).
+             */
+            $statuses = collect($requests)->pluck('status')
+                            ->map(fn($s) => strtolower((string) $s));
+
+            $allRejected  = $statuses->isNotEmpty() && $statuses->every(fn($s) => $s === 'rejected');
+            $allApproved  = $statuses->isNotEmpty() && $statuses->every(fn($s) => in_array($s, ['approved', 'approved_pending_exit']));
+            $anyApproved  = $statuses->contains(fn($s) => in_array($s, ['approved', 'approved_pending_exit']));
+            $anyRejected  = $statuses->contains('rejected');
+            $mixed        = $anyApproved && $anyRejected;
+
+            // Titre et couleur selon statut reel
+            if (isset($forceTitle) && $forceTitle) {
+                $title      = $forceTitle;
+                $titleColor = str_contains(strtoupper($forceTitle), 'REFUS')  ? '#dc2626'
+                            : (str_contains(strtoupper($forceTitle), 'SORTIE') ? '#16a34a' : '#004a99');
+            } elseif ($allRejected) {
+                $title      = 'BON DE REFUS DE CONSOMMABLES';
+                $titleColor = '#dc2626';
+            } elseif ($allApproved) {
+                $title      = 'BON DE SORTIE DE CONSOMMABLES';
+                $titleColor = '#16a34a';
+            } elseif ($mixed) {
+                $title      = 'DEMANDE DE CONSOMMABLES (PARTIELLEMENT TRAITEE)';
+                $titleColor = '#ea580c';
+            } elseif ($anyApproved) {
+                $title      = 'BON DE DEMANDE APPROUVE';
+                $titleColor = '#004a99';
             } else {
-                // Adjust color based on forced title content
-                if (str_contains(strtoupper($forceTitle), 'REFUS')) $titleColor = '#dc2626';
-                if (str_contains(strtoupper($forceTitle), 'SORTIE')) $titleColor = '#16a34a';
+                $title      = 'BON DE DEMANDE DE CONSOMMABLES';
+                $titleColor = '#004a99';
             }
+
+            $firstRequest = collect($requests)->first();
+            $ref = $batch_code ?? ('REQ-' . ($firstRequest->id ?? '?'));
         @endphp
 
-        <h1 style="margin-top: 20px; color: {{ $titleColor }}; text-transform: uppercase; font-size: 24px;">
+        <h1 style="margin-top: 20px; color: {{ $titleColor }}; text-transform: uppercase; font-size: 22px;">
             {{ $title }}
         </h1>
-        <p style="font-size: 16px; font-weight: bold;">Référence: {{ $batch_code ?: 'REQ-' . $requests->first()->id }}</p>
-        <p>Date d'émission: {{ date('d/m/Y H:i') }}</p>
+        <p style="font-size: 16px; font-weight: bold;">Reference: {{ $ref }}</p>
+        <p>Date: {{ date('d/m/Y H:i') }}</p>
 
-        @if($anyRejected)
-            <div style="margin-top: 15px; padding: 15px; border: 2px solid #dc2626; background: #fef2f2; color: #dc2626; border-radius: 8px;">
+        {{-- Encadre refus global (seulement si TOUT est rejete) --}}
+        @if($allRejected)
+            @php
+                $refusReasons = collect($requests)
+                    ->pluck('reject_reason')
+                    ->filter()
+                    ->unique()
+                    ->values();
+            @endphp
+            <div class="refus-box">
                 <strong>MOTIF DU REFUS :</strong><br>
-                {{ $requests->first(fn($r) => $r->status === 'rejected')->reject_reason ?: 'Non spécifié' }}
+                @if($refusReasons->isNotEmpty())
+                    {{ $refusReasons->implode(' / ') }}
+                @else
+                    Non specifie
+                @endif
+            </div>
+        @endif
+
+        {{-- Encadre avertissement si lot partiellement traite --}}
+        @if($mixed)
+            <div style="margin-top: 15px; padding: 12px; border: 2px solid #ea580c; background: #fff7ed; color: #9a3412; border-radius: 8px; font-size: 13px;">
+                <strong>ATTENTION :</strong> Ce lot a ete partiellement traite. Certains articles ont ete approuves, d'autres refuses. Consultez le detail ci-dessous.
             </div>
         @endif
     </div>
 
+    {{-- ===== INFORMATIONS DEMANDEUR ===== --}}
     <div class="section">
         <div class="section-title">Informations du Demandeur</div>
-        <p><strong>Nom & Prénom:</strong> {{ $user->nomprenom ?: $user->name }}</p>
-        <p><strong>Service:</strong> {{ $user->service ?: 'Non spécifié' }}</p>
-        <p><strong>Poste:</strong> {{ $user->poste ?: 'Non spécifié' }}</p>
+        <p><strong>Nom &amp; Prenom:</strong> {{ $user->nomprenom ?? $user->name ?? 'Non specifie' }}</p>
+        <p><strong>Service:</strong> {{ $user->service ?? 'Non specifie' }}</p>
+        <p><strong>Poste:</strong> {{ $user->poste ?? 'Non specifie' }}</p>
     </div>
 
+    {{-- ===== LISTE DES ARTICLES ===== --}}
     <div class="section">
-        <div class="section-title">Liste des Articles Demandés</div>
+        <div class="section-title">Liste des Articles</div>
         <table>
             <thead>
                 <tr>
                     <th>Article / Produit</th>
-                    <th>Qté Demandée</th>
-                    @if($requests->contains(fn($r) => $r->approved_quantity > 0))
-                        <th>{{ str_contains($title, 'SORTIE') ? 'Qté Livrée' : 'Qté Approuvée' }}</th>
+                    <th>Qte Demandee</th>
+                    @if($anyApproved)
+                        <th>{{ $allApproved ? 'Qte Livree' : 'Qte Approuvee' }}</th>
+                    @endif
+                    @if($mixed || $anyRejected)
+                        <th>Statut</th>
+                        <th>Motif refus</th>
                     @endif
                 </tr>
             </thead>
             <tbody>
                 @foreach($requests as $req)
-                <tr>
+                @php
+                    $reqStatus = strtolower((string) ($req->status ?? ''));
+                    $isApproved = in_array($reqStatus, ['approved', 'approved_pending_exit']);
+                    $isRejected = $reqStatus === 'rejected';
+                @endphp
+                <tr style="{{ $isRejected ? 'background:#fef2f2;' : ($isApproved ? 'background:#f0fdf4;' : '') }}">
                     <td>{{ $req->item_name }}</td>
                     <td>{{ $req->requested_quantity }}</td>
-                    @if($requests->contains(fn($r) => $r->approved_quantity > 0))
-                        <td style="font-weight: bold; color: {{ str_contains($title, 'SORTIE') ? '#16a34a' : '#004a99' }};">
-                            {{ $req->approved_quantity ?: '-' }}
+                    @if($anyApproved)
+                        <td class="badge-approved">
+                            {{ $isApproved ? ($req->approved_quantity ?? '-') : '-' }}
+                        </td>
+                    @endif
+                    @if($mixed || $anyRejected)
+                        <td>
+                            @if($isApproved)
+                                <span class="badge-approved">Approuve</span>
+                            @elseif($isRejected)
+                                <span class="badge-rejected">Refuse</span>
+                            @else
+                                <span class="badge-pending">En attente</span>
+                            @endif
+                        </td>
+                        <td style="font-size: 12px; color: #dc2626;">
+                            {{ $isRejected ? ($req->reject_reason ?? 'Non specifie') : '' }}
                         </td>
                     @endif
                 </tr>
@@ -111,23 +173,23 @@
         </table>
     </div>
 
+    {{-- ===== SIGNATURES ===== --}}
     <table style="border: none; width: 100%; margin-top: 50px;">
         <tr>
             <td style="border: none; width: 50%; text-align: left;">
                 <p>Signature Demandeur:</p>
-                <div class="signature" style="margin-top: 40px; border-top: 1px solid #000; width: 200px;"></div>
+                <div class="signature" style="margin-top: 40px; width: 200px;"></div>
             </td>
             <td style="border: none; width: 50%; text-align: right;">
-                <div style="display: inline-block; text-align: center;">
-                    <p>Visa Direction:</p>
-                    <div class="signature" style="margin-top: 40px; border-top: 1px solid #000; width: 200px;"></div>
-                </div>
+                <p>Visa Direction:</p>
+                <div class="signature" style="margin-top: 40px; display: inline-block; width: 200px;"></div>
             </td>
         </tr>
     </table>
 
     <div class="footer">
-        <p>Document généré automatiquement le {{ date('d/m/Y') }}</p>
+        <p>Document genere automatiquement le {{ date('d/m/Y') }}</p>
     </div>
+
 </body>
 </html>

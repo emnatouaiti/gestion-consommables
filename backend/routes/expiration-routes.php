@@ -48,5 +48,12 @@ Route::post('/expirations/{id}/acknowledge', [ExpirationController::class, 'ackn
 
 // Admin only: Forcer la consommation d'un produit expiré
 Route::post('/expirations/{stockId}/force-consume', [ExpirationController::class, 'forceConsumeExpired'])
-    ->name('expirations.force-consume')
-    ->middleware('permission:admin');
+    ->name('expirations.force-consume');
+
+// Admin only: Éliminer un lot expiré/endommagé
+Route::post('/expirations/{stockId}/eliminate', [ExpirationController::class, 'eliminateBatch'])
+    ->name('expirations.eliminate');
+
+// Admin only: Retourner un lot au fournisseur
+Route::post('/expirations/{stockId}/return-supplier', [ExpirationController::class, 'returnToSupplierBatch'])
+    ->name('expirations.return-supplier');

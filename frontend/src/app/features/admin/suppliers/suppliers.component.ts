@@ -1,4 +1,5 @@
 import { Component, OnInit, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -10,7 +11,7 @@ import { SupplierContact } from '../../../core/models/supplier-contact.model';
 @Component({
     selector: 'app-suppliers',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule],
     templateUrl: './suppliers.component.html',
     styleUrls: ['./suppliers.component.css']
 })
@@ -35,21 +36,8 @@ export class SuppliersComponent implements OnInit {
     isContactsLoading = false;
     viewMode: 'grid' | 'list' = 'grid';
 
-    contactForm: Omit<SupplierContact, 'id'> = {
-        name: '',
-        role: '',
-        phone: '',
-        email: '',
-        notes: ''
-    };
-
-    supplierForm = {
-        name: '',
-        notes: '',
-        phone: '',
-        email: '',
-        photo: null as File | null
-    };
+    supplierForm!: FormGroup;
+    contactForm!: FormGroup;
 
     photoPreview: string | null = null;
     successMessage = '';
@@ -66,8 +54,29 @@ export class SuppliersComponent implements OnInit {
         private supplierService: SupplierService,
         private http: HttpClient,
         private readonly cdr: ChangeDetectorRef,
+        private readonly fb: FormBuilder,
         @Inject(PLATFORM_ID) private readonly platformId: Object
-    ) { }
+    ) {
+        this.initForms();
+    }
+
+    private initForms(): void {
+        this.supplierForm = this.fb.group({
+            name: ['', [Validators.required, Validators.minLength(2)]],
+            notes: [''],
+            phone: ['', [Validators.pattern('^[0-9+ ]{8,20}$')]],
+            email: ['', [Validators.email]],
+            photo: [null]
+        });
+
+        this.contactForm = this.fb.group({
+            name: ['', [Validators.required, Validators.minLength(2)]],
+            role: [''],
+            phone: ['', [Validators.pattern('^[0-9+ ]{8,20}$')]],
+            email: ['', [Validators.email]],
+            notes: ['']
+        });
+    }
 
     ngOnInit(): void {
         if (!isPlatformBrowser(this.platformId)) {
@@ -117,7 +126,6 @@ export class SuppliersComponent implements OnInit {
 
     onSearch(): void {
         const query = this.searchQuery.toLowerCase().trim();
-        
         if (!query) {
             this.filteredSuppliers = [...this.suppliers];
         } else {
@@ -143,9 +151,7 @@ export class SuppliersComponent implements OnInit {
                 }, {});
                 this.cdr.detectChanges();
             },
-            error: () => {
-                // silencieux
-            }
+            error: () => {}
         });
     }
 
@@ -170,7 +176,6 @@ export class SuppliersComponent implements OnInit {
         const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '').replace(/^storage\//, '') : null;
         const url = cleanPath ? `/api/docs/${cleanPath}` : null;
         if (!url) return;
-
         const a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
@@ -196,9 +201,7 @@ export class SuppliersComponent implements OnInit {
     }
 
     viewProducts(supplier: Supplier): void {
-        if (!isPlatformBrowser(this.platformId)) {
-            return;
-        }
+        if (!isPlatformBrowser(this.platformId)) return;
         this.isLoading = true;
         this.supplierService.getSupplier(supplier.id).subscribe({
             next: (data) => {
@@ -262,12 +265,6 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error loading supplier contacts', err);
-                if (this.selectedSupplier?.id === supplierId) {
-                    this.selectedSupplier = { ...this.selectedSupplier, contacts: [] };
-                }
-                if (this.contactsSupplierId === supplierId) {
-                    this.supplierContacts = [];
-                }
                 this.isContactsLoading = false;
                 this.cdr.detectChanges();
             }
@@ -276,42 +273,43 @@ export class SuppliersComponent implements OnInit {
 
     openAddContactModal(): void {
         this.editingContactId = null;
-        this.contactForm = { name: '', role: '', phone: '', email: '', notes: '' };
+        this.contactForm.reset();
         this.showContactModal = true;
     }
 
     openEditContactModal(contact: SupplierContact): void {
         this.editingContactId = contact.id;
-        this.contactForm = {
+        this.contactForm.patchValue({
             name: contact.name || '',
             role: contact.role || '',
             phone: contact.phone || '',
             email: contact.email || '',
             notes: contact.notes || ''
-        };
+        });
         this.showContactModal = true;
     }
 
     closeContactModal(): void {
         this.showContactModal = false;
         this.editingContactId = null;
-        this.contactForm = { name: '', role: '', phone: '', email: '', notes: '' };
+        this.contactForm.reset();
     }
 
     saveContact(): void {
         if (!isPlatformBrowser(this.platformId)) return;
         const supplierId = this.contactsSupplierId ?? this.selectedSupplier?.id ?? null;
         if (!supplierId) return;
-        if (!this.contactForm.name?.trim()) {
-            this.errorMessage = 'Le nom du contact est obligatoire';
+
+        if (this.contactForm.invalid) {
+            this.contactForm.markAllAsTouched();
+            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
             return;
         }
 
         this.isLoading = true;
-
         const request = this.editingContactId
-            ? this.supplierService.updateSupplierContact(supplierId, this.editingContactId, this.contactForm)
-            : this.supplierService.createSupplierContact(supplierId, this.contactForm);
+            ? this.supplierService.updateSupplierContact(supplierId, this.editingContactId, this.contactForm.value)
+            : this.supplierService.createSupplierContact(supplierId, this.contactForm.value);
 
         request.subscribe({
             next: () => {
@@ -320,10 +318,7 @@ export class SuppliersComponent implements OnInit {
                 this.successMessage = this.editingContactId ? 'Contact mis à jour' : 'Contact ajouté';
                 this.isLoading = false;
                 this.cdr.detectChanges();
-                setTimeout(() => {
-                    this.successMessage = '';
-                    this.cdr.detectChanges();
-                }, 3000);
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
                 console.error('Error saving contact', err);
@@ -348,10 +343,7 @@ export class SuppliersComponent implements OnInit {
                 this.successMessage = 'Contact supprimé';
                 this.isLoading = false;
                 this.cdr.detectChanges();
-                setTimeout(() => {
-                    this.successMessage = '';
-                    this.cdr.detectChanges();
-                }, 3000);
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
                 console.error('Error deleting contact', err);
@@ -372,22 +364,19 @@ export class SuppliersComponent implements OnInit {
 
     openEditModal(supplier: Supplier): void {
         this.editingSupplierId = supplier.id;
-        this.supplierForm = {
+        this.supplierForm.patchValue({
             name: supplier.name,
             notes: supplier.notes || '',
             phone: supplier.phone || '',
             email: supplier.email || '',
             photo: null
-        };
+        });
         this.photoPreview = supplier.image_path ? this.supplierImageUrl(supplier.image_path) : null;
         this.selectedProductIds = supplier.products?.map((p: any) => p.id) || [];
-
-        const selectedIds = this.selectedProductIds;
         this.availableProducts = this.availableProducts.map(p => ({
             ...p,
-            selected: selectedIds.includes(p.id)
+            selected: this.selectedProductIds.includes(p.id)
         }));
-
         this.showModal = true;
     }
 
@@ -397,13 +386,7 @@ export class SuppliersComponent implements OnInit {
     }
 
     resetForm(): void {
-        this.supplierForm = {
-            name: '',
-            notes: '',
-            phone: '',
-            email: '',
-            photo: null
-        };
+        this.supplierForm.reset();
         this.photoPreview = null;
         this.editingSupplierId = null;
     }
@@ -411,43 +394,31 @@ export class SuppliersComponent implements OnInit {
     onFileChange(event: any): void {
         const file = event.target.files[0];
         if (file) {
-            this.supplierForm.photo = file;
+            this.supplierForm.get('photo')?.setValue(file);
             const reader = new FileReader();
-            reader.onload = () => {
-                this.photoPreview = reader.result as string;
-            };
+            reader.onload = () => { this.photoPreview = reader.result as string; };
             reader.readAsDataURL(file);
         }
     }
 
     saveSupplier(): void {
-        if (!this.supplierForm.name) {
-            this.errorMessage = 'Le nom est obligatoire';
+        if (this.supplierForm.invalid) {
+            this.supplierForm.markAllAsTouched();
+            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
             return;
         }
 
+        const val = this.supplierForm.value;
         const formData = new FormData();
-        formData.append('name', this.supplierForm.name);
-
-        if (this.supplierForm.notes) {
-            formData.append('notes', this.supplierForm.notes);
+        formData.append('name', val.name);
+        if (val.notes) formData.append('notes', val.notes);
+        if (val.phone) formData.append('phone', val.phone);
+        if (val.email) formData.append('email', val.email);
+        
+        if (this.selectedProductIds.length > 0) {
+            this.selectedProductIds.forEach(id => formData.append('product_ids[]', id.toString()));
         }
-        if (this.supplierForm.phone) {
-            formData.append('phone', this.supplierForm.phone);
-        }
-        if (this.supplierForm.email) {
-            formData.append('email', this.supplierForm.email);
-        }
-
-        if (this.selectedProductIds && this.selectedProductIds.length > 0) {
-            this.selectedProductIds.forEach(productId => {
-                formData.append('product_ids[]', productId.toString());
-            });
-        }
-
-        if (this.supplierForm.photo) {
-            formData.append('photo', this.supplierForm.photo);
-        }
+        if (val.photo) formData.append('photo', val.photo);
 
         this.isLoading = true;
         const request = this.editingSupplierId
@@ -461,16 +432,12 @@ export class SuppliersComponent implements OnInit {
                 this.successMessage = this.editingSupplierId ? 'Fournisseur mis à jour' : 'Fournisseur créé';
                 this.isLoading = false;
                 this.cdr.detectChanges();
-                setTimeout(() => {
-                    this.successMessage = '';
-                    this.cdr.detectChanges();
-                }, 3000);
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
-                console.error('Error saving supplier - Full details:', err);
+                console.error('Error saving supplier', err);
                 if (err.error && typeof err.error === 'object') {
-                    const errors = err.error;
-                    this.errorMessage = Object.values(errors).flat().join(', ');
+                    this.errorMessage = Object.values(err.error).flat().join(', ');
                 } else {
                     this.errorMessage = 'Erreur lors de l\'enregistrement';
                 }
@@ -481,25 +448,22 @@ export class SuppliersComponent implements OnInit {
     }
 
     deleteSupplier(id: number): void {
-        if (confirm('Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) {
-            this.supplierService.deleteSupplier(id).subscribe({
-                next: () => {
-                    this.loadSuppliers();
-                    this.successMessage = 'Fournisseur supprimé';
-                    setTimeout(() => this.successMessage = '', 3000);
-                },
-                error: (err) => {
-                    console.error('Error deleting supplier', err);
-                    this.errorMessage = 'Impossible de supprimer le fournisseur';
-                }
-            });
-        }
+        if (!confirm('Êtes-vous sûr de vouloir supprimer ce fournisseur ?')) return;
+        this.supplierService.deleteSupplier(id).subscribe({
+            next: () => {
+                this.loadSuppliers();
+                this.successMessage = 'Fournisseur supprimé';
+                setTimeout(() => this.successMessage = '', 3000);
+            },
+            error: (err) => {
+                console.error('Error deleting supplier', err);
+                this.errorMessage = 'Impossible de supprimer le fournisseur';
+            }
+        });
     }
 
     submitReview(): void {
-        if (!isPlatformBrowser(this.platformId)) {
-            return;
-        }
+        if (!isPlatformBrowser(this.platformId)) return;
         const supplier = this.selectedSupplier as any;
         if (!supplier || !this.newReviewContent.trim()) return;
 
@@ -536,6 +500,9 @@ export class SuppliersComponent implements OnInit {
             this.selectedProductIds = this.selectedProductIds.filter(id => id !== product.id);
         }
     }
+
+    getStars(rating: number | undefined): number[] {
+        if (!rating) return [];
+        return Array(rating).fill(0);
+    }
 }
-
-

@@ -249,6 +249,10 @@ Route::prefix('api')->group(function () {
             Route::get('admin/products/{product}/expiration/batches', [\App\Http\Controllers\API\ExpirationController::class, 'getBatches']);
             Route::get('admin/products/{product}/expiration/expiring-soon', [\App\Http\Controllers\API\ExpirationController::class, 'getExpiringSoon']);
             Route::get('admin/products/{product}/expiration-events', [\App\Http\Controllers\API\ExpirationController::class, 'getEvents']);
+            
+            Route::prefix('admin')->group(function () {
+                include_once __DIR__ . '/expiration-routes.php';
+            });
         });
 
         // OCR specific to Agent & Responsable
@@ -276,17 +280,24 @@ Route::prefix('api')->group(function () {
         });
     });
 
-    // Proxy simplifié pour les documents
+    // Proxy simplifié pour les documents et images
     Route::get('docs/{path}', function($path) {
-        $disk = \Storage::disk('public');
+        $disk  = \Storage::disk('public');
         $clean = ltrim((string) $path, '/\\');
 
-        $candidates = [$clean];
-        if (!str_contains($clean, '/')) {
-            $candidates[] = 'products/' . $clean;
-            $candidates[] = 'suppliers/' . $clean;
-            $candidates[] = 'documents/' . $clean;
-        }
+        // Extraire juste le nom de fichier
+        $filename = basename($clean);
+
+        // Toutes les variantes à tester
+        $candidates = [
+            $clean,                           // tel quel (ex: products/foo.jpg)
+            'products/'   . $filename,        // dans products/
+            'documents/'  . $filename,        // dans documents/
+            'suppliers/'  . $filename,        // dans suppliers/
+            'photos/'     . $filename,        // dans photos/
+            'documents/retours/' . $filename, // retours PDF
+            $filename,                        // à la racine du disk public
+        ];
 
         foreach ($candidates as $candidate) {
             if ($disk->exists($candidate)) {
@@ -297,3 +308,4 @@ Route::prefix('api')->group(function () {
         abort(404);
     })->where('path', '.*');
 });
+

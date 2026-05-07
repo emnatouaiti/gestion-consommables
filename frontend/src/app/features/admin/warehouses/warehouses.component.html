@@ -10,9 +10,6 @@
   </div>
 
   <div class="success-msg" *ngIf="successMessage">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="20 6 9 17 4 12"></polyline>
-    </svg>
     {{ successMessage }}
   </div>
 
@@ -58,9 +55,15 @@
           </div>
           <div class="item-actions" (click)="$event.stopPropagation()">
             <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D dépôt" (click)="open3DViewer('warehouse', warehouse)">3D</button>
-            <button class="btn mini" title="Voir les produits" (click)="viewWarehouseProducts(warehouse)">📦</button>
-            <button class="btn mini" (click)="openEditWarehouseModal(warehouse)">✎</button>
-            <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)">✕</button>
+            <button class="btn mini" title="Voir les produits" (click)="viewWarehouseProducts(warehouse)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </button>
+            <button class="btn mini" (click)="openEditWarehouseModal(warehouse)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)">
+              Supprimer
+            </button>
           </div>
         </div>
 
@@ -100,9 +103,15 @@
           <div class="item-meta">{{ room.type || 'Standard' }}</div>
           <div class="item-actions" (click)="$event.stopPropagation()">
             <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('room', room)">3D</button>
-            <button class="btn mini" title="Voir les produits" (click)="viewRoomProducts(room)">📦</button>
-            <button class="btn mini" (click)="openEditRoomModal(room)">✎</button>
-            <button class="btn mini danger" (click)="deleteRoom(room.id)">✕</button>
+            <button class="btn mini" (click)="viewRoomProducts(room)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </button>
+            <button class="btn mini" (click)="openEditRoomModal(room)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn mini danger" (click)="deleteRoom(room.id)">
+              Supprimer
+            </button>
           </div>
         </div>
 
@@ -165,9 +174,15 @@
           <div class="item-small">Capacité: {{ location.current_units || 0 }} / {{ location.capacity_units || '∞' }}</div>
           <div class="item-actions" (click)="$event.stopPropagation()">
             <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('location', location)">3D</button>
-            <button class="btn mini" title="Voir les produits" (click)="viewLocationProducts(location)">📦</button>
-            <button class="btn mini" (click)="openEditLocationModal(location)">✎</button>
-            <button class="btn mini danger" (click)="deleteLocation(location.id)">✕</button>
+            <button class="btn mini" (click)="viewLocationProducts(location)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            </button>
+            <button class="btn mini" (click)="openEditLocationModal(location)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn mini danger" (click)="deleteLocation(location.id)">
+              Supprimer
+            </button>
           </div>
         </div>
 
@@ -183,9 +198,15 @@
             <div class="item-small">Capacité: {{ cabinet.current_units || 0 }} / {{ cabinet.capacity_units || '∞' }}</div>
             <div class="item-actions" (click)="$event.stopPropagation()">
               <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('cabinet', cabinet)">3D</button>
-              <button class="btn mini" title="Voir les produits" (click)="viewCabinetProducts(cabinet)">📦</button>
-              <button class="btn mini" (click)="openEditCabinetModal(cabinet)">✎</button>
-              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">✕</button>
+              <button class="btn mini" (click)="viewCabinetProducts(cabinet)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+              </button>
+              <button class="btn mini" (click)="openEditCabinetModal(cabinet)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </button>
+              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">
+                Supprimer
+              </button>
             </div>
           </div>
 
@@ -209,7 +230,9 @@
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ editingWarehouseId ? 'Modifier dépôt' : 'Ajouter dépôt / local' }}</h2>
-      <button class="modal-close" (click)="closeWarehouseModal()">✕</button>
+      <button class="modal-close" (click)="closeWarehouseModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <div class="modal-content">
@@ -310,7 +333,9 @@
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ editingRoomId ? 'Modifier salle' : 'Ajouter salle' }}</h2>
-      <button class="modal-close" (click)="closeRoomModal()">✕</button>
+      <button class="modal-close" (click)="closeRoomModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <div class="modal-content">
@@ -374,7 +399,9 @@
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ editingLocationId ? 'Modifier emplacement' : 'Ajouter emplacement' }}</h2>
-      <button class="modal-close" (click)="closeLocationModal()">✕</button>
+      <button class="modal-close" (click)="closeLocationModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <div class="modal-content">
@@ -424,7 +451,9 @@
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ editingCabinetId ? 'Modifier armoire' : 'Ajouter armoire' }}</h2>
-      <button class="modal-close" (click)="closeCabinetModal()">✕</button>
+      <button class="modal-close" (click)="closeCabinetModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
 
     <div class="modal-content">
@@ -487,7 +516,9 @@
   <div class="modal-box" (click)="$event.stopPropagation()" style="width: 800px; max-width: 95vw; padding: 0;">
     <div class="modal-header" style="padding: 15px;">
       <h2>Visualisation 3D</h2>
-      <button class="modal-close" (click)="close3DViewer()">✕</button>
+      <button class="modal-close" (click)="close3DViewer()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
     </div>
     <div class="modal-content" style="padding: 0;">
       <app-storage-3d-viewer

@@ -641,7 +641,8 @@ class ProductController extends Controller
                     'destinationWarehouseLocation:id,name,code',
                     'sourceCabinet:id,name',
                     'destinationCabinet:id,name',
-                    'document'
+                    'document',
+                    'relatedRequest'
                 ]);
             }
         ])

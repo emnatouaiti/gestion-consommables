@@ -21,6 +21,7 @@ class ExpirationEvent extends Model
         'created_by',
         'acknowledged_by',
         'acknowledged_at',
+        'document_id',
     ];
 
     protected $casts = [
@@ -51,6 +52,11 @@ class ExpirationEvent extends Model
     public function acknowledgedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'acknowledged_by');
+    }
+
+    public function document(): BelongsTo
+    {
+        return $this->belongsTo(Document::class);
     }
 
     /**

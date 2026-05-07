@@ -79,20 +79,20 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
       const today = new Date();
       let expDate: Date | null = null;
       let daysLeft = Infinity;
-      let status = '✅ Sans date d\'expiration';
+      let status = 'Sans date d\'expiration';
       let color = 'success';
 
       if (expirationDate && expirationDate !== 'null') {
         expDate = new Date(expirationDate);
         daysLeft = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         if (daysLeft < 0) {
-          status = '❌ Expiré depuis ' + Math.abs(daysLeft) + ' jour(s)';
+          status = 'Expiré depuis ' + Math.abs(daysLeft) + ' jour(s)';
           color = 'danger';
         } else if (daysLeft <= 7) {
-          status = '⚠️ Expire dans ' + daysLeft + ' jour(s)';
+          status = 'Expire dans ' + daysLeft + ' jour(s)';
           color = 'warning';
         } else {
-          status = '✅ Valide';
+          status = 'Valide';
         }
       }
 
@@ -132,11 +132,11 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
     if (!expirationDate || expirationDate === 'null') {
       return [
         {
-          title: '📦 Stock Actif',
+          title: 'Stock Actif',
           description: 'Produit en circulation',
           date: this.formatDate(new Date()),
           status: 'current',
-          icon: '✅',
+          icon: 'check',
           color: 'success'
         }
       ];
@@ -151,43 +151,43 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
 
     return [
       {
-        title: '📦 Stock Actif',
+        title: 'Stock Actif',
         description: 'Produit en circulation',
         date: this.formatDate(new Date()),
         status: today < sevenDaysBefore ? 'current' : 'completed',
-        icon: '✅',
+        icon: 'check',
         color: 'success'
       },
       {
-        title: '⚠️ Alerte 7 jours avant',
+        title: 'Alerte 7 jours avant',
         description: 'Notification aux administrateurs',
         date: this.formatDate(sevenDaysBefore),
         status: today < sevenDaysBefore ? 'pending' : today <= expDate ? 'completed' : 'completed',
-        icon: '⚠️',
+        icon: 'alert-triangle',
         color: 'warning'
       },
       {
-        title: '🔴 Jour d\'Expiration',
+        title: 'Jour d\'Expiration',
         description: 'Dernier jour de consommation autorisée',
         date: this.formatDate(expDate),
         status: today === expDate ? 'current' : today > expDate ? 'completed' : 'pending',
-        icon: '🔴',
+        icon: 'calendar',
         color: 'danger'
       },
       {
-        title: '❌ Blocage Consommation',
+        title: 'Blocage Consommation',
         description: 'Stock marqué comme expiré',
         date: this.formatDate(new Date(expDate.getTime() + 86400000)),
         status: today > expDate ? 'completed' : 'pending',
-        icon: '🚫',
+        icon: 'slash',
         color: 'dark'
       },
       {
-        title: '📚 Archivage',
+        title: 'Archivage',
         description: 'Historique conservé',
         date: this.formatDate(new Date(expDate.getTime() + 86400000 * 2)),
         status: 'pending',
-        icon: '📚',
+        icon: 'archive',
         color: 'secondary'
       }
     ];

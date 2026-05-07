@@ -50,14 +50,13 @@
         <span class="stat-value" style="color: #c2410c;">{{ countByStatus('pending_validation') }}</span>
         <span class="stat-label">Attente Validation</span>
       </div>
-      <div class="stat-badge pending" *ngIf="countByStatus('pending_validation') > 0" style="background: #c2410c;">!</div>
+      <div class="stat-badge pending" *ngIf="countByStatus('pending_validation') > 0" style="background: #c2410c; display: flex; align-items: center; justify-content: center;">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="4"><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      </div>
     </div>
 
     <div class="stat-card clickable" (click)="filterByStatus('applied')" [class.active-filter]="statusFilter === 'applied'">
       <div class="stat-icon applied">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <polyline points="20 6 9 17 4 12"/>
-        </svg>
       </div>
       <div class="stat-body">
         <span class="stat-value applied">{{ countByStatus('applied') }}</span>
@@ -219,10 +218,18 @@
 
       <div class="modal-actions">
         <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">
-          ‹ Précédent
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 4px;"><polyline points="15 18 9 12 15 6"/></svg>
+          Précédent
         </button>
         <button class="btn primary" (click)="nextLocationStep()" [disabled]="!canGoNextLocation()">
-          {{ locationStepIndex < locationConfirmation.items.length - 1 ? 'Suivant ›' : '✓ Valider' }}
+          <span *ngIf="locationStepIndex < locationConfirmation.items.length - 1" style="display: flex; align-items: center;">
+            Suivant
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px;"><polyline points="9 18 15 12 9 6"/></svg>
+          </span>
+          <span *ngIf="locationStepIndex >= locationConfirmation.items.length - 1" style="display: flex; align-items: center;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"/></svg>
+            Valider
+          </span>
         </button>
         <button class="btn ghost" (click)="cancelLocationConfirmation()">Annuler</button>
       </div>
@@ -430,35 +437,21 @@
       <span class="filter-label">Filtres actifs :</span>
       <span class="filter-chip" *ngIf="statusFilter">
         Statut : {{ statusFilter }}
-        <button (click)="filterByStatus(null)">✕</button>
+        <button (click)="filterByStatus(null)">        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </span>
       <span class="filter-chip" *ngIf="directionFilter">
         Direction : {{ directionFilter }}
-        <button (click)="filterByDirection(null)">✕</button>
+        <button (click)="filterByDirection(null)">        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </span>
       <span class="filter-chip" *ngIf="typeFilter">
         Type : {{ getDocTypeLabel(typeFilter) }}
-        <button (click)="filterByType(null)">✕</button>
+        <button (click)="filterByType(null)">        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </span>
       <button class="btn ghost sm" (click)="clearFilters()">Tout effacer</button>
     </div>
 
     <!-- Sélecteur de type -->
-    <div class="filter-toolbar">
-      <div class="type-selector">
-        <label>Type de document :</label>
-        <div class="type-chips">
-          <button class="type-chip" [class.active]="!typeFilter" (click)="filterByType(null)">Tous</button>
-          <button *ngFor="let t of getAvailableTypes()" 
-            class="type-chip" 
-            [class.active]="typeFilter === t" 
-            (click)="filterByType(t)">
-            {{ getDocTypeLabel(t) }}
-            <span class="type-count">({{ getTypeCount(t) }})</span>
-          </button>
-        </div>
-      </div>
-    </div>
+    
 
     <div *ngIf="isLoading" class="loading">Chargement...</div>
     <div *ngIf="!isLoading && filteredDocuments.length === 0" class="empty">
@@ -630,15 +623,9 @@
               <button class="btn primary" (click)="apply(d)"
                 [disabled]="d.status === 'applied' || d.status === 'pending_validation' || isLoading || !d.ocr_lines?.length"
                 *ngIf="d.status !== 'applied' && d.status !== 'pending_validation'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
                 Appliquer au stock
               </button>
               <span class="applied-badge" *ngIf="d.status === 'applied'">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
                 Document appliqué au stock
               </span>
               <span class="applied-badge pending" *ngIf="d.status === 'pending_validation'" style="background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa;">
@@ -656,18 +643,28 @@
 
       <!-- Pagination basse -->
       <div class="pagination-bar" *ngIf="totalPages > 1">
-        <button class="page-btn nav" (click)="goToPage(1)" [disabled]="currentPage === 1" title="Première page">«</button>
-        <button class="page-btn nav" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1" title="Précédent">‹</button>
+        <button class="page-btn nav" (click)="goToPage(1)" [disabled]="currentPage === 1" title="Première page">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
+        </button>
+        <button class="page-btn nav" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1" title="Précédent">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
 
         <ng-container *ngFor="let p of pageNumbers">
-          <span *ngIf="p === '...'" class="page-ellipsis">…</span>
+          <span *ngIf="p === '...'" class="page-ellipsis">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+          </span>
           <button *ngIf="p !== '...'" class="page-btn" [class.active]="currentPage === +p" (click)="goToPage(+p)">
             {{ p }}
           </button>
         </ng-container>
 
-        <button class="page-btn nav" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Suivant">›</button>
-        <button class="page-btn nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Dernière page">»</button>
+        <button class="page-btn nav" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Suivant">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="page-btn nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Dernière page">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
+        </button>
       </div>
 
     </ng-container>

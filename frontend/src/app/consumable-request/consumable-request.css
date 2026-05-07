@@ -1,9 +1,63 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
+
 /* ============================================================
    CONSOMMABLES — Thème ETAP
    Palette : bleu etap · Inter · Sora · pill buttons
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
+/* Quantities grid for batch approval */
+.cr-quantities-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.cr-quantity-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--e-200);
+  border-radius: var(--radius-sm);
+  background: var(--e-50);
+}
+
+.cr-quantity-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--e-700);
+  margin-bottom: 4px;
+}
+
+.cr-quantity-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cr-quantity-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--e-300);
+  border-radius: var(--radius-sm);
+  font-size: 14px;
+  transition: border-color 0.2s ease;
+}
+
+.cr-quantity-input:focus {
+  outline: none;
+  border-color: var(--e-500);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+.cr-quantity-hint {
+  font-size: 11px;
+  color: var(--e-500);
+  font-style: italic;
+}
 
 :host {
   /* ── Palette ETAP ─────────────────────────────────────── */
@@ -247,6 +301,18 @@
   border: none; background: transparent; outline: none;
   font-size: 13px; font-family: inherit; color: var(--ink); cursor: pointer;
 }
+.cr-filter-group input[type="date"] {
+  border: none; background: transparent; outline: none;
+  font-size: 13px; font-family: inherit; color: var(--ink); cursor: pointer;
+}
+.cr-btn-clear {
+  background: transparent; border: none; color: var(--mist);
+  font-size: 18px; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+.cr-btn-clear:hover { color: var(--bad-text); }
+
 
 .cr-count {
   font-size: 12px; color: var(--mist); font-weight: 500;
@@ -295,7 +361,8 @@
 
 /* Colonnes spécifiques */
 .cr-td-date { font-size: 11.5px; color: var(--mist); white-space: nowrap; font-family: 'DM Mono', monospace; }
-.cr-td-main { font-weight: 600; color: var(--ink); max-width: 200px; }
+.cr-td-main { font-weight: 600; color: var(--ink); max-width: 200px; display: flex; flex-direction: column; gap: 2px; }
+.cr-batch-tag { font-size: 10px; color: var(--e-400); font-weight: 400; opacity: 0.8; }
 .cr-td-num  { text-align: center; font-weight: 700; color: var(--e-600); font-variant-numeric: tabular-nums; }
 .cr-suggestion { color: var(--ok-text) !important; }
 
@@ -525,21 +592,38 @@
   margin-bottom: 6px;
 }
 
-.cr-line {
-  display: flex; align-items: center; gap: 10px;
-  padding: 12px 14px;
-  background: var(--snow); border: 1px solid var(--silver);
-  border-radius: var(--radius-md);
-  transition: border-color .18s;
+.cr-line-item {
+  background: white; border: 1.5px solid var(--silver);
+  border-radius: var(--radius-md); padding: 12px;
+  transition: all .2s;
 }
-.cr-line:hover { border-color: var(--e-200); }
+.cr-line-item:hover { border-color: var(--e-200); box-shadow: 0 2px 8px rgba(0,0,0,.03); }
+
+.cr-line-row {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+
+.cr-line-col-search { flex: 1.5; min-width: 150px; }
+.cr-line-col-select { flex: 2; min-width: 200px; }
+.cr-line-col-qty    { width: 80px; }
+.cr-line-col-actions{ width: 32px; }
+
+.cr-line-search-input {
+  width: 100%; padding: 8px 12px;
+  border: 1.5px solid var(--frost); border-radius: var(--radius-sm);
+  background: var(--snow); font-size: 12.5px; outline: none;
+  transition: all .2s;
+}
+.cr-line-search-input:focus { border-color: var(--e-200); background: white; }
 
 .cr-line-select {
-  flex: 1; padding: 8px 12px;
-  border: 1.5px solid var(--silver); border-radius: var(--radius-sm);
+  width: 100%; padding: 8px 12px;
+  border: 1.5px solid var(--frost); border-radius: var(--radius-sm);
   background: white; font-size: 13px; font-family: inherit; color: var(--ink);
   outline: none; transition: border-color .2s;
 }
+.cr-line-select:focus { border-color: var(--e-300); }
+
 .cr-line-select:focus { border-color: var(--e-300); box-shadow: 0 0 0 3px rgba(42,98,184,.1); }
 
 .cr-line-qty {
@@ -554,6 +638,154 @@
 .cr-btn--add-line { margin: 4px 24px 20px; width: calc(100% - 48px); }
 
 .cr-loading-small { padding: 0 24px; font-size: 12px; color: var(--mist); font-style: italic; display: block; margin-bottom: 8px; }
+
+/* ══════════════════════════════════════════════════════════════
+   PRODUCT SEARCH DROPDOWN
+══════════════════════════════════════════════════════════════ */
+.cr-request-line {
+  position: relative;
+}
+
+.cr-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1.5px solid var(--e-200);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 24px rgba(26,70,136,.15);
+  margin-top: 4px;
+  animation: slideDown .2s var(--ease) both;
+}
+
+.cr-dropdown::-webkit-scrollbar { width: 4px; }
+.cr-dropdown::-webkit-scrollbar-thumb { background: var(--e-200); border-radius: 4px; }
+
+.cr-dropdown-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--frost);
+  cursor: pointer;
+  transition: all .15s var(--ease);
+  font-size: 13px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cr-dropdown-item:last-child {
+  border-bottom: none;
+}
+
+.cr-dropdown-item:hover {
+  background: var(--e-25);
+  color: var(--e-600);
+  padding-left: 18px;
+}
+
+.cr-dropdown-item--selected {
+  background: var(--e-50);
+  color: var(--e-600);
+  font-weight: 600;
+}
+
+.cr-dropdown-item--no-results {
+  padding: 12px 14px;
+  color: var(--mist);
+  font-style: italic;
+  text-align: center;
+  cursor: default;
+}
+
+.cr-dropdown-item--loading {
+  padding: 12px 14px;
+  color: var(--e-400);
+  font-style: italic;
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cr-dropdown-item--loading::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--e-100);
+  border-top-color: var(--e-400);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+
+/* Product search input styling */
+.cr-search-input {
+  position: relative;
+}
+
+.cr-search-input input {
+  padding-right: 32px;
+}
+
+.cr-search-input::after {
+  content: '🔍';
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--mist);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* Highlight matching text */
+.cr-dropdown-item em {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+  font-style: normal;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+/* Product reference badge */
+.cr-product-ref {
+  font-size: 10px;
+  color: var(--mist);
+  background: var(--frost);
+  padding: 2px 6px;
+  border-radius: 50px;
+  margin-left: auto;
+}
+
+/* Stock indicator in dropdown */
+.cr-stock-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 50px;
+  margin-left: auto;
+}
+
+.cr-stock-indicator--available {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.cr-stock-indicator--low {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.cr-stock-indicator--none {
+  background: var(--bad-bg);
+  color: var(--bad-text);
+}
 
 /* ══════════════════════════════════════════════════════════════
    GRILLE D'APPROBATION

@@ -152,6 +152,7 @@ class ProductStockController extends Controller
         // --- 1. Stocks from product_stocks table ---
         $stockEntries = $product->stocks()
             ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
+            ->whereIn('batch_status', ['active', 'expired'])
             ->get();
 
         $stockDetails = $stockEntries->map(function ($stock) use ($defaultSupplier) {
@@ -194,6 +195,7 @@ class ProductStockController extends Controller
                 $capacity = $stock->warehouseCabinet->capacity_units;
                 $current = $stock->warehouseCabinet->current_units;
             }
+
 
             return [
                 'id' => $stock->id,

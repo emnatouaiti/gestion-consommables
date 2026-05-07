@@ -237,12 +237,7 @@ class ExpirationManagementService
         int $userId,
         string $justification
     ): ExpirationEvent {
-        // Valider que c'est un admin
-        $user = \App\Models\User::find($userId);
-        if (!$user->hasRole('admin')) {
-            throw new \Exception('Seul un admin peut forcer la consommation d\'un produit expiré');
-        }
-
+        // La vérification des droits est faite au niveau du middleware de routes
         // Réduire le stock
         $stock->update([
             'quantity' => max(0, $stock->quantity - $quantity),
@@ -258,6 +253,68 @@ class ExpirationManagementService
             'event_type' => 'consumed_expired',
             'status' => 'acknowledged',
             'action_details' => "Consommation forcée par admin - Justification: {$justification}",
+            'created_by' => $userId,
+            'acknowledged_by' => $userId,
+            'acknowledged_at' => now(),
+        ]);
+    }
+
+    /**
+     * Éliminer un lot expiré ou endommagé
+     */
+    public function eliminateBatch(
+        ProductStock $stock,
+        int $userId,
+        string $justification
+    ): ExpirationEvent {
+        $quantity = $stock->quantity;
+
+        // Vider le stock et mettre à jour le statut
+        $stock->update([
+            'quantity' => 0,
+            'batch_status' => 'eliminated',
+        ]);
+
+        return ExpirationEvent::create([
+            'product_id' => $stock->product_id,
+            'product_stock_id' => $stock->id,
+            'batch_number' => $stock->batch_number,
+            'expiration_date' => $stock->expiration_date,
+            'quantity_affected' => $quantity,
+            'event_type' => 'eliminated_batch',
+            'status' => 'acknowledged',
+            'action_details' => "Lot éliminé - Justification: {$justification}",
+            'created_by' => $userId,
+            'acknowledged_by' => $userId,
+            'acknowledged_at' => now(),
+        ]);
+    }
+
+    /**
+     * Retourner un lot au fournisseur
+     */
+    public function returnToSupplierBatch(
+        ProductStock $stock,
+        int $userId,
+        string $justification
+    ): ExpirationEvent {
+        $quantity = $stock->quantity;
+
+        // Vider le stock et mettre à jour le statut
+        $stock->update([
+            'quantity' => 0,
+            'batch_status' => 'returned_to_supplier',
+        ]);
+
+        return ExpirationEvent::create([
+            'product_id' => $stock->product_id,
+            'product_stock_id' => $stock->id,
+            'batch_number' => $stock->batch_number,
+            'expiration_date' => $stock->expiration_date,
+            'quantity_affected' => $quantity,
+            'event_type' => 'returned_to_supplier',
+            'status' => 'acknowledged',
+            'action_details' => "Retour au fournisseur - Justification: {$justification}",
             'created_by' => $userId,
             'acknowledged_by' => $userId,
             'acknowledged_at' => now(),

@@ -16,10 +16,8 @@
     <!-- SECTION MARQUES -->
     <div class="ref-card">
       <div class="card-header">
-        <h3><i class="fas fa-copyright"></i> Marques</h3>
-        <button class="btn-primary" (click)="addMarque()">
-          <i class="fas fa-plus"></i> Ajouter
-        </button>
+        <h3>Marques</h3>
+        <button class="btn-primary" (click)="addMarque()">Ajouter</button>
       </div>
       
       <div class="card-body">
@@ -34,12 +32,8 @@
               (click)="selectMarque(m)">
             <span class="item-name">{{ m.name }}</span>
             <div class="item-actions">
-              <button class="action-btn edit" (click)="editMarque(m); $event.stopPropagation()" title="Modifier">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="action-btn delete" (click)="deleteMarque(m); $event.stopPropagation()" title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
+              <button class="action-btn-text edit" (click)="editMarque(m); $event.stopPropagation()">Modifier</button>
+              <button class="action-btn-text delete" (click)="deleteMarque(m); $event.stopPropagation()">Supprimer</button>
             </div>
           </li>
         </ul>
@@ -49,10 +43,8 @@
     <!-- SECTION MODÈLES -->
     <div class="ref-card">
       <div class="card-header">
-        <h3><i class="fas fa-microchip"></i> Modèles</h3>
-        <button class="btn-primary" (click)="addModele()">
-          <i class="fas fa-plus"></i> Ajouter
-        </button>
+        <h3>Modèles</h3>
+        <button class="btn-primary" (click)="addModele()">Ajouter</button>
       </div>
 
       <div class="filter-info" *ngIf="selectedMarque">
@@ -69,12 +61,8 @@
           <li *ngFor="let mo of modeles" class="ref-item">
             <span class="item-name">{{ mo.name }}</span>
             <div class="item-actions">
-              <button class="action-btn edit" (click)="editModele(mo)" title="Modifier">
-                <i class="fas fa-edit"></i>
-              </button>
-              <button class="action-btn delete" (click)="deleteModele(mo)" title="Supprimer">
-                <i class="fas fa-trash"></i>
-              </button>
+              <button class="action-btn-text edit" (click)="editModele(mo)">Modifier</button>
+              <button class="action-btn-text delete" (click)="deleteModele(mo)">Supprimer</button>
             </div>
           </li>
         </ul>

@@ -278,37 +278,39 @@
 }
 
 /* ── Boutons action ──────────────────────────────────────── */
-.action-btn {
+/* ── Boutons action texte ────────────────────────────────── */
+.action-btn-text {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px; height: 30px;
-  border-radius: 50%;
+  padding: 4px 12px;
+  border-radius: 50px;
   border: 1.5px solid transparent;
-  font-size: 12px;
+  font-size: 11.5px;
+  font-weight: 600;
   font-family: inherit;
   cursor: pointer;
   transition: all .2s var(--ease);
   background: transparent;
 }
 
-.action-btn.edit {
+.action-btn-text.edit {
   background: var(--warn-bg);
   color: var(--warn-text);
   border-color: var(--warn-border);
 }
-.action-btn.edit:hover {
+.action-btn-text.edit:hover {
   background: #d97706;
   color: white;
   border-color: #d97706;
 }
 
-.action-btn.delete {
+.action-btn-text.delete {
   background: var(--bad-bg);
   color: var(--bad-text);
   border-color: var(--bad-border);
 }
-.action-btn.delete:hover {
+.action-btn-text.delete:hover {
   background: #e11d48;
   color: white;
   border-color: #e11d48;

@@ -38,10 +38,10 @@ export class UserFormComponent implements OnInit {
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
     this.form = this.fb.group({
-      nomprenom: ['', Validators.required],
+      nomprenom: ['', [Validators.required, Validators.minLength(3)]],
       email:     ['', [Validators.required, Validators.email]],
-      adresse:   [''],
-      telephone: [''],
+      adresse:   ['', [Validators.maxLength(255)]],
+      telephone: ['', [Validators.pattern('^[0-9]{8,15}$')]], // Format flexible mais numérique
       siege:     [''],
       roles:     ['', Validators.required]
     });

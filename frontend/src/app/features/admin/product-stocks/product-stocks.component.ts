@@ -1,4 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
@@ -14,6 +15,8 @@ import { AdminExpirationService } from '../services/admin-expiration.service';
   styleUrls: ['./product-stocks.component.css']
 })
 export class ProductStocksComponent implements OnInit {
+
+  // ── Données produit ────────────────────────────────────
   productId: number | null = null;
   product: any = null;
   stocks: any[] = [];
@@ -22,66 +25,71 @@ export class ProductStocksComponent implements OnInit {
   allRooms: any[] = [];
   allCabinets: any[] = [];
 
+  // ── État UI ────────────────────────────────────────────
   isLoading = false;
   errorMessage = '';
   successMessage = '';
+  activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history' = 'stock';
 
-  // Modal properties
+  // ── Modal stock ────────────────────────────────────────
   showAddStockModal = false;
   editingStockId: number | null = null;
-
-  newStockForm = {
-    warehouse_location_id: '',
-    cabinet_id: '',
-    quantity: '',
-    notes: '',
-    supplier_id: ''
-  };
-
-  show3DViewerModal = false;
-  viewerData = {
-    title: '',
-    capacity: 0,
-    current: 0,
-    type: 'location' as 'location' | 'cabinet'
-  };
-
-  productSuppliers: any[] = [];
-
-  totalStock: any = {
-    product_name: '',
-    total_quantity: 0,
-    is_in_stock: false,
-    details: []
-  };
-
-  warehousesAvailability: any[] = [];
-  selectedWarehouseId: number | null = null;
+  stockForm!: FormGroup;
+  storageTargetForForm: 'location' | 'cabinet' = 'location';
   selectedWarehouseIdForForm: string = '';
   selectedRoomIdForForm: string = '';
-  storageTargetForForm: 'location' | 'cabinet' = 'location';
 
-  activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history' = 'stock';
+  // Modale Retour Fournisseur
+  showReturnModal = false;
+  returnJustification = '';
+  returnTargetBatch: any = null;
+
+  // Modale Élimination lot
+  showEliminateModal = false;
+  eliminateJustification = '';
+  eliminateTargetBatch: any = null;
+
+  // Modale Forcer Consommation
+  showForceConsumeModal = false;
+  forceConsumeJustification = '';
+  forceConsumeTargetBatch: any = null;
+
+  show3DViewerModal = false;
+  viewerData = { id: null as number | null, title: '', capacity: 0, current: 0, type: 'location' as 'location' | 'cabinet' };
+
+  // ── Stocks / entrepôts ─────────────────────────────────
+  productSuppliers: any[] = [];
+  totalStock: any = { product_name: '', total_quantity: 0, is_in_stock: false, details: [] };
+  warehousesAvailability: any[] = [];
+  selectedWarehouseId: number | null = null;
+
+  // ── Historique ─────────────────────────────────────────
   productHistory: any[] = [];
   historyLoading = false;
-  historyPagination = {
-    page: 1,
-    perPage: 10,
-    total: 0,
-    lastPage: 1
-  };
+  historyPagination = { page: 1, perPage: 10, total: 0, lastPage: 1 };
+
+  // ── Photos / Documents ─────────────────────────────────
   selectedPhotoIndex = 0;
   photoUploadInProgress = false;
   productDocuments: any[] = [];
-  docTypeFilter: string = 'all';
-  docUploadInProgress: boolean = false;
+  docTypeFilter = 'all';
+  docUploadInProgress = false;
   availableDocTypes: string[] = [];
+  docPagination = { page: 1, perPage: 5 };
 
-  // Expiration tracking properties
+  // ── Expiration & Lots ──────────────────────────────────
   productHasExpiration = false;
   batchLifecycles: any[] = [];
   expiringAlerts: any[] = [];
   expirationEvents: any[] = [];
+  eventPagination = { page: 1, perPage: 5 };
+
+  // Filtres lots
+  lotFilter: 'all' | 'expired' | 'expiring' | 'safe' = 'all';
+  lotSearchQuery = '';
+  lotsCollapsed = true;
+  expandedLotId: number | null = null;
+  lotPagination = { page: 1, perPage: 5 };
 
   constructor(
     private route: ActivatedRoute,
@@ -91,12 +99,24 @@ export class ProductStocksComponent implements OnInit {
     private adminStockService: AdminStockService,
     private warehouseService: AdminWarehouseService,
     private http: HttpClient,
-    private expirationService: AdminExpirationService
-  ) { }
+    private expirationService: AdminExpirationService,
+    private fb: FormBuilder
+  ) {
+    this.initStockForm();
+  }
+
+  private initStockForm(): void {
+    this.stockForm = this.fb.group({
+      quantity: [1, [Validators.required, Validators.min(1)]],
+      warehouse_location_id: [''],
+      cabinet_id: [''],
+      notes: [''],
+      supplier_id: ['']
+    });
+  }
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
-
     this.route.params.subscribe(params => {
       this.productId = params['productId'];
       if (this.productId) {
@@ -108,26 +128,71 @@ export class ProductStocksComponent implements OnInit {
         this.loadLocations();
         this.loadCabinets();
         this.loadDocuments();
-        this.loadExpirationData();
       }
     });
   }
 
+  // ──────────────────────────────────────────────────────
+  // NAVIGATION
+  // ──────────────────────────────────────────────────────
   setSection(section: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history'): void {
     this.activeSection = section as any;
-    if (section === 'history') {
-      this.loadHistory();
-    }
+    if (section === 'history') this.loadHistory();
+    if (section === 'expiration') this.loadExpirationData();
     this.cdr.detectChanges();
   }
 
-  loadHistory(page: number = 1): void {
+  // ──────────────────────────────────────────────────────
+  // CHARGEMENT DONNÉES
+  // ──────────────────────────────────────────────────────
+  loadProductDetails(): void {
+    if (!this.productId) return;
+    this.adminStockService.getProduct(this.productId).subscribe({
+      next: (res: any) => {
+        this.product = res.data || res;
+        this.productHasExpiration = this.product?.has_expiration || false;
+        this.productSuppliers = this.product.suppliers || [];
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Impossible de charger le produit.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  loadStocks(): void {
+    if (!this.productId) return;
+    setTimeout(() => {
+      this.isLoading = true;
+      this.cdr.detectChanges();
+    });
+    this.stockService.getTotalStock(this.productId).subscribe({
+      next: (res: any) => {
+        this.totalStock = res;
+        this.stocks = res.details || [];
+        this.warehousesAvailability = res.warehouses_availability || [];
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.errorMessage = 'Impossible de charger les stocks.';
+        this.isLoading = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  loadHistory(page = 1): void {
     if (!this.productId) return;
     this.historyPagination.page = page;
-    this.historyLoading = true;
-    this.adminStockService.getProductHistory(this.productId, { 
-      page: this.historyPagination.page, 
-      per_page: this.historyPagination.perPage 
+    setTimeout(() => {
+      this.historyLoading = true;
+      this.cdr.detectChanges();
+    });
+    this.adminStockService.getProductHistory(this.productId, {
+      page: this.historyPagination.page,
+      per_page: this.historyPagination.perPage
     }).subscribe({
       next: (res: any) => {
         this.productHistory = res.data || [];
@@ -136,59 +201,554 @@ export class ProductStocksComponent implements OnInit {
         this.historyLoading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.historyLoading = false;
-        this.cdr.detectChanges();
-      }
+      error: () => { this.historyLoading = false; this.cdr.detectChanges(); }
     });
   }
 
   onHistoryPerPageChange(): void {
+    // S'assurer que c'est un nombre
+    this.historyPagination.perPage = Number(this.historyPagination.perPage);
     this.loadHistory(1);
   }
 
-  private loadExpirationData(): void {
+  onEventPerPageChange(): void {
+    this.eventPagination.perPage = Number(this.eventPagination.perPage);
+    this.eventPagination.page = 1;
+  }
+
+  loadWarehouses(): void {
+    this.warehouseService.listWarehouses(null, 100).subscribe({
+      next: (res: any) => { this.allWarehouses = res.data || res; this.cdr.detectChanges(); },
+      error: (err: any) => console.error('Erreur dépôts:', err)
+    });
+  }
+
+  loadRooms(): void {
+    this.warehouseService.listRooms(null, null, 500).subscribe({
+      next: (res: any) => { this.allRooms = res.data || res; this.cdr.detectChanges(); },
+      error: (err: any) => console.error('Erreur salles:', err)
+    });
+  }
+
+  loadLocations(): void {
+    this.warehouseService.listLocations(null, null, 1000).subscribe({
+      next: (res: any) => { this.locations = res.data || (Array.isArray(res) ? res : []); this.cdr.detectChanges(); },
+      error: (err: any) => console.error('Erreur emplacements:', err)
+    });
+  }
+
+  loadCabinets(): void {
+    this.warehouseService.listCabinets(null, null, 1000).subscribe({
+      next: (res: any) => { this.allCabinets = res.data || (Array.isArray(res) ? res : []); this.cdr.detectChanges(); },
+      error: (err: any) => console.error('Erreur armoires:', err)
+    });
+  }
+
+  loadDocuments(): void {
+    if (!isPlatformBrowser(this.platformId) || !this.productId) return;
+    this.http.get('/api/admin/documents').subscribe({
+      next: (docs: any) => {
+        const arr = Array.isArray(docs) ? docs : [];
+        this.productDocuments = arr.filter((d: any) => {
+          const title = (this.product?.title || '').toString().trim();
+          const reference = (this.product?.reference || '').toString().trim();
+          if (!title && !reference) return d.product_id == this.productId;
+          const matches = (source: string, target: string) => {
+            if (!target || !source) return false;
+            const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            return new RegExp(`\\b${escaped}\\b`, 'i').test(source);
+          };
+          if (this.productId && d.product_id == this.productId) return true;
+          const docTitle = d.title || '';
+          if (matches(docTitle, title) || matches(docTitle, reference)) return true;
+          const ocrText = d.ocr_text || '';
+          if (matches(ocrText, title) || matches(ocrText, reference)) return true;
+          const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
+          return lines.some((l: any) => matches(l.title, title) || matches(l.reference, reference));
+        });
+        this.productDocuments.sort((a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const typesSet = new Set<string>();
+        this.productDocuments.forEach(d => { if (d.type) typesSet.add(d.type); });
+        this.availableDocTypes = Array.from(typesSet);
+        this.cdr.detectChanges();
+      },
+      error: () => {}
+    });
+  }
+
+  // ──────────────────────────────────────────────────────
+  // EXPIRATION & LOTS
+  // ──────────────────────────────────────────────────────
+
+  /** Appelé publiquement depuis le template (bouton Actualiser) */
+  loadExpirationData(): void {
     if (!this.productId) return;
 
-    // Charger les batches avec timeline
     this.expirationService.getBatchLifecycle(this.productId).subscribe({
       next: (batches: any[]) => {
-        this.batchLifecycles = batches;
+        // Calcul daysLeft côté client si non fourni par le backend
+        this.batchLifecycles = batches.map(b => this.enrichBatch(b));
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.warn('Erreur chargement batches:', err);
-      }
+      error: (err) => console.warn('Erreur batches:', err)
     });
 
-    // Charger les expirations imminentes
     this.expirationService.getExpiringSoon(this.productId).subscribe({
       next: (expiring: any[]) => {
-        this.expiringAlerts = expiring;
+        this.expiringAlerts = expiring.map(b => this.enrichBatch(b));
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.warn('Erreur chargement expirations:', err);
-      }
+      error: (err) => console.warn('Erreur expirations:', err)
     });
 
-    // Charger les événements d'expiration
     this.expirationService.getExpirationEvents(this.productId).subscribe({
       next: (events: any[]) => {
         this.expirationEvents = events;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.warn('Erreur chargement événements:', err);
+      error: (err) => console.warn('Erreur événements:', err)
+    });
+  }
+
+  /** Enrichit un batch avec daysLeft calculé si absent */
+  private enrichBatch(batch: any): any {
+    if (batch.daysLeft !== undefined) return batch;
+    if (!batch.expiration_date) return { ...batch, daysLeft: null };
+    const now = new Date();
+    const exp = new Date(batch.expiration_date);
+    const diff = Math.floor((exp.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    return { ...batch, daysLeft: diff };
+  }
+
+  getFilteredEvents(): any[] {
+    const start = (this.eventPagination.page - 1) * this.eventPagination.perPage;
+    return this.expirationEvents.slice(start, start + this.eventPagination.perPage);
+  }
+
+  getEventTotalPages(): number {
+    return Math.ceil(this.expirationEvents.length / this.eventPagination.perPage);
+  }
+
+  // ── Métriques ──────────────────────────────────────────
+  getExpiredCount(): number {
+    return this.batchLifecycles.filter(b => b.daysLeft !== null && b.daysLeft <= 0).length;
+  }
+
+  getExpiringCount(): number {
+    return this.batchLifecycles.filter(b => b.daysLeft !== null && b.daysLeft > 0 && b.daysLeft <= 7).length;
+  }
+
+  getSafeCount(): number {
+    return this.batchLifecycles.filter(b => b.daysLeft === null || b.daysLeft > 7).length;
+  }
+
+  // ── Filtres lots ───────────────────────────────────────
+  setLotFilter(filter: 'all' | 'expired' | 'expiring' | 'safe'): void {
+    this.lotFilter = filter;
+    this.lotsCollapsed = true;
+    this.expandedLotId = null;
+    this.cdr.detectChanges();
+  }
+
+  getFilteredBatches(): any[] {
+    let batches = [...this.batchLifecycles];
+
+    // Filtre par statut
+    if (this.lotFilter === 'expired')  batches = batches.filter(b => b.daysLeft !== null && b.daysLeft <= 0);
+    if (this.lotFilter === 'expiring') batches = batches.filter(b => b.daysLeft !== null && b.daysLeft > 0 && b.daysLeft <= 7);
+    if (this.lotFilter === 'safe')     batches = batches.filter(b => b.daysLeft === null || b.daysLeft > 7);
+
+    // Recherche textuelle
+    const q = this.lotSearchQuery.trim().toLowerCase();
+    if (q) {
+      batches = batches.filter(b =>
+        (b.product_name || '').toLowerCase().includes(q) ||
+        (b.batch_number || '').toLowerCase().includes(q) ||
+        (b.supplier_name || '').toLowerCase().includes(q) ||
+        (b.warehouse_name || '').toLowerCase().includes(q) ||
+        (b.notes || '').toLowerCase().includes(q)
+      );
+    }
+
+    // Trier: expirés d'abord, puis bientôt, puis sains ; dans chaque groupe par daysLeft asc
+    batches = batches.sort((a, b) => {
+      const rankA = a.daysLeft <= 0 ? 0 : (a.daysLeft <= 7 ? 1 : 2);
+      const rankB = b.daysLeft <= 0 ? 0 : (b.daysLeft <= 7 ? 1 : 2);
+      if (rankA !== rankB) return rankA - rankB;
+      return (a.daysLeft ?? 9999) - (b.daysLeft ?? 9999);
+    });
+
+    const start = (this.lotPagination.page - 1) * this.lotPagination.perPage;
+    return batches.slice(start, start + this.lotPagination.perPage);
+  }
+
+  getTotalFilteredBatches(): number {
+    let batches = [...this.batchLifecycles];
+    if (this.lotFilter === 'expired')  batches = batches.filter(b => b.daysLeft !== null && b.daysLeft <= 0);
+    if (this.lotFilter === 'expiring') batches = batches.filter(b => b.daysLeft !== null && b.daysLeft > 0 && b.daysLeft <= 7);
+    if (this.lotFilter === 'safe')     batches = batches.filter(b => b.daysLeft === null || b.daysLeft > 7);
+
+    const q = this.lotSearchQuery.trim().toLowerCase();
+    if (q) {
+      batches = batches.filter(b =>
+        (b.product_name || '').toLowerCase().includes(q) ||
+        (b.batch_number || '').toLowerCase().includes(q) ||
+        (b.supplier_name || '').toLowerCase().includes(q) ||
+        (b.warehouse_name || '').toLowerCase().includes(q) ||
+        (b.notes || '').toLowerCase().includes(q)
+      );
+    }
+    return batches.length;
+  }
+
+  getLotTotalPages(): number {
+    return Math.ceil(this.getTotalFilteredBatches() / this.lotPagination.perPage) || 1;
+  }
+
+  toggleLot(batch: any): void {
+    this.expandedLotId = this.expandedLotId === batch.id ? null : batch.id;
+    this.cdr.detectChanges();
+  }
+
+  // ── Helpers visuel ─────────────────────────────────────
+  getBatchStatusClass(batch: any): string {
+    if (batch.daysLeft === null || batch.daysLeft === undefined) return 'safe';
+    if (batch.daysLeft <= 0) return 'expired';
+    if (batch.daysLeft <= 7) return 'expiring';
+    return 'safe';
+  }
+
+  getBatchStatusLabel(batch: any): string {
+    const cls = this.getBatchStatusClass(batch);
+    if (cls === 'expired')  return 'Expiré';
+    if (cls === 'expiring') return 'Expire bientôt';
+    return 'En cours';
+  }
+
+  /**
+   * Retourne la largeur de la barre de progression.
+   * Pour les lots expirés → 100%.
+   * Pour les lots en cours → pourcentage consommé sur la durée totale (entre création et expiration).
+   */
+  getBatchProgressWidth(batch: any): string {
+    if (!batch.expiration_date) return '15%';
+    if (batch.daysLeft <= 0) return '100%';
+
+    if (batch.created_at) {
+      const created = new Date(batch.created_at).getTime();
+      const exp = new Date(batch.expiration_date).getTime();
+      const now = Date.now();
+      const totalDuration = exp - created;
+      if (totalDuration <= 0) return '100%';
+      const elapsed = now - created;
+      const pct = Math.max(5, Math.min(95, Math.round((elapsed / totalDuration) * 100)));
+      return pct + '%';
+    }
+
+    // Fallback : basé sur les jours restants (max 365)
+    const maxDays = 365;
+    const consumed = Math.max(5, Math.min(95, Math.round(((maxDays - batch.daysLeft) / maxDays) * 100)));
+    return consumed + '%';
+  }
+
+  // ── Actions sur lots ───────────────────────────────────
+  openEliminateModal(batch: any): void {
+    this.eliminateTargetBatch = batch;
+    this.eliminateJustification = '';
+    this.showEliminateModal = true;
+  }
+
+  closeEliminateModal(): void {
+    this.showEliminateModal = false;
+    this.eliminateTargetBatch = null;
+    this.eliminateJustification = '';
+  }
+
+  confirmEliminateBatch(): void {
+    if (!this.eliminateTargetBatch || !this.eliminateJustification || this.eliminateJustification.trim().length < 5) return;
+    this.expirationService.eliminateBatch(this.eliminateTargetBatch.id, this.eliminateJustification.trim()).subscribe({
+      next: () => {
+        this.showSuccess('Lot marqué pour élimination.');
+        this.closeEliminateModal();
+        this.loadExpirationData();
+        this.loadStocks(); // Mettre à jour le stock total et les emplacements
+      },
+      error: (err) => this.errorMessage = this.extractApiError(err, 'Erreur lors de l\'élimination')
+    });
+  }
+
+  openReturnModal(batch: any): void {
+    this.returnTargetBatch = batch;
+    this.returnJustification = '';
+    this.showReturnModal = true;
+  }
+
+  closeReturnModal(): void {
+    this.showReturnModal = false;
+    this.returnTargetBatch = null;
+    this.returnJustification = '';
+  }
+
+  confirmReturnToSupplier(): void {
+    if (!this.returnTargetBatch || !this.returnJustification || this.returnJustification.trim().length < 5) return;
+    this.expirationService.returnToSupplierBatch(this.returnTargetBatch.id, this.returnJustification.trim()).subscribe({
+      next: () => {
+        this.showSuccess('Lot retourné au fournisseur avec succès.');
+        this.closeReturnModal();
+        this.loadExpirationData();
+        this.loadStocks(); // Mettre à jour le stock total et les emplacements
+      },
+      error: (err) => this.errorMessage = this.extractApiError(err, 'Erreur lors du retour')
+    });
+  }
+
+  openForceConsumeModal(batch: any): void {
+    this.forceConsumeTargetBatch = batch;
+    this.forceConsumeJustification = '';
+    this.showForceConsumeModal = true;
+  }
+
+  closeForceConsumeModal(): void {
+    this.showForceConsumeModal = false;
+    this.forceConsumeTargetBatch = null;
+    this.forceConsumeJustification = '';
+  }
+
+  confirmForceConsume(): void {
+    if (!this.forceConsumeTargetBatch || !this.forceConsumeJustification || this.forceConsumeJustification.trim().length < 5) return;
+    // Le backend attend quantity + justification
+    this.http.post(`/api/admin/expirations/${this.forceConsumeTargetBatch.id}/force-consume`, {
+      quantity: this.forceConsumeTargetBatch.quantity,
+      justification: this.forceConsumeJustification.trim()
+    }).subscribe({
+      next: () => {
+        this.showSuccess('Consommation forcée enregistrée.');
+        this.closeForceConsumeModal();
+        this.loadExpirationData();
+      },
+      error: (err: any) => {
+        this.errorMessage = this.extractApiError(err?.error || err, 'Erreur lors de la consommation forcée');
+        this.cdr.detectChanges();
       }
     });
   }
 
-  onStockAdded(newStock: any): void {
-    this.loadStocks();
-    this.loadExpirationData();
-    this.successMessage = 'Stock ajouté avec succès!';
-    setTimeout(() => { this.successMessage = ''; }, 3000);
+  prioritizeBatch(batch: any): void {
+    // TODO: appeler expirationService.prioritize(batch.id)
+    this.showSuccess(`Lot ${batch.batch_number || batch.id} mis en priorité de sortie.`);
+  }
+
+  viewBatchHistory(batch: any): void {
+    // TODO: ouvrir modal ou naviguer vers historique du lot
+    console.log('View history for batch:', batch.id);
+  }
+
+  editBatch(batch: any): void {
+    // TODO: ouvrir modal d'édition du lot
+    console.log('Edit batch:', batch.id);
+  }
+
+  // ──────────────────────────────────────────────────────
+  // STOCK CRUD
+  // ──────────────────────────────────────────────────────
+  openAddStockModal(warehouseId?: number): void {
+    this.resetForm();
+    this.editingStockId = null;
+    if (warehouseId) this.selectedWarehouseIdForForm = warehouseId.toString();
+    this.showAddStockModal = true;
+  }
+
+  closeAddStockModal(): void {
+    this.showAddStockModal = false;
+    this.resetForm();
+  }
+
+   resetForm(): void {
+    this.stockForm.reset({
+      quantity: 1,
+      warehouse_location_id: '',
+      cabinet_id: '',
+      notes: '',
+      supplier_id: ''
+    });
+    this.selectedWarehouseIdForForm = '';
+    this.selectedRoomIdForForm = '';
+    this.storageTargetForForm = 'location';
+  }
+
+  saveStock(): void {
+    if (this.stockForm.invalid) {
+      this.stockForm.markAllAsTouched();
+      this.errorMessage = 'Veuillez remplir correctement les champs obligatoires.';
+      return;
+    }
+
+    const val = this.stockForm.value;
+    const hasStorage = this.storageTargetForForm === 'cabinet' ? !!val.cabinet_id : !!val.warehouse_location_id;
+
+    if (!hasStorage) {
+      this.errorMessage = 'Veuillez sélectionner un emplacement ou une armoire.';
+      return;
+    }
+
+    if (!this.productId) { this.errorMessage = 'Produit non chargé.'; return; }
+
+    const payload = {
+      warehouse_location_id: (this.storageTargetForForm === 'location' && val.warehouse_location_id) ? parseInt(val.warehouse_location_id) : null,
+      cabinet_id: (this.storageTargetForForm === 'cabinet' && val.cabinet_id) ? parseInt(val.cabinet_id) : null,
+      quantity: parseInt(val.quantity),
+      notes: val.notes,
+      supplier_id: val.supplier_id ? parseInt(val.supplier_id) : null
+    };
+
+    this.errorMessage = '';
+    const req$ = this.editingStockId
+      ? this.stockService.updateStock(this.editingStockId, payload)
+      : this.stockService.addStock(this.productId, payload);
+
+    req$.subscribe({
+      next: () => {
+        this.showSuccess(this.editingStockId ? 'Stock mis à jour !' : 'Stock ajouté !');
+        this.closeAddStockModal();
+        this.loadStocks();
+      },
+      error: (err: any) => {
+        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  editStock(stock: any): void {
+    this.editingStockId = stock.id;
+    this.storageTargetForForm = stock.storage_type === 'cabinet' ? 'cabinet' : 'location';
+    const room = this.allRooms.find((r: any) => r.name === stock.room);
+    if (room) {
+      this.selectedRoomIdForForm = room.id.toString();
+      this.selectedWarehouseIdForForm = room.warehouse_id?.toString() || '';
+    }
+    this.stockForm.patchValue({
+      warehouse_location_id: this.storageTargetForForm === 'location'
+        ? (this.locations.find(l => l.code === stock.location_code)?.id.toString() || '') : '',
+      cabinet_id: this.storageTargetForForm === 'cabinet'
+        ? (this.allCabinets.find((c: any) => c.code === stock.location_code)?.id.toString() || '') : '',
+      quantity: stock.quantity.toString(),
+      notes: stock.notes || '',
+      supplier_id: stock.supplier_id?.toString() || ''
+    });
+    this.showAddStockModal = true;
+  }
+
+  deleteStock(stockId: number): void {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce stock ?')) return;
+    this.stockService.deleteStock(stockId).subscribe({
+      next: () => { this.showSuccess('Stock supprimé !'); this.loadStocks(); },
+      error: (err: any) => { this.errorMessage = err?.error?.message || 'Impossible de supprimer ce stock.'; this.cdr.detectChanges(); }
+    });
+  }
+
+  // ──────────────────────────────────────────────────────
+  // DÉPÔTS
+  // ──────────────────────────────────────────────────────
+  toggleDepot(wh: any): void {
+    this.selectedWarehouseId = this.selectedWarehouseId === wh.warehouse_id ? null : wh.warehouse_id;
+    this.cdr.detectChanges();
+  }
+
+  getStocksForWarehouse(warehouseId: number): any[] {
+    return this.stocks.filter(s => s.warehouse_id === warehouseId);
+  }
+
+  getWarehousesFromLocations(): any[] {
+    return this.allWarehouses.sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  getRoomsForWarehouse(): any[] {
+    if (!this.selectedWarehouseIdForForm) return [];
+    return this.allRooms
+      .filter(r => r.warehouse_id.toString() === this.selectedWarehouseIdForForm)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  getLocationsForRoom(): any[] {
+    if (!this.selectedRoomIdForForm) return [];
+    return this.locations
+      .filter(loc => loc.room_id.toString() === this.selectedRoomIdForForm)
+      .map(loc => ({ ...loc, isFull: loc.capacity_units > 0 && loc.current_units >= loc.capacity_units }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  getCabinetsForRoom(): any[] {
+    if (!this.selectedRoomIdForForm) return [];
+    return this.allCabinets
+      .filter(c => c.room_id.toString() === this.selectedRoomIdForForm)
+      .map(c => ({ ...c, isFull: c.capacity_units > 0 && c.current_units >= c.capacity_units }))
+      .sort((a, b) => a.code.localeCompare(b.code));
+  }
+
+  onWarehouseFormChange(): void {
+    this.selectedRoomIdForForm = '';
+    this.stockForm.patchValue({
+        warehouse_location_id: '',
+        cabinet_id: ''
+    });
+  }
+
+  onRoomFormChange(): void {
+    this.stockForm.patchValue({
+        warehouse_location_id: '',
+        cabinet_id: ''
+    });
+  }
+
+  setStorageTarget(target: 'location' | 'cabinet'): void {
+    this.storageTargetForForm = target;
+    if (target === 'location') this.stockForm.patchValue({ cabinet_id: '' });
+    else this.stockForm.patchValue({ warehouse_location_id: '' });
+  }
+
+  // ──────────────────────────────────────────────────────
+  // ÉTAT STOCK
+  // ──────────────────────────────────────────────────────
+  getStockStatus(): string {
+    return this.totalStock.is_in_stock
+      ? `En stock (${this.totalStock.total_quantity} unités)`
+      : 'Rupture de stock';
+  }
+
+  getStockStatusClass(): string {
+    return this.totalStock.is_in_stock ? 'in-stock' : 'out-of-stock';
+  }
+
+  // ──────────────────────────────────────────────────────
+  // PHOTOS
+  // ──────────────────────────────────────────────────────
+  getProductPhotos(): any[] {
+    const p = this.product as any;
+    if (!p) return [];
+    if (Array.isArray(p.photos) && p.photos.length) return p.photos;
+    if (p.photo) return [{ path: p.photo }];
+    return [];
+  }
+
+  getSelectedPhotoUrl(): string {
+    const photos = this.getProductPhotos();
+    const idx = Math.max(0, Math.min(this.selectedPhotoIndex, photos.length - 1));
+    const path = photos[idx]?.path || photos[idx]?.image_path || photos[idx]?.url || '';
+    if (!path) return 'assets/images/placeholder-product.png';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return `http://localhost:8000/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
+  }
+
+  getPhotoUrl(path: string | null | undefined): string {
+    if (!path) return 'assets/images/placeholder-product.png';
+    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    return `http://localhost:8000/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
+  }
+
+  selectPhoto(index: number): void {
+    this.selectedPhotoIndex = index;
     this.cdr.detectChanges();
   }
 
@@ -197,29 +757,19 @@ export class ProductStocksComponent implements OnInit {
     const files = Array.from(input.files || []);
     input.value = '';
     if (!files.length || !this.productId) return;
-
     const file = files[0];
-    if (!file.type.startsWith('image/')) {
-      this.errorMessage = 'Veuillez choisir une image.';
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      this.errorMessage = 'Image trop lourde (max 2 Mo).';
-      return;
-    }
-
+    if (!file.type.startsWith('image/')) { this.errorMessage = 'Veuillez choisir une image.'; return; }
+    if (file.size > 2 * 1024 * 1024) { this.errorMessage = 'Image trop lourde (max 2 Mo).'; return; }
     this.photoUploadInProgress = true;
     this.errorMessage = '';
     const payload = this.buildUpdatePayload();
     (payload as any).photos = [file];
-
     this.adminStockService.updateProduct(this.productId, payload).subscribe({
       next: () => {
-        this.successMessage = 'Photo mise à jour.';
+        this.showSuccess('Photo mise à jour.');
         this.photoUploadInProgress = false;
         this.loadProductDetails();
         this.setSection('images');
-        setTimeout(() => this.successMessage = '', 2000);
       },
       error: (err) => {
         this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
@@ -233,19 +783,122 @@ export class ProductStocksComponent implements OnInit {
     this.photoUploadInProgress = true;
     const payload = this.buildUpdatePayload();
     (payload as any).photo = photoPath;
-
     this.adminStockService.updateProduct(this.productId, payload).subscribe({
       next: () => {
-        this.successMessage = 'Image par défaut mise à jour.';
+        this.showSuccess("Image par défaut mise à jour.");
         this.photoUploadInProgress = false;
         this.loadProductDetails();
-        setTimeout(() => this.successMessage = '', 2000);
       },
       error: (err) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de définir l\'image par défaut.');
+        this.errorMessage = this.extractApiError(err, "Impossible de définir l'image par défaut.");
         this.photoUploadInProgress = false;
       }
     });
+  }
+
+  onImageError(event: any): void {
+    event.target.src = 'assets/images/placeholder-product.png';
+  }
+
+  // ──────────────────────────────────────────────────────
+  // DOCUMENTS
+  // ──────────────────────────────────────────────────────
+  onDocSelected(event: any): void {
+    const file = event.target.files[0];
+    if (file) this.handleDocUpload(file);
+  }
+
+  handleDocUpload(file: File): void {
+    this.docUploadInProgress = true;
+    this.errorMessage = '';
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('product_id', (this.productId || '').toString());
+    formData.append('type', 'bon_livraison');
+    formData.append('direction', 'in');
+    this.http.post('/api/admin/documents', formData).subscribe({
+      next: () => {
+        this.showSuccess('Document ajouté avec succès !');
+        this.docUploadInProgress = false;
+        this.loadDocuments();
+      },
+      error: () => {
+        this.errorMessage = "Erreur lors de l'envoi du document.";
+        this.docUploadInProgress = false;
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  getFilteredDocuments(): any[] {
+    let docs = this.docTypeFilter === 'all'
+      ? [...this.productDocuments]
+      : this.productDocuments.filter(d => d.type === this.docTypeFilter);
+    docs = docs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    // Pagination
+    const start = (this.docPagination.page - 1) * this.docPagination.perPage;
+    return docs.slice(start, start + this.docPagination.perPage);
+  }
+
+  getTotalFilteredDocuments(): number {
+    if (this.docTypeFilter === 'all') return this.productDocuments.length;
+    return this.productDocuments.filter(d => d.type === this.docTypeFilter).length;
+  }
+
+  getDocTotalPages(): number {
+    return Math.ceil(this.getTotalFilteredDocuments() / this.docPagination.perPage) || 1;
+  }
+
+  getDocTypeLabel(type: string): string {
+    const map: Record<string, string> = {
+      demande: 'Demande',
+      bon_sortie: 'Bon de Sortie',
+      bon_livraison: 'Bon de Livraison',
+      refus: 'Refus',
+      all: 'Tous'
+    };
+    return map[type] || (type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' '));
+  }
+
+  downloadDoc(doc: any): void {
+    const path = doc?.path;
+    if (!path) return;
+    const url = `/api/docs/${path.replace(/^[/\\]+/, '').replace(/^storage\//, '')}`;
+    const a = document.createElement('a');
+    a.href = url; a.download = doc?.title || 'document'; a.target = '_blank';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  }
+
+  // ──────────────────────────────────────────────────────
+  // VIEWER 3D
+  // ──────────────────────────────────────────────────────
+  open3DViewer(stock: any): void {
+    this.viewerData = {
+      id: stock.storage_type === 'cabinet' ? stock.cabinet_id : stock.warehouse_location_id,
+      title: stock.storage_type === 'cabinet' ? stock.cabinet_display : stock.location_display,
+      capacity: stock.capacity_units || 100,
+      current: stock.current_units || 0,
+      type: stock.storage_type
+    };
+    this.show3DViewerModal = true;
+  }
+
+  close3DViewer(): void { this.show3DViewerModal = false; }
+
+  // ──────────────────────────────────────────────────────
+  // HELPERS PRIVÉS
+  // ──────────────────────────────────────────────────────
+  unitLabel(): string {
+    const unit = (this.product as any)?.unit;
+    if (!unit) return '—';
+    return typeof unit === 'object' ? (unit.name || '—') : (unit || '—');
+  }
+
+  private showSuccess(msg: string): void {
+    this.successMessage = msg;
+    setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+    this.cdr.detectChanges();
   }
 
   private buildUpdatePayload(): any {
@@ -271,7 +924,7 @@ export class ProductStocksComponent implements OnInit {
       unit: p.unit?.name || p.unit || '',
       location: p.location || '',
       warehouse_location_id: p.warehouse_location_id || null,
-      supplier_ids: Array.isArray(p.suppliers) ? p.suppliers.map((s: any) => s.id) : [],
+      supplier_ids: Array.isArray(p.suppliers) ? p.suppliers.map((s: any) => s.id) : []
     };
   }
 
@@ -280,478 +933,26 @@ export class ProductStocksComponent implements OnInit {
     if (typeof err.message === 'string' && err.message.trim()) return err.message;
     const errors = err.errors;
     if (errors && typeof errors === 'object') {
-      const firstField = Object.keys(errors)[0];
-      const firstValue = firstField ? errors[firstField] : null;
-      if (Array.isArray(firstValue) && firstValue.length) return String(firstValue[0]);
-      if (typeof firstValue === 'string') return firstValue;
+      const first = Object.keys(errors)[0];
+      const val = first ? errors[first] : null;
+      if (Array.isArray(val) && val.length) return String(val[0]);
+      if (typeof val === 'string') return val;
     }
     return fallback;
   }
 
-  getProductPhotos(): any[] {
-    const p = this.product as any;
-    if (!p) return [];
-    if (Array.isArray(p.photos) && p.photos.length) return p.photos;
-    if (p.photo) return [{ path: p.photo }];
-    return [];
-  }
-
-  getSelectedPhotoUrl(): string {
-    const photos = this.getProductPhotos();
-    const idx = Math.max(0, Math.min(this.selectedPhotoIndex, photos.length - 1));
-    const item = photos[idx];
-    const path = item?.path || item?.image_path || item?.url || '';
-    if (!path) return 'assets/images/placeholder-product.png';
-    if (typeof path === 'string' && (path.startsWith('http://') || path.startsWith('https://'))) return path;
-    const cleanPath = path.replace(/^storage\//, '').replace(/^[/\\]+/, '');
-    return `http://localhost:8000/api/docs/${cleanPath}`;
-  }
-
-  // Documents liés au produit
-  loadDocuments(): void {
-    if (!isPlatformBrowser(this.platformId) || !this.productId) return;
-    this.http.get(`/api/admin/documents`).subscribe({
-      next: (docs: any) => {
-        const arr = Array.isArray(docs) ? docs : [];
-        this.productDocuments = arr.filter((d: any) => {
-          const title = (this.product?.title || '').toString().trim();
-          const reference = (this.product?.reference || '').toString().trim();
-          
-          if (!title && !reference) return d.product_id == this.productId;
-
-          // Helper for word-boundary matching
-          const matches = (source: string, target: string) => {
-            if (!target || !source) return false;
-            const escaped = target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`\\b${escaped}\\b`, 'i');
-            return regex.test(source);
-          };
-
-          // 1. Direct ID link
-          if (this.productId && d.product_id == this.productId) return true;
-          
-          // 2. Check in document title
-          const docTitle = (d.title || '');
-          if (matches(docTitle, title)) return true;
-          if (matches(docTitle, reference)) return true;
-
-          // 3. Check in OCR text (full document content)
-          const ocrText = (d.ocr_text || '');
-          if (matches(ocrText, title)) return true;
-          if (matches(ocrText, reference)) return true;
-
-          // 4. Check in specific OCR lines
-          const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
-          return lines.some((l: any) => matches(l.title, title) || matches(l.reference, reference));
-        });
-        
-        // Sort documents by date descending initially
-        this.productDocuments.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        
-        // Extract available types for filtering
-        const typesSet = new Set<string>();
-        this.productDocuments.forEach(d => {
-          if (d.type) typesSet.add(d.type);
-        });
-        this.availableDocTypes = Array.from(typesSet);
-        
-        this.cdr.detectChanges();
-      },
-      error: () => { }
-    });
-  }
-
-  onDocSelected(event: any): void {
-    const file = event.target.files[0];
-    if (file) {
-      this.handleDocUpload(file);
-    }
-  }
-
-  handleDocUpload(file: File): void {
-    this.docUploadInProgress = true;
-    this.errorMessage = '';
-    
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('product_id', (this.productId || '').toString());
-    formData.append('type', 'bon_livraison'); // Default for manual upload here
-    formData.append('direction', 'in');
-
-    this.http.post('/api/admin/documents', formData).subscribe({
-      next: (res: any) => {
-        this.successMessage = 'Document ajouté avec succès !';
-        this.docUploadInProgress = false;
-        this.loadDocuments();
-        setTimeout(() => this.successMessage = '', 3000);
-      },
-      error: (err: any) => {
-        this.errorMessage = 'Erreur lors de l\'envoi du document.';
-        this.docUploadInProgress = false;
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  getFilteredDocuments(): any[] {
-    let docs = this.docTypeFilter === 'all' 
-      ? [...this.productDocuments] 
-      : this.productDocuments.filter(d => d.type === this.docTypeFilter);
-    
-    // Ensure they are sorted by date descending
-    return docs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }
-
-  getDocTypeLabel(type: string): string {
-    switch (type) {
-      case 'demande': return 'Demande';
-      case 'bon_sortie': return 'Bon de Sortie';
-      case 'bon_livraison': return 'Bon de Livraison';
-      case 'refus': return 'Refus';
-      default: return type.charAt(0).toUpperCase() + type.slice(1).replace('_', ' ');
-    }
-  }
-
-  downloadDoc(doc: any): void {
-    const path = doc?.path;
-    if (!path) return;
-    const clean = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
-    const url = `/api/docs/${clean}`;
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = doc?.title || 'document';
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-  }
-
-  getPhotoUrl(path: string | null | undefined): string {
-    if (!path) return 'assets/images/placeholder-product.png';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    const cleanPath = path.replace(/^storage\//, '').replace(/^[/\\]+/, '');
-    return `http://localhost:8000/api/docs/${cleanPath}`;
-  }
-
-  unitLabel(): string {
-    const unit = (this.product as any)?.unit;
-    if (!unit) return '—';
-    if (typeof unit === 'object') return unit.name || '—';
-    return unit || '—';
-  }
-
-  selectPhoto(index: number): void {
-    this.selectedPhotoIndex = index;
-    this.cdr.detectChanges();
-  }
-
-  loadProductDetails(): void {
-    if (!this.productId) return;
-
-    this.adminStockService.getProduct(this.productId).subscribe({
-      next: (res: any) => {
-        this.product = res.data || res;
-        this.productHasExpiration = this.product?.has_expiration || false;
-        this.productSuppliers = this.product.suppliers || [];
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => {
-        this.errorMessage = 'Impossible de charger le produit.';
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  loadStocks(): void {
-    if (!this.productId) return;
-
-    this.isLoading = true;
-    this.errorMessage = '';
-
-    this.stockService.getTotalStock(this.productId).subscribe({
-      next: (res: any) => {
-        this.totalStock = res;
-        this.stocks = res.details || [];
-        this.warehousesAvailability = res.warehouses_availability || [];
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => {
-        this.errorMessage = 'Impossible de charger les stocks.';
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  loadWarehouses(): void {
-    this.warehouseService.listWarehouses(null, 100).subscribe({
-      next: (res: any) => {
-        this.allWarehouses = res.data || res;
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => console.error('Erreur chargement dépôts:', err)
-    });
-  }
-
-  loadRooms(): void {
-    this.warehouseService.listRooms(null, null, 500).subscribe({
-      next: (res: any) => {
-        this.allRooms = res.data || res;
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => console.error('Erreur chargement salles:', err)
-    });
-  }
-
-  loadLocations(): void {
-    this.warehouseService.listLocations(null, null, 1000).subscribe({
-      next: (res: any) => {
-        this.locations = res.data || (Array.isArray(res) ? res : []);
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => {
-        console.error('Erreur chargement emplacements:', err);
-      }
-    });
-  }
-
-  loadCabinets(): void {
-    this.warehouseService.listCabinets(null, null, 1000).subscribe({
-      next: (res: any) => {
-        this.allCabinets = res.data || (Array.isArray(res) ? res : []);
-        this.cdr.detectChanges();
-      },
-      error: (err: any) => console.error('Erreur chargement armoires:', err)
-    });
-  }
-
-  openAddStockModal(warehouseId?: number): void {
-    this.resetForm();
-    this.editingStockId = null;
-    if (warehouseId) {
-      this.selectedWarehouseIdForForm = warehouseId.toString();
-    }
-    this.showAddStockModal = true;
-  }
-
-  closeAddStockModal(): void {
-    this.showAddStockModal = false;
-    this.resetForm();
-  }
-
-  resetForm(): void {
-    this.newStockForm = {
-      warehouse_location_id: '',
-      cabinet_id: '',
-      quantity: '',
-      notes: '',
-      supplier_id: ''
-    };
-    this.selectedWarehouseIdForForm = '';
-    this.selectedRoomIdForForm = '';
-    this.storageTargetForForm = 'location';
-  }
-
-  saveStock(): void {
-    const hasStorage = this.storageTargetForForm === 'cabinet'
-      ? !!this.newStockForm.cabinet_id
-      : !!this.newStockForm.warehouse_location_id;
-
-    if (!hasStorage || !this.newStockForm.quantity) {
-      this.errorMessage = 'Emplacement ou armoire et quantite sont obligatoires.';
-      return;
-    }
-
-    const selectedLoc = this.storageTargetForForm === 'location'
-      ? this.locations.find((l: any) => l.id.toString() === this.newStockForm.warehouse_location_id.toString())
-      : null;
-    if (selectedLoc && selectedLoc.capacity_units && selectedLoc.current_units >= selectedLoc.capacity_units) {
-      this.errorMessage = 'Cet emplacement est plein (capacite maximale atteinte).';
-      return;
-    }
-
-    if (!this.productId) {
-      this.errorMessage = 'Produit non charge.';
-      return;
-    }
-
-    const payload = {
-      warehouse_location_id: this.storageTargetForForm === 'location' && this.newStockForm.warehouse_location_id
-        ? parseInt(this.newStockForm.warehouse_location_id)
-        : null,
-      cabinet_id: this.storageTargetForForm === 'cabinet' && this.newStockForm.cabinet_id
-        ? parseInt(this.newStockForm.cabinet_id)
-        : null,
-      quantity: parseInt(this.newStockForm.quantity),
-      notes: this.newStockForm.notes,
-      supplier_id: this.newStockForm.supplier_id ? parseInt(this.newStockForm.supplier_id) : null
-    };
-
-    this.errorMessage = '';
-
-    const req$ = this.editingStockId
-      ? this.stockService.updateStock(this.editingStockId, payload)
-      : this.stockService.addStock(this.productId, payload);
-
-    req$.subscribe({
-      next: () => {
-        this.successMessage = this.editingStockId ? 'Stock mis a jour !' : 'Stock ajoute !';
-        this.closeAddStockModal();
-        this.loadStocks();
-        setTimeout(() => this.successMessage = '', 3000);
-      },
-      error: (err: any) => {
-        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  editStock(stock: any): void {
-    this.editingStockId = stock.id;
-    this.storageTargetForForm = stock.storage_type === 'cabinet' ? 'cabinet' : 'location';
-
-    const room = this.allRooms.find((r: any) => r.name === stock.room);
-    if (room) {
-      this.selectedRoomIdForForm = room.id.toString();
-      this.selectedWarehouseIdForForm = room.warehouse_id?.toString() || '';
-    }
-
-    this.newStockForm = {
-      warehouse_location_id: this.storageTargetForForm === 'location'
-        ? this.locations.find(l => l.code === stock.location_code)?.id.toString() || ''
-        : '',
-      cabinet_id: this.storageTargetForForm === 'cabinet'
-        ? this.allCabinets.find((c: any) => c.code === stock.location_code)?.id.toString() || ''
-        : '',
-      quantity: stock.quantity.toString(),
-      notes: stock.notes || '',
-      supplier_id: stock.supplier_id?.toString() || ''
-    };
-    this.showAddStockModal = true;
-  }
-
-  deleteStock(stockId: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce stock ?')) return;
-
-    this.stockService.deleteStock(stockId).subscribe({
-      next: () => {
-        this.successMessage = 'Stock supprimé !';
-        this.loadStocks();
-        setTimeout(() => this.successMessage = '', 3000);
-      },
-      error: (err: any) => {
-        this.errorMessage = err?.error?.message || 'Impossible de supprimer ce stock.';
-        this.cdr.detectChanges();
-      }
-    });
-  }
-
-  open3DViewer(stock: any): void {
-    this.viewerData = {
-      title: stock.storage_type === 'cabinet' ? stock.cabinet_display : stock.location_display,
-      capacity: stock.capacity_units || 100, // Fallback if 0 or null
-      current: stock.current_units || 0,
-      type: stock.storage_type
-    };
-    this.show3DViewerModal = true;
-  }
-
-  close3DViewer(): void {
-    this.show3DViewerModal = false;
-  }
-
-  getStockStatus(): string {
-    if (this.totalStock.is_in_stock) {
-      return `En stock (${this.totalStock.total_quantity} unités)`;
-    }
-    return 'Rupture de stock';
-  }
-
-  getStockStatusClass(): string {
-    return this.totalStock.is_in_stock ? 'in-stock' : 'out-of-stock';
+  onStockAdded(newStock: any): void {
+    this.loadStocks();
+    this.loadExpirationData();
+    this.showSuccess('Stock ajouté avec succès !');
   }
 
   getLocationLabel(loc: any): string {
-    const warehouse = loc.room?.warehouse?.name || 'Dépôt';
-    const room = loc.room?.name || 'Salle';
-    return `${warehouse}, ${room}, ${loc.code}`;
+    return `${loc.room?.warehouse?.name || 'Dépôt'}, ${loc.room?.name || 'Salle'}, ${loc.code}`;
   }
 
   isLocationFull(loc: any): boolean {
     if (!loc.capacity_units) return false;
     return (loc.current_units || 0) >= loc.capacity_units;
-  }
-
-  toggleDepot(wh: any): void {
-    if (this.selectedWarehouseId === wh.warehouse_id) {
-      this.selectedWarehouseId = null;
-    } else {
-      this.selectedWarehouseId = wh.warehouse_id;
-    }
-    this.cdr.detectChanges();
-  }
-
-  getStocksForWarehouse(warehouseId: number): any[] {
-    return this.stocks.filter(s => s.warehouse_id === warehouseId);
-  }
-
-  getWarehousesFromLocations(): any[] {
-    return this.allWarehouses.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  getRoomsForWarehouse(): any[] {
-    if (!this.selectedWarehouseIdForForm) return [];
-    return this.allRooms
-      .filter(room => room.warehouse_id.toString() === this.selectedWarehouseIdForForm)
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  getLocationsForRoom(): any[] {
-    if (!this.selectedRoomIdForForm) return [];
-    return this.locations
-      .filter(loc => loc.room_id.toString() === this.selectedRoomIdForForm)
-      .map(loc => ({
-        ...loc,
-        isFull: loc.capacity_units > 0 && loc.current_units >= loc.capacity_units
-      }))
-      .sort((a, b) => a.code.localeCompare(b.code));
-  }
-
-
-  getCabinetsForRoom(): any[] {
-    if (!this.selectedRoomIdForForm) return [];
-    return this.allCabinets
-      .filter(cabinet => cabinet.room_id.toString() === this.selectedRoomIdForForm)
-      .map(cabinet => ({
-        ...cabinet,
-        isFull: cabinet.capacity_units > 0 && cabinet.current_units >= cabinet.capacity_units
-      }))
-      .sort((a, b) => a.code.localeCompare(b.code));
-  }
-
-  onWarehouseFormChange(): void {
-    this.selectedRoomIdForForm = '';
-    this.newStockForm.warehouse_location_id = '';
-    this.newStockForm.cabinet_id = '';
-  }
-
-  onRoomFormChange(): void {
-    this.newStockForm.warehouse_location_id = '';
-    this.newStockForm.cabinet_id = '';
-  }
-
-  setStorageTarget(target: 'location' | 'cabinet'): void {
-    this.storageTargetForForm = target;
-    if (target === 'location') {
-      this.newStockForm.cabinet_id = '';
-    } else {
-      this.newStockForm.warehouse_location_id = '';
-    }
-  }
-
-  onImageError(event: any): void {
-    event.target.src = 'assets/images/placeholder-product.png';
   }
 }

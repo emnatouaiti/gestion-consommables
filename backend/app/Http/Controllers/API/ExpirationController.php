@@ -8,6 +8,14 @@ use App\Services\ExpirationManagementService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ReturnToSupplierMail;
+use App\Models\Document;
+use App\Models\StockMovement;
+use App\Models\StockMovementLine;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Contrôleur pour la gestion des expirations et alertes
@@ -204,6 +212,195 @@ class ExpirationController extends Controller
     }
 
     /**
+     * POST /api/admin/expirations/{stockId}/eliminate
+     * Éliminer un lot expiré ou endommagé
+     */
+    public function eliminateBatch(int $stockId, Request $request): JsonResponse
+    {
+        $stock = ProductStock::findOrFail($stockId);
+        $originalQuantity = $stock->quantity;
+
+        $validated = $request->validate([
+            'justification' => 'required|string|min:5',
+        ]);
+
+        $stock->load(['product.unit', 'supplier', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse']);
+
+        $event = $this->expirationService->eliminateBatch(
+            stock: $stock,
+            userId: auth()->id() ?? 1,
+            justification: $validated['justification']
+        );
+
+        $document = null;
+        $movement = null;
+
+        // ── Créer un mouvement de stock pour l'historique ──
+        try {
+            DB::transaction(function () use ($stock, $originalQuantity, $validated, &$movement, &$document) {
+                $movement = StockMovement::create([
+                    'movement_type' => 'out',
+                    'reference'     => 'ELIM-' . $stock->id . '-' . time(),
+                    'created_by'    => auth()->id(),
+                    'validated_by'  => auth()->id(),
+                    'status'        => 'executed',
+                    'notes'         => 'Élimination de lot: ' . ($stock->batch_number ?? 'Sans numéro') . ' - Justification: ' . $validated['justification'],
+                    'source_warehouse_location_id' => $stock->warehouse_location_id,
+                    'source_cabinet_id'            => $stock->cabinet_id,
+                    'executed_at'   => now(),
+                ]);
+
+                StockMovementLine::create([
+                    'stock_movement_id' => $movement->id,
+                    'product_id'        => $stock->product_id,
+                    'quantity'          => $originalQuantity,
+                ]);
+
+                // ── Générer le PV d'élimination ──
+                $pdf = Pdf::loadView('pdf.elimination', [
+                    'stock'         => $stock,
+                    'justification' => $validated['justification'],
+                    'quantity'      => $originalQuantity,
+                ]);
+
+                $fileName = 'elimination_lot_' . $stock->id . '_' . time() . '.pdf';
+                $path = 'documents/eliminations/' . $fileName;
+                Storage::disk('public')->put($path, $pdf->output());
+
+                $warehouseId = optional(optional(optional($stock->warehouseLocation)->room)->warehouse)->id;
+
+                $document = Document::create([
+                    'user_id'     => auth()->id(),
+                    'product_id'  => $stock->product_id,
+                    'supplier_id' => $stock->supplier_id,
+                    'warehouse_id'=> $warehouseId,
+                    'title'       => 'PV d\'Élimination - Lot ' . ($stock->batch_number ?? $stock->id),
+                    'type'        => 'pv_destruction',
+                    'direction'   => 'out',
+                    'path'        => $path,
+                    'status'      => 'applied',
+                ]);
+
+                // Associer le document au mouvement et à l'événement
+                $movement->update(['document_id' => $document->id]);
+                $event->update(['document_id' => $document->id]);
+
+                // Mettre à jour le stock global du produit
+                $product = $stock->product;
+                $product->stock_quantity = $product->stocks()->sum('quantity');
+                $product->save();
+            });
+        } catch (\Exception $err) {
+            \Log::error('Elimination StockMovement/PDF error: ' . $err->getMessage());
+        }
+
+        return response()->json([
+            'message'            => 'Lot éliminé avec succès',
+            'event'              => $event,
+            'document'           => $document,
+            'movement'           => $movement,
+            'remaining_quantity' => $stock->fresh()->quantity,
+        ]);
+
+
+    }
+
+
+    /**
+     * POST /api/admin/expirations/{stockId}/return-supplier
+     * Retourner un lot au fournisseur
+     */
+    public function returnToSupplierBatch(int $stockId, Request $request): JsonResponse
+    {
+        $stock = ProductStock::with(['product.unit', 'supplier', 'warehouseLocation.room.warehouse'])->findOrFail($stockId);
+        $originalQuantity = $stock->quantity;
+
+        $validated = $request->validate([
+            'justification' => 'required|string|min:5',
+        ]);
+
+        // ── Étape critique : mettre à jour le stock et créer l'événement ──
+        $event = $this->expirationService->returnToSupplierBatch(
+            stock: $stock,
+            userId: auth()->id() ?? 1,
+            justification: $validated['justification']
+        );
+
+        $document = null;
+        $movement = null;
+
+        // ── Créer un mouvement de stock pour l'historique ──
+        try {
+            DB::transaction(function () use ($stock, $originalQuantity, $validated, &$movement, &$document) {
+                $movement = StockMovement::create([
+                    'movement_type' => 'out',
+                    'reference'     => 'RET-' . $stock->id . '-' . time(),
+                    'created_by'    => auth()->id(),
+                    'validated_by'  => auth()->id(),
+                    'status'        => 'executed',
+                    'notes'         => 'Retour au fournisseur: ' . ($stock->batch_number ?? 'Sans numéro') . ' - Justification: ' . $validated['justification'],
+                    'supplier_id'   => $stock->supplier_id,
+                    'source_warehouse_location_id' => $stock->warehouse_location_id,
+                    'source_cabinet_id'            => $stock->cabinet_id,
+                    'executed_at'   => now(),
+                ]);
+
+                StockMovementLine::create([
+                    'stock_movement_id' => $movement->id,
+                    'product_id'        => $stock->product_id,
+                    'quantity'          => $originalQuantity,
+                ]);
+
+                // ── Générer le bon de retour ──
+                $pdf = Pdf::loadView('pdf.return_supplier', [
+                    'stock'         => $stock,
+                    'supplier'      => $stock->supplier,
+                    'justification' => $validated['justification'],
+                    'quantity'      => $originalQuantity,
+                ]);
+
+                $fileName = 'return_supplier_lot_' . $stock->id . '_' . time() . '.pdf';
+                $path = 'documents/returns/' . $fileName;
+                Storage::disk('public')->put($path, $pdf->output());
+
+                $warehouseId = optional(optional(optional($stock->warehouseLocation)->room)->warehouse)->id;
+
+                $document = Document::create([
+                    'user_id'     => auth()->id(),
+                    'product_id'  => $stock->product_id,
+                    'supplier_id' => $stock->supplier_id,
+                    'warehouse_id'=> $warehouseId,
+                    'title'       => 'Bon de Retour - Lot ' . ($stock->batch_number ?? $stock->id),
+                    'type'        => 'bon_retour',
+                    'direction'   => 'out',
+                    'path'        => $path,
+                    'status'      => 'applied',
+                ]);
+
+                // Associer le document au mouvement et à l'événement
+                $movement->update(['document_id' => $document->id]);
+                $event->update(['document_id' => $document->id]);
+
+                // Mettre à jour le stock global du produit
+                $product = $stock->product;
+                $product->stock_quantity = $product->stocks()->sum('quantity');
+                $product->save();
+            });
+        } catch (\Exception $err) {
+            \Log::error('ReturnToSupplier StockMovement/PDF error: ' . $err->getMessage());
+        }
+
+        return response()->json([
+            'message'            => 'Lot retourné au fournisseur avec succès',
+            'event'              => $event,
+            'document'           => $document,
+            'movement'           => $movement,
+            'remaining_quantity' => $stock->fresh()->quantity,
+        ]);
+    }
+
+
+    /**
      * GET /api/admin/expirations/stats
      * Statistiques sur les expirations
      */
@@ -241,15 +438,27 @@ class ExpirationController extends Controller
     {
         $batches = ProductStock::where('product_id', $productId)
             ->whereNotNull('expiration_date')
+            ->whereIn('batch_status', ['active', 'expired']) // On masque les lots éliminés/retournés ici
+            ->with(['product', 'supplier', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse'])
             ->get();
 
         $result = $batches->map(function ($stock) {
             return [
-                'batch_number' => $stock->batch_number,
-                'expiration_date' => $stock->expiration_date,
-                'quantity' => $stock->quantity,
-                'status' => $stock->batch_status ?? 'active',
-                'created_at' => $stock->created_at,
+                'id'             => $stock->id,
+                'product_id'     => $stock->product_id,
+                'product_name'   => $stock->product->title ?? null,
+                'batch_number'   => $stock->batch_number,
+                'expiration_date'=> $stock->expiration_date,
+                'quantity'       => $stock->quantity,
+                'batch_status'   => $stock->batch_status ?? 'active',
+                'is_blocked'     => $stock->is_blocked ?? false,
+                'notes'          => $stock->notes,
+                'supplier_id'    => $stock->supplier_id,
+                'supplier_name'  => $stock->supplier->name ?? null,
+                'warehouse_name' => optional(optional(optional($stock->warehouseLocation)->room)->warehouse)->name
+                                   ?? optional(optional(optional($stock->warehouseCabinet)->room)->warehouse)->name,
+                'location_display' => $stock->warehouseLocation->code ?? $stock->warehouseCabinet->code ?? null,
+                'created_at'     => $stock->created_at,
             ];
         });
 
@@ -287,9 +496,10 @@ class ExpirationController extends Controller
      */
     public function getEvents(int $productId): JsonResponse
     {
-        $events = ExpirationEvent::whereHas('productStock', function ($q) use ($productId) {
-            $q->where('product_id', $productId);
-        })->orderBy('created_at', 'desc')->get();
+        $events = ExpirationEvent::with('document')
+            ->where('product_id', $productId)
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         return response()->json($events);
     }

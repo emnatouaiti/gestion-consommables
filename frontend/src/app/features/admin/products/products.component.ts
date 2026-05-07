@@ -1,4 +1,5 @@
 import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject, ViewChild } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminStockService } from '../services/admin-stock.service';
@@ -54,8 +55,8 @@ export class ProductsComponent implements OnInit {
   private readonly barcodeCache = new Map<string, string>();
   updatingPhotoId: number | null = null;
   // Réactivation modal
-showReactivateModal = false;
-reactivateProduct: any | null = null;
+  showReactivateModal = false;
+  reactivateProduct: any | null = null;
 
   warehouses: any[] = [];
   rooms: any[] = [];
@@ -78,7 +79,7 @@ reactivateProduct: any | null = null;
   };
 
   editingId: number | null = null;
-  form = this.createEmptyForm();
+  productForm!: FormGroup;
 
   constructor(
     private readonly stockService: AdminStockService,
@@ -89,8 +90,42 @@ reactivateProduct: any | null = null;
     private readonly cdr: ChangeDetectorRef,
     private readonly router: Router,
     private readonly authService: AuthService,
+    private readonly fb: FormBuilder,
     @Inject(PLATFORM_ID) private readonly platformId: Object
-  ) { }
+  ) {
+    this.initForm();
+  }
+
+  private initForm(): void {
+    this.productForm = this.fb.group({
+      status: ['active', Validators.required],
+      title: ['', [Validators.required, Validators.minLength(2)]],
+      short_description: ['', Validators.maxLength(500)],
+      description: [''],
+      commentaire: [''],
+      num_serie: ['', [Validators.pattern(/^SN.*/i)]], // Doit commencer par SN
+      num_inventaire: ['', [Validators.pattern(/^[a-zA-Z0-9-_\/]+$/)]], // Alphanumérique large
+      model: [''],
+      marque: [''],
+      seuil_min: [0, [Validators.required, Validators.min(0)]],
+      seuil_max: [null, [Validators.min(0)]],
+      reference: [''],
+      categorie_id: [null, Validators.required],
+      has_expiration: [false],
+      purchase_price: [null, Validators.min(0)],
+      unit_id: [null],
+      supplier_id: [null]
+    }, { validators: this.thresholdValidator });
+  }
+
+  private thresholdValidator(control: AbstractControl): ValidationErrors | null {
+    const min = control.get('seuil_min')?.value;
+    const max = control.get('seuil_max')?.value;
+    if (max !== null && max !== undefined && max !== '' && Number(max) <= Number(min)) {
+      return { thresholdError: true };
+    }
+    return null;
+  }
 
   /** Responsable de stock can write (create/update/delete). Agent can only read. */
   get canWrite(): boolean {
@@ -129,36 +164,44 @@ reactivateProduct: any | null = null;
   onMarqueSelect(): void {
     const id = this.selectedMarqueId;
     this.modelsList = [];
-    this.form.model = '';
+    this.productForm.get('model')?.setValue('');
     if (!id) return;
     const mar = this.brands.find((x: any) => x.id === id);
-    this.form.marque = mar ? mar.name : '';
-    this.refService.listModeles({ marque_id: id }).subscribe({ next: (res: any) => { this.modelsList = Array.isArray(res) ? res : []; this.cdr.detectChanges(); }, error: () => this.modelsList = [] });
+    this.productForm.get('marque')?.setValue(mar ? mar.name : '');
+    this.refService.listModeles({ marque_id: id }).subscribe({
+      next: (res: any) => {
+        this.modelsList = Array.isArray(res) ? res : [];
+        this.cdr.detectChanges();
+      },
+      error: () => this.modelsList = []
+    });
   }
 
-
-
   onTitleBlur(): void {
-    if (this.form.title && !this.form.description && !this.form.short_description) {
+    const title = this.productForm.get('title')?.value;
+    const desc = this.productForm.get('description')?.value;
+    const shortDesc = this.productForm.get('short_description')?.value;
+    if (title && !desc && !shortDesc) {
       this.generateDescriptions();
     }
   }
 
   generateDescriptions(): void {
-    if (!this.form.title || !this.form.title.trim()) {
+    const title = this.productForm.get('title')?.value;
+    if (!title || !title.trim()) {
       this.errorMessage = 'Titre requis pour générer la description.';
       return;
     }
     this.errorMessage = '';
     const payload = {
-      title: this.form.title,
-      marque: this.form.marque || undefined,
-      model: this.form.model || undefined
+      title: title,
+      marque: this.productForm.get('marque')?.value || undefined,
+      model: this.productForm.get('model')?.value || undefined
     };
     this.stockService.generateDescriptions(payload).subscribe({
       next: (res: any) => {
-        this.form.short_description = res?.short_description || this.form.short_description;
-        this.form.description = res?.description || this.form.description;
+        if (res?.short_description) this.productForm.get('short_description')?.setValue(res.short_description);
+        if (res?.description) this.productForm.get('description')?.setValue(res.description);
         this.cdr.detectChanges();
       },
       error: (err) => {
@@ -200,76 +243,7 @@ reactivateProduct: any | null = null;
     });
   }
 
-  onWarehouseChange(): void {
-    if (!this.form.warehouse_id) {
-      this.rooms = [];
-      this.locations = [];
-      this.form.warehouse_room_id = null;
-      this.form.warehouse_location_id = null;
-      return;
-    }
-
-    this.warehouseService.listRooms(this.form.warehouse_id as number).subscribe({
-      next: (res: any) => {
-        this.rooms = res.data || [];
-        this.locations = [];
-        this.form.warehouse_room_id = null;
-        this.form.warehouse_location_id = null;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.rooms = [];
-      }
-    });
-  }
-
-  onRoomChange(): void {
-    if (!this.form.warehouse_room_id) {
-      this.locations = [];
-      this.form.warehouse_location_id = null;
-      return;
-    }
-    this.warehouseService.listLocations(this.form.warehouse_room_id as number).subscribe({
-      next: (res: any) => {
-        this.locations = res.data || [];
-        this.form.warehouse_location_id = null;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.locations = [];
-      }
-    });
-  }
-
-  private createEmptyForm() {
-    return {
-      status: 'active',
-      title: '',
-      short_description: '',
-      description: '',
-      commentaire: '',
-      num_serie: '',
-      num_inventaire: '',
-      model: '',
-      marque: '',
-      seuil_min: 0,
-      seuil_max: null as number | null,
-      reference: '',
-      categorie_id: null as number | null,
-      has_expiration: false,
-      // Kept for compatibility with existing product listing & stock/location features.
-      stock_quantity: null as number | null,
-      purchase_price: null as number | null,
-      unit_id: null as number | null,
-      location: null as string | null,
-      warehouse_id: null as number | null,
-      warehouse_room_id: null as number | null,
-      warehouse_location_id: null as number | null,
-      supplier_id: null as number | null
-    };
-  }
-
-  /* ─── Data Loading ─── */
+  /* --- Data Loading --- */
 
   loadAll(): void {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -277,7 +251,6 @@ reactivateProduct: any | null = null;
     this.errorMessage = '';
 
     if (!this.canWrite) {
-      // Agent can only read products - skip the categories API which is restricted to Responsable
       this.loadProducts();
       return;
     }
@@ -298,9 +271,7 @@ reactivateProduct: any | null = null;
   }
 
   loadProducts(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
+    if (!isPlatformBrowser(this.platformId)) return;
     this.stockService.listProducts({
       q: this.filters.q.trim(),
       status: this.filters.status,
@@ -329,9 +300,7 @@ reactivateProduct: any | null = null;
   }
 
   loadOverview(): void {
-    if (!isPlatformBrowser(this.platformId)) {
-      return;
-    }
+    if (!isPlatformBrowser(this.platformId)) return;
     this.stockService.productsOverview().subscribe({
       next: (data) => {
         this.overview = data || null;
@@ -344,7 +313,7 @@ reactivateProduct: any | null = null;
     });
   }
 
-  /* ─── Modal ─── */
+  /* --- Modal --- */
 
   openAddModal(): void {
     this.resetForm();
@@ -356,12 +325,11 @@ reactivateProduct: any | null = null;
 
   openScanner(): void {
     this.showScannerModal = true;
-    // allow view to render
-    setTimeout(() => { try { this.scanner?.start(); } catch (e) { /* ignore */ } }, 150);
+    setTimeout(() => { try { this.scanner?.start(); } catch (e) { } }, 150);
   }
 
   closeScanner(): void {
-    try { this.scanner?.stop(); } catch (e) { /* ignore */ }
+    try { this.scanner?.stop(); } catch (e) { }
     this.showScannerModal = false;
   }
 
@@ -373,7 +341,7 @@ reactivateProduct: any | null = null;
 
   openEditModal(item: any): void {
     this.editingId = item.id;
-    this.form = {
+    this.productForm.patchValue({
       status: item.status || 'active',
       title: item.title || '',
       short_description: item.short_description || '',
@@ -388,15 +356,11 @@ reactivateProduct: any | null = null;
       reference: item.reference || '',
       categorie_id: item.categorie_id ?? null,
       has_expiration: item.has_expiration ?? false,
-      stock_quantity: null,
       purchase_price: item.purchase_price ?? null,
       unit_id: item.unit_id ?? item.unit?.id ?? null,
-      location: null,
-      warehouse_id: null,
-      warehouse_room_id: null,
-      warehouse_location_id: null,
       supplier_id: (item.suppliers && item.suppliers.length) ? item.suppliers[0].id : null
-    };
+    });
+
     this.selectedPhotoFiles = [];
     this.photoPreviewUrls = [];
     const existingPhotos = Array.isArray(item.photos) && item.photos.length ? item.photos : (item.photo ? [{ path: item.photo }] : []);
@@ -404,9 +368,7 @@ reactivateProduct: any | null = null;
       .map((p: any) => this.photoUrl(p?.path || p?.photo || p))
       .filter(Boolean);
 
-    // Populate dependent selects
     this.showModal = true;
-    // Load marques list for editing mode
     setTimeout(() => {
         if (this.brands.length === 0) {
             this.refService.listMarques({}).subscribe({
@@ -424,13 +386,12 @@ reactivateProduct: any | null = null;
   }
 
   private selectMarqueIfAny(): void {
-    setTimeout(() => {
-        const b = this.brands.find((x:any) => x.name === this.form.marque);
-        if (b) {
-            this.selectedMarqueId = b.id;
-            this.onMarqueSelect();
-        }
-    }, 200);
+    const marque = this.productForm.get('marque')?.value;
+    const b = this.brands.find((x:any) => x.name === marque);
+    if (b) {
+        this.selectedMarqueId = b.id;
+        this.onMarqueSelect();
+    }
   }
 
   manageProductStocks(product: any): void {
@@ -451,50 +412,37 @@ reactivateProduct: any | null = null;
   }
 
   save(): void {
-    if (!this.form.categorie_id) {
-      this.errorMessage = 'La catégorie est obligatoire.';
+    if (this.productForm.invalid) {
+      this.productForm.markAllAsTouched();
+      this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire.';
       return;
     }
 
-    const unitId = this.form.unit_id ? Number(this.form.unit_id) : null;
+    const val = this.productForm.value;
+    const unitId = val.unit_id ? Number(val.unit_id) : null;
     const selectedUnit = this.units.find((u: any) => u.id === unitId);
 
-    // Allow short_description to be slightly more developed (up to 2 sentences)
-    if (this.form.short_description) {
-      this.form.short_description = this.extractFirstTwoSentences(this.form.short_description);
+    if (val.short_description) {
+      val.short_description = this.extractFirstTwoSentences(val.short_description);
     }
 
     const payload = {
-      status: this.form.status,
-      title: (this.form.title || '').trim(),
-      short_description: (this.form.short_description || '').trim(),
-      description: (this.form.description || '').trim(),
-      commentaire: (this.form.commentaire || '').trim(),
-      num_serie: (this.form.num_serie || '').trim(),
-      num_inventaire: (this.form.num_inventaire || '').trim(),
-      model: (this.form.model || '').trim(),
-      marque: (this.form.marque || '').trim(),
-      seuil_min: Number(this.form.seuil_min || 0),
-      seuil_max: this.form.seuil_max ? Number(this.form.seuil_max) : null,
-      reference: (this.form.reference || '').trim(),
-      categorie_id: Number(this.form.categorie_id),
-      has_expiration: this.form.has_expiration ? 1 : 0,
-      purchase_price: this.form.purchase_price === null ? null : Number(this.form.purchase_price),
+      ...val,
+      seuil_min: Number(val.seuil_min || 0),
+      seuil_max: val.seuil_max ? Number(val.seuil_max) : null,
+      categorie_id: Number(val.categorie_id),
+      has_expiration: val.has_expiration ? 1 : 0,
+      purchase_price: val.purchase_price === null ? null : Number(val.purchase_price),
       unit_id: unitId,
       unit: selectedUnit?.name || '',
-      supplier_ids: this.form.supplier_id ? [Number(this.form.supplier_id)] : [],
+      supplier_ids: val.supplier_id ? [Number(val.supplier_id)] : [],
       photos: this.selectedPhotoFiles
     };
 
-    if (!payload.title) {
-      this.errorMessage = 'Titre est obligatoire.';
-      return;
-    }
-    // When creating a product, allow backend to auto-generate the reference.
     if (!this.editingId && (!payload.reference || payload.reference === '')) {
       (payload as any).reference = undefined;
     }
-    // When editing, reference is required (backend validation expects it)
+    
     if (this.editingId && (!payload.reference || payload.reference === '')) {
       this.errorMessage = 'Référence est obligatoire lors de la modification.';
       return;
@@ -520,36 +468,30 @@ reactivateProduct: any | null = null;
         this.loadProducts();
         setTimeout(() => this.successMessage = '', 5000);
       },
-   error: (err) => {
-  console.log('ERR COMPLET:', JSON.stringify(err));
-  if (err?.existing_product) {
-    this.reactivateProduct = err.existing_product;
-    this.showReactivateModal = true;
-    this.errorMessage = '';
-    this.cdr.detectChanges();  // ← ajoute cette ligne
-  } else {
-    this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
-  }
-}
+      error: (err) => {
+        if (err?.existing_product) {
+          this.reactivateProduct = err.existing_product;
+          this.showReactivateModal = true;
+          this.errorMessage = '';
+          this.cdr.detectChanges();
+        } else {
+          this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
+        }
+      }
     });
   }
 
   private extractFirstTwoSentences(text: string): string {
     if (!text) return '';
     const s = text.trim();
-    // Capture up to two sentences (ending with . ! ?)
     const regex = /([^\.\!\?]+[\.\!\?])(\s*([^\.\!\?]+[\.\!\?]))?/;
     const match = s.match(regex);
     if (match && match[1]) {
       let result = match[1].trim();
-      if (match[3]) {
-        result += ' ' + match[3].trim();
-      }
-      // limit length to ~240 chars
+      if (match[3]) result += ' ' + match[3].trim();
       if (result.length > 240) return result.slice(0, 237).trim() + '...';
       return result;
     }
-    // fallback: take up to 160 chars
     return s.length > 160 ? s.slice(0, 157).trim() + '...' : s;
   }
 
@@ -558,7 +500,6 @@ reactivateProduct: any | null = null;
     this.stockService.deleteProduct(id).subscribe({
       next: () => {
         this.successMessage = 'Produit supprimé !';
-        // this.loadOverview(); // Route n'existe pas dans l'API
         this.loadProducts();
         setTimeout(() => this.successMessage = '', 3000);
       },
@@ -567,31 +508,36 @@ reactivateProduct: any | null = null;
       }
     });
   }
-  confirmReactivate(): void {
-  if (!this.reactivateProduct?.id) return;
-  this.stockService.activateProduct(this.reactivateProduct.id).subscribe({
-    next: () => {
-      this.successMessage = `Produit "${this.reactivateProduct.title}" réactivé !`;
-      this.showReactivateModal = false;
-      this.reactivateProduct = null;
-      this.closeModal();
-      this.loadProducts();
-      setTimeout(() => this.successMessage = '', 4000);
-    },
-    error: (err) => {
-      this.errorMessage = this.extractApiError(err, 'Impossible de réactiver le produit.');
-    }
-  });
-}
 
-dismissReactivate(): void {
-  this.showReactivateModal = false;
-  this.reactivateProduct = null;
-}
+  confirmReactivate(): void {
+    if (!this.reactivateProduct?.id) return;
+    this.stockService.activateProduct(this.reactivateProduct.id).subscribe({
+      next: () => {
+        this.successMessage = `Produit "${this.reactivateProduct.title}" réactivé !`;
+        this.showReactivateModal = false;
+        this.reactivateProduct = null;
+        this.closeModal();
+        this.loadProducts();
+        setTimeout(() => this.successMessage = '', 4000);
+      },
+      error: (err) => {
+        this.errorMessage = this.extractApiError(err, 'Impossible de réactiver le produit.');
+      }
+    });
+  }
+
+  dismissReactivate(): void {
+    this.showReactivateModal = false;
+    this.reactivateProduct = null;
+  }
 
   resetForm(): void {
     this.editingId = null;
-    this.form = this.createEmptyForm();
+    this.productForm.reset({
+      status: 'active',
+      seuil_min: 0,
+      has_expiration: false
+    });
     this.selectedPhotoFiles = [];
     this.photoPreviewUrls = [];
     this.selectedMarqueId = null;
@@ -599,29 +545,17 @@ dismissReactivate(): void {
     this.errorMessage = '';
   }
 
-  /* ─── Barcode ─── */
+  /* --- Barcode --- */
 
   downloadBarcode(item: any): void {
     const value = item?.barcode_value || item?.reference || '';
-    if (!value) {
-      this.errorMessage = 'Aucune valeur de code-barres disponible.';
-      return;
-    }
-
+    if (!value) return;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    JsBarcode(svg, value, {
-      format: 'CODE128',
-      displayValue: true,
-      margin: 8,
-      width: 1.6,
-      height: 48
-    });
-
+    JsBarcode(svg, value, { format: 'CODE128', displayValue: true });
     const serializer = new XMLSerializer();
     const svgData = serializer.serializeToString(svg);
     const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
     const url = URL.createObjectURL(blob);
-
     const a = document.createElement('a');
     a.href = url;
     a.download = `barcode-${item.id}.svg`;
@@ -632,75 +566,38 @@ dismissReactivate(): void {
   barcodeImage(value: string): string {
     const barcodeValue = (value || '').trim();
     if (!barcodeValue) return '';
-
     const cached = this.barcodeCache.get(barcodeValue);
     if (cached) return cached;
-
     const canvas = document.createElement('canvas');
-    JsBarcode(canvas, barcodeValue, {
-      format: 'CODE128',
-      displayValue: false,
-      margin: 2,
-      width: 1.2,
-      height: 30
-    });
-
+    JsBarcode(canvas, barcodeValue, { format: 'CODE128', displayValue: false, height: 30 });
     const dataUrl = canvas.toDataURL('image/png');
     this.barcodeCache.set(barcodeValue, dataUrl);
     return dataUrl;
   }
 
-  /* ─── Photo ─── */
+  /* --- Photo --- */
 
   onPhotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files || []);
-
     if (!files.length) return;
-
-    const maxBytes = 2 * 1024 * 1024;
-    const nextFiles: File[] = [];
-    const nextPreviewUrls: string[] = [];
-
     for (const file of files) {
-      if (!file.type || !file.type.startsWith('image/')) {
-        this.errorMessage = 'Veuillez choisir uniquement des fichiers image.';
-        input.value = '';
+      if (file.size > 2 * 1024 * 1024) {
+        this.errorMessage = 'Photo trop lourde (max 2 Mo).';
         return;
       }
-      if (file.size > maxBytes) {
-        this.errorMessage = 'Chaque photo doit faire au maximum 2 Mo.';
-        input.value = '';
-        return;
-      }
-      nextFiles.push(file);
-      nextPreviewUrls.push(URL.createObjectURL(file));
+      this.selectedPhotoFiles.push(file);
+      this.photoPreviewUrls.push(URL.createObjectURL(file));
     }
-    this.errorMessage = '';
-    this.selectedPhotoFiles = [...this.selectedPhotoFiles, ...nextFiles];
-    this.photoPreviewUrls = [...this.photoPreviewUrls, ...nextPreviewUrls];
     input.value = '';
   }
 
   onRowPhotoSelected(event: Event, product: any): void {
     const input = event.target as HTMLInputElement;
     const files = Array.from(input.files || []);
-    input.value = '';
     if (!files.length) return;
-
     const file = files[0];
-    if (!file.type.startsWith('image/')) {
-      this.errorMessage = 'Veuillez choisir une image.';
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      this.errorMessage = 'Image trop lourde (max 2 Mo).';
-      return;
-    }
-
-    this.errorMessage = '';
     this.updatingPhotoId = product.id;
-
     this.stockService.updateProduct(product.id, { photos: [file] }).subscribe({
       next: () => {
         this.successMessage = 'Photo mise à jour.';
@@ -713,6 +610,7 @@ dismissReactivate(): void {
         this.updatingPhotoId = null;
       }
     });
+    input.value = '';
   }
 
   photoUrl(path: string | null | undefined): string {
@@ -772,33 +670,23 @@ dismissReactivate(): void {
     this.productHistory = [];
   }
 
-  /* ─── Scan ─── */
+  /* --- Scan --- */
 
   onScanSubmit(): void {
     const code = (this.scanCode || '').trim().toLowerCase();
-    if (!code) {
-      this.scanMessage = 'Scannez un code-barres.';
-      this.scannedProduct = null;
-      this.highlightedProductId = null;
-      return;
-    }
-
+    if (!code) return;
     const found = this.products.find((p: any) => {
       const barcode = String(p?.barcode_value || '').trim().toLowerCase();
       const ref = String(p?.reference || '').trim().toLowerCase();
       return code === barcode || code === ref;
     });
-
-    if (!found) {
-      this.scanMessage = 'Produit non trouvé pour ce code.';
-      this.scannedProduct = null;
-      this.highlightedProductId = null;
-      return;
+    if (found) {
+      this.scannedProduct = found;
+      this.highlightedProductId = found.id;
+      this.scanMessage = '';
+    } else {
+      this.scanMessage = 'Produit non trouvé.';
     }
-
-    this.scanMessage = '';
-    this.scannedProduct = found;
-    this.highlightedProductId = found.id;
   }
 
   clearScan(): void {
@@ -808,7 +696,7 @@ dismissReactivate(): void {
     this.highlightedProductId = null;
   }
 
-  /* ─── Filters & Pagination ─── */
+  /* --- Filters & Pagination --- */
 
   applyFilters(): void {
     this.pagination.page = 1;
@@ -829,18 +717,12 @@ dismissReactivate(): void {
   }
 
   filterByCategory(categoryId: number | null): void {
-    if (!categoryId) {
-      return;
-    }
     this.filters.categorie_id = categoryId;
     this.pagination.page = 1;
     this.loadProducts();
   }
 
   filterBySupplier(supplierId: number | null): void {
-    if (!supplierId) {
-      return;
-    }
     this.filters.supplier_id = supplierId;
     this.pagination.page = 1;
     this.loadProducts();
@@ -889,7 +771,7 @@ dismissReactivate(): void {
     document.body.removeChild(a);
   }
 
-  /* ─── Helpers ─── */
+  /* --- Helpers --- */
 
   private refreshScannedProduct(): void {
     if (!this.scannedProduct?.id) return;
@@ -901,23 +783,14 @@ dismissReactivate(): void {
   private extractApiError(err: any, fallback: string): string {
     if (!err) return fallback;
     const payload = err?.error ?? err;
-
     if (typeof payload?.message === 'string' && payload.message.trim()) return payload.message;
     if (typeof err?.message === 'string' && err.message.trim()) return err.message;
-
     const errors = payload?.errors || payload?.error || err?.errors;
     if (errors && typeof errors === 'object') {
       const firstField = Object.keys(errors)[0];
       const firstValue = firstField ? errors[firstField] : null;
       if (Array.isArray(firstValue) && firstValue.length) return String(firstValue[0]);
       if (typeof firstValue === 'string') return firstValue;
-    }
-    if (typeof payload === 'object') {
-      const topLevelField = Object.keys(payload).find((key) => Array.isArray(payload[key]));
-      if (topLevelField) {
-        const value = payload[topLevelField];
-        if (Array.isArray(value) && value.length) return String(value[0]);
-      }
     }
     return fallback;
   }
@@ -945,8 +818,7 @@ dismissReactivate(): void {
     if (!location) return 'Emplacement ' + product.warehouse_location_id;
     const room = location.room || {};
     const warehouse = room.warehouse || {};
-    const parts = [warehouse.name || 'Dépôt', room.name || 'Salle', location.code || 'Emp.'];
-    return parts.join(', ');
+    return [warehouse.name || 'Dépôt', room.name || 'Salle', location.code || 'Emp.'].join(', ');
   }
 
   viewProductsByLocation(locationId: number | null): void {
@@ -955,8 +827,7 @@ dismissReactivate(): void {
   }
 
   openSupplierDetails(supplierId: number): void {
-    if (!isPlatformBrowser(this.platformId)) return;
-    if (!supplierId) return;
+    if (!isPlatformBrowser(this.platformId) || !supplierId) return;
     this.isLoading = true;
     this.supplierService.getSupplier(supplierId).subscribe({
       next: (data) => {
@@ -965,10 +836,9 @@ dismissReactivate(): void {
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: (err) => {
-        console.error('Error loading supplier details', err);
+      error: () => {
         this.isLoading = false;
-        this.errorMessage = 'Erreur lors du chargement des détails du fournisseur';
+        this.errorMessage = 'Erreur chargement fournisseur';
         this.cdr.detectChanges();
       }
     });
@@ -977,14 +847,10 @@ dismissReactivate(): void {
   closeSupplierDetails(): void {
     this.showSupplierDetailsModal = false;
     this.selectedSupplier = null;
-    this.newReviewContent = '';
-    this.newReviewRating = 5;
   }
 
   submitSupplierReview(): void {
-    if (!isPlatformBrowser(this.platformId)) return;
     if (!this.selectedSupplier || !this.newReviewContent.trim()) return;
-
     this.isLoading = true;
     this.supplierService.addReview(this.selectedSupplier.id, {
       content: this.newReviewContent,
@@ -996,15 +862,13 @@ dismissReactivate(): void {
           this.selectedSupplier.reviews.unshift(review);
         }
         this.newReviewContent = '';
-        this.newReviewRating = 5;
         this.isLoading = false;
         this.successMessage = 'Avis publié !';
         this.cdr.detectChanges();
         setTimeout(() => this.successMessage = '', 3000);
       },
-      error: (err) => {
-        console.error('Error submitting review', err);
-        this.errorMessage = 'Erreur lors de la publication de l\'avis';
+      error: () => {
+        this.errorMessage = 'Erreur publication avis';
         this.isLoading = false;
         this.cdr.detectChanges();
       }

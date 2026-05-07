@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Models\Document;
+use App\Models\ConsumableRequest;
 
 class StockMovement extends Model
 {
@@ -89,5 +90,10 @@ class StockMovement extends Model
     public function document(): BelongsTo
     {
         return $this->belongsTo(Document::class, 'document_id');
+    }
+
+    public function relatedRequest(): BelongsTo
+    {
+        return $this->belongsTo(ConsumableRequest::class, 'related_request_id');
     }
 }
