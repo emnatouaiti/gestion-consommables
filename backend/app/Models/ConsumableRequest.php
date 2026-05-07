@@ -16,6 +16,7 @@ class ConsumableRequest extends Model
         'approved_quantity',
         'status',
         'pdf_path',
+        'reject_reason',
     ];
 
     protected $casts = [

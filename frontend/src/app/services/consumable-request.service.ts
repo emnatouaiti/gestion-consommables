@@ -31,7 +31,7 @@ export class ConsumableRequestService {
     return this.apiService.delete(`${this.apiPath}/${id}`);
   }
 
-  approveRequest(id: number, payload?: { approved_quantity?: number; approved_quantities?: Record<number, number> }): Observable<any> {
+  approveRequest(id: number, payload?: { approved_quantity?: number; approved_quantities?: Record<number, number>; rejections?: Record<number, string> }): Observable<any> {
     return this.apiService.put(`${this.apiPath}/${id}/approve`, payload || {});
   }
 

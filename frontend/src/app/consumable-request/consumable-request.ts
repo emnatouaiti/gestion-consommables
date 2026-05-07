@@ -233,7 +233,7 @@ export class ConsumableRequestComponent implements OnInit {
     return this.sortedByDate.filter(r => {
       const s = r.status?.toLowerCase();
       if (isDirector) {
-        return s === 'validated_by_manager' || s === 'pending';
+        return ['validated_by_manager', 'partiellement_accepte'].includes(s);
       }
       if (isManager) {
         return s === 'pending';
@@ -393,7 +393,7 @@ export class ConsumableRequestComponent implements OnInit {
       approved_pending_exit: 'Approuve (Sortie a confirmer)',
       approved: 'Livre / Termine',
       rejected: 'Refuse',
-      partially_approved: 'Partiellement approuve'
+      partiellement_accepte: 'Partiellement accepte'
     };
     return map[status] ?? status;
   }
@@ -406,7 +406,7 @@ export class ConsumableRequestComponent implements OnInit {
       pending: '#f59e0b',
       validated_by_manager: '#8b5cf6',
       approved_pending_exit: '#3b82f6',
-      partially_approved: '#f97316'
+      partiellement_accepte: '#f97316'
     };
     return map[status] ?? '#94a3b8';
   }
@@ -594,6 +594,15 @@ export class ConsumableRequestComponent implements OnInit {
 
   openApproveModal(request: any): void {
     if (!this.canApprove) return;
+
+    // Validate status before opening modal
+    if (!this.isApprovalValid(request?.status)) {
+      this.message = `Cannot approve request with status '${request?.status}'. Valid statuses: pending, validated_by_manager, partiellement_accepte.`;
+      this.cdr.detectChanges();
+      setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 4000);
+      return;
+    }
+
     this.selectedRequestForApproval = request;
 
     // Initialise single item quantity
@@ -700,23 +709,24 @@ export class ConsumableRequestComponent implements OnInit {
       }
     }
 
-    // Construire les appels API
-    const approvalCalls = approvedItems.map(item =>
-      this.consumableRequestService.approveRequest(item.id, {
-        approved_quantity: Number(this.itemApprovedQuantities[item.id])
-      })
-    );
+    // Construire le payload pour approbation partielle
+    const payload: any = {
+      approved_quantities: {},
+      rejections: {}
+    };
 
-    const rejectionCalls = rejectedItems.map(item =>
-      this.consumableRequestService.rejectRequest(
-        item.id,
-        this.itemRejectReasons[item.id] || 'Rejete par le directeur'
-      )
-    );
+    // Ajouter les quantités approuvées
+    for (const item of approvedItems) {
+      payload.approved_quantities[item.id] = Number(this.itemApprovedQuantities[item.id]);
+    }
 
-    const allCalls = [...approvalCalls, ...rejectionCalls];
+    // Ajouter les rejets
+    for (const item of rejectedItems) {
+      payload.rejections[item.id] = this.itemRejectReasons[item.id] || 'Rejete par le directeur';
+    }
 
-    forkJoin(allCalls).subscribe({
+    // Envoyer un seul appel API pour tout le lot
+    this.consumableRequestService.approveRequest(this.selectedRequestForApproval.id, payload).subscribe({
       next: () => {
         const approvedCount = approvedItems.length;
         const rejectedCount = rejectedItems.length;
@@ -736,7 +746,18 @@ export class ConsumableRequestComponent implements OnInit {
         setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 4000);
       },
       error: (err: any) => {
-        this.message = 'Erreur lors du traitement du lot.';
+        // Extract detailed error message from backend
+        const apiError = err?.error?.message;
+        const currentStatus = err?.error?.current_status;
+        const validStatuses = err?.error?.valid_statuses;
+
+        if (currentStatus && validStatuses) {
+          this.message = `Statut invalide: ${currentStatus}. Statuts acceptes: ${validStatuses.join(', ') || 'none'}.`;
+        } else if (apiError) {
+          this.message = apiError;
+        } else {
+          this.message = 'Erreur lors du traitement du lot.';
+        }
         console.error(err);
         this.approving = false;
         this.cdr.detectChanges();
@@ -786,8 +807,19 @@ export class ConsumableRequestComponent implements OnInit {
         this.cdr.detectChanges();
         setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 3000);
       },
-      error: (err: unknown) => {
-        this.message = 'Erreur lors de l\'approbation.';
+      error: (err: any) => {
+        // Extract detailed error message from backend
+        const apiError = err?.error?.message;
+        const currentStatus = err?.error?.current_status;
+        const validStatuses = err?.error?.valid_statuses;
+
+        if (currentStatus && validStatuses) {
+          this.message = `Statut invalide: ${currentStatus}. Statuts acceptes: ${validStatuses.join(', ') || 'none'}.`;
+        } else if (apiError) {
+          this.message = apiError;
+        } else {
+          this.message = 'Erreur lors de l\'approbation.';
+        }
         console.error(err);
         this.approving = false;
         this.cdr.detectChanges();
@@ -974,6 +1006,12 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   // Helpers
+
+  /** Check if a request status is valid for approval workflow */
+  isApprovalValid(status: string): boolean {
+    const validStatuses = ['pending', 'validated_by_manager', 'partiellement_accepte'];
+    return validStatuses.includes(String(status || '').toLowerCase());
+  }
 
   toggleDetails(id: number): void {
     if (this.expandedRequestIds.has(id)) this.expandedRequestIds.delete(id);

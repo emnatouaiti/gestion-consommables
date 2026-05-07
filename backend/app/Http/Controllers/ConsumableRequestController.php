@@ -85,6 +85,9 @@ class ConsumableRequestController extends Controller
                         'requester_siege'  => $first->getAttribute('requester_siege'),
                         'stock_alert'      => $first->getAttribute('stock_alert'),
                         'pdf_path'         => $first->pdf_path,
+                        // Paths des 2 PDFs pour l'approbation partielle
+                        'pdf_path_approved' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_approved'))?->pdf_path,
+                        'pdf_path_rejected' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_rejected'))?->pdf_path,
                         'items'            => $items,
                     ];
                 })
@@ -110,6 +113,8 @@ class ConsumableRequestController extends Controller
                         'requester_service'=> $this->getRequesterService($first->user),
                         'requester_poste'  => $this->getRequesterPoste($first->user),
                         'pdf_path'         => $first->pdf_path,
+                        'pdf_path_approved' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_approved'))?->pdf_path,
+                        'pdf_path_rejected' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_rejected'))?->pdf_path,
                         'items'            => $items,
                     ];
                 })
@@ -282,16 +287,28 @@ class ConsumableRequestController extends Controller
 
         if ($isManager && $currentStatus === 'pending') {
             $nextStatus = 'validated_by_manager';
-        } elseif ($isDirector && in_array($currentStatus, ['pending', 'validated_by_manager'], true)) {
+        } elseif ($isDirector && in_array($currentStatus, ['pending', 'validated_by_manager', 'partiellement_accepte'])) {
             $nextStatus = 'approved_pending_exit';
         } else {
-            return response()->json(['message' => 'Workflow step not applicable for your role or current status.'], 422);
+            $role = $isManager ? 'gestionnaire' : 'utilisateur';
+            $validStatuses = $isManager ? 'pending' : 'pending, validated_by_manager, partiellement_accepte';
+            return response()->json([
+                'message' => "Cannot approve request with status '{$currentStatus}'. Valid statuses for your role ({$role}): {$validStatuses}.",
+                'current_status' => $currentStatus,
+                'valid_statuses' => $isManager ? ['pending'] : ['pending', 'validated_by_manager', 'partiellement_accepte'],
+                'your_role' => $role,
+            ], 422);
         }
 
         $request->validate([
             'approved_quantity'    => 'nullable|integer|min:0',
             'approved_quantities'  => 'nullable|array',
             'approved_quantities.*'=> 'nullable|integer|min:0',
+            'rejections'           => 'nullable|array',
+            'rejections.*'         => 'nullable|string',
+        ], [
+            'approved_quantities.*' => 'Each approved quantity must be a valid integer.',
+            'rejections.*' => 'Each rejection reason must be a string.'
         ]);
 
         $batchCode         = $consumableRequest->batch_code;
@@ -299,8 +316,19 @@ class ConsumableRequestController extends Controller
             ? ConsumableRequest::where('batch_code', $batchCode)->where('status', $consumableRequest->status)->get()
             : collect([$consumableRequest]);
 
-        DB::transaction(function () use ($requestsToApprove, $request, $nextStatus) {
-            $approvedQuantitiesMap = collect($request->input('approved_quantities', []));
+        // Variables for use after transaction
+        $finalStatus       = $nextStatus;
+        $approvedRequests  = collect();
+        $rejectedRequests  = collect();
+
+        DB::transaction(function () use (
+            $requestsToApprove, $request, $nextStatus,
+            &$finalStatus, &$approvedRequests, &$rejectedRequests
+        ) {
+            $approvedQuantitiesMap = collect($request->input('approved_quantities', []))
+                ->mapWithKeys(fn($qty, $key) => [(int) $key => (int) $qty]);
+            $rejectionMap          = collect($request->input('rejections', []))
+                ->mapWithKeys(fn($reason, $key) => [(int) $key => (string) $reason]);
 
             foreach ($requestsToApprove as $req) {
                 $availableStock = $this->getAvailableStock($req);
@@ -310,50 +338,107 @@ class ConsumableRequestController extends Controller
                     ? (int) $approvedQuantitiesMap->get((string) $req->id)
                     : null;
 
+                $isRejected = $rejectionMap->has((string) $req->id);
+
                 $approvedQty = $mapQty;
-                if ($approvedQty === null) {
+                if ($approvedQty === null && !$isRejected) {
                     $approvedQty = $request->has('approved_quantity')
                         ? (int) $request->input('approved_quantity')
                         : (int) ($suggestion['quantity'] ?? $req->requested_quantity ?? 0);
                 }
 
-                $req->approved_quantity = max(0, $approvedQty);
-                $req->status            = $nextStatus;
+                if ($isRejected) {
+                    $req->approved_quantity = 0;
+                    $req->status            = 'rejected';
+                } else {
+                    $req->approved_quantity = max(0, $approvedQty);
+                    $req->status            = $nextStatus;
+                }
                 $req->save();
             }
 
-            // Regenerer le PDF uniquement pour les demandes de ce lot
-            try {
-                $batchUser = $requestsToApprove->first()?->user;
-                $bc        = $requestsToApprove->first()?->batch_code;
-                if ($batchUser) {
-                    $pdfPath = $this->generateAndSavePdf(
-                        $batchUser,
-                        $requestsToApprove->all(),
-                        $bc,
-                        null   // laisser la vue Blade determiner le titre selon les statuts reels
-                    );
-                    if ($pdfPath) {
-                        foreach ($requestsToApprove as $req) {
-                            $req->update(['pdf_path' => $pdfPath]);
-                        }
-                    }
-                }
-            } catch (\Throwable $e) {
-                Log::error('PDF Regeneration on Approve failed', ['error' => $e->getMessage()]);
+            // Séparer approuvés et rejetés après la première passe
+            $approvedRequests = $requestsToApprove->filter(
+                fn($r) => in_array($r->status, ['approved_pending_exit', 'validated_by_manager', 'approved'])
+            );
+            $rejectedRequests = $requestsToApprove->filter(fn($r) => $r->status === 'rejected');
+
+            // Approbation partielle : certains approuvés, certains rejetés
+            if ($approvedRequests->count() > 0 && $rejectedRequests->count() > 0) {
+                $finalStatus = 'partiellement_accepte';
+                // Les items approuvés restent dans nextStatus (approved_pending_exit / validated_by_manager)
+                // Les items rejetés gardent 'rejected' — on ne les modifie pas ici
             }
 
-            if ($nextStatus === 'validated_by_manager') {
-                $this->notifyDirectors($requestsToApprove);
-            } elseif ($nextStatus === 'approved_pending_exit') {
-                $this->notifyRequester($requestsToApprove);
-                $this->notifyStockManagers($requestsToApprove);
+            $batchUser = $requestsToApprove->first()?->user;
+            $bc        = $requestsToApprove->first()?->batch_code;
+
+            // --- Générer PDF pour les items APPROUVÉS ---
+            $approvedPdfPath = null;
+            if ($approvedRequests->count() > 0 && $batchUser) {
+                try {
+                    $approvedPdfPath = $this->generateAndSavePdf(
+                        $batchUser,
+                        $approvedRequests->values()->all(),
+                        $bc,
+                        '_approved'
+                    );
+                    if ($approvedPdfPath) {
+                        foreach ($approvedRequests as $req) {
+                            $req->update(['pdf_path' => $approvedPdfPath]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('PDF generation error for approved items', ['error' => $e->getMessage()]);
+                }
+            }
+
+            // --- Générer PDF pour les items REJETÉS ---
+            $rejectedPdfPath = null;
+            if ($rejectedRequests->count() > 0 && $batchUser) {
+                try {
+                    $rejectedPdfPath = $this->generateAndSavePdf(
+                        $batchUser,
+                        $rejectedRequests->values()->all(),
+                        $bc,
+                        '_rejected'
+                    );
+                    if ($rejectedPdfPath) {
+                        foreach ($rejectedRequests as $req) {
+                            $req->update(['pdf_path' => $rejectedPdfPath]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('PDF generation error for rejected items', ['error' => $e->getMessage()]);
+                }
+            }
+
+            // --- Cas tout approuvé : un seul PDF (sans suffixe _approved) ---
+            if ($approvedRequests->count() > 0 && $rejectedRequests->count() === 0 && $batchUser) {
+                // PDF déjà généré ci-dessus avec suffixe _approved, on garde tel quel
+            }
+
+            // --- Cas tout rejeté : un seul PDF (sans suffixe _rejected) ---
+            if ($rejectedRequests->count() > 0 && $approvedRequests->count() === 0 && $batchUser) {
+                // PDF déjà généré ci-dessus avec suffixe _rejected, on garde tel quel
             }
         });
 
+        // --- Notifications (hors transaction) ---
+        if ($nextStatus === 'validated_by_manager') {
+            $this->notifyDirectors($requestsToApprove);
+        } elseif ($nextStatus === 'approved_pending_exit') {
+            // Notifier le demandeur avec les 2 collections séparées pour les 2 PDFs
+            $this->notifyRequesterPartial($approvedRequests, $rejectedRequests);
+            // Notifier le responsable stock uniquement pour les items approuvés
+            if ($approvedRequests->count() > 0) {
+                $this->notifyStockManagers($approvedRequests);
+            }
+        }
+
         return response()->json([
-            'message' => 'Demande passee au statut : ' . $nextStatus,
-            'status'  => $nextStatus,
+            'message' => 'Demande passee au statut : ' . $finalStatus,
+            'status'  => $finalStatus,
         ]);
     }
 
@@ -403,7 +488,6 @@ class ConsumableRequestController extends Controller
             $consumableRequest->status = 'approved';
             $consumableRequest->save();
 
-            // Regenerer le PDF de sortie uniquement pour les demandes du lot
             try {
                 $batchRequests = $consumableRequest->batch_code
                     ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
@@ -415,7 +499,7 @@ class ConsumableRequestController extends Controller
                     $consumableRequest->user,
                     $batchRequests->all(),
                     $consumableRequest->batch_code,
-                    null   // la vue Blade detecte que tout est "approved" => "BON DE SORTIE"
+                    null
                 );
                 if ($pdfPath) {
                     foreach ($batchRequests as $req) {
@@ -500,17 +584,12 @@ class ConsumableRequestController extends Controller
 
         $batchCode = $consumableRequest->batch_code;
 
-        // ----------------------------------------------------------------
-        // CORRECTION : on ne recupere QUE les demandes de ce lot/id
-        // et on ne rejette que celles qui sont en attente ou validees
-        // ----------------------------------------------------------------
         $requestsToReject = $batchCode
             ? ConsumableRequest::where('batch_code', $batchCode)
                 ->whereIn('status', ['pending', 'validated_by_manager', 'draft'])
                 ->get()
             : collect([$consumableRequest]);
 
-        // Si aucune demande a rejeter via batch, on prend uniquement celle-ci
         if ($requestsToReject->isEmpty()) {
             $requestsToReject = collect([$consumableRequest]);
         }
@@ -526,20 +605,15 @@ class ConsumableRequestController extends Controller
                 $req->save();
             }
 
-            // ----------------------------------------------------------------
-            // CORRECTION PRINCIPALE : generer le PDF UNIQUEMENT avec les
-            // demandes rejetees de ce lot, pas toutes les demandes du user
-            // ----------------------------------------------------------------
             try {
                 $first   = $requestsToReject->first();
                 $pdfPath = $this->generateAndSavePdf(
                     $first->user,
-                    $requestsToReject->all(),   // <-- uniquement CE lot
+                    $requestsToReject->all(),
                     $first->batch_code,
-                    null    // la vue Blade detecte que tout est rejected => "BON DE REFUS"
+                    null
                 );
 
-                // CORRECTION : sauvegarder le pdf_path sur chaque demande rejetee
                 if ($pdfPath) {
                     foreach ($requestsToReject as $req) {
                         $req->update(['pdf_path' => $pdfPath]);
@@ -799,10 +873,15 @@ class ConsumableRequestController extends Controller
     {
         $statuses = collect($group)->pluck('status')->map(fn($s) => Str::lower((string) $s));
 
-        if ($statuses->contains('pending'))              return 'pending';
-        if ($statuses->contains('validated_by_manager')) return 'validated_by_manager';
-        if ($statuses->contains('rejected'))             return 'rejected';
-        if ($statuses->contains('approved_pending_exit'))return 'approved_pending_exit';
+        if ($statuses->contains('pending'))               return 'pending';
+        if ($statuses->contains('validated_by_manager'))  return 'validated_by_manager';
+        // Cas mixed: certains approved_pending_exit + certains rejected => partiellement_accepte
+        if ($statuses->contains('approved_pending_exit') && $statuses->contains('rejected')) {
+            return 'partiellement_accepte';
+        }
+        if ($statuses->contains('partiellement_accepte'))    return 'partiellement_accepte';
+        if ($statuses->contains('rejected'))              return 'rejected';
+        if ($statuses->contains('approved_pending_exit')) return 'approved_pending_exit';
         if ($statuses->every(fn($s) => $s === 'approved')) return 'approved';
 
         return $statuses->first() ?? 'pending';
@@ -837,28 +916,24 @@ class ConsumableRequestController extends Controller
 
     /**
      * Generer et sauvegarder le PDF.
-     *
-     * IMPORTANT : $requests doit contenir UNIQUEMENT les articles
-     * du lot concerne, pas toutes les demandes du user.
-     * Le titre est determine automatiquement par la vue Blade
-     * selon les statuts reels (forceTitle = null recommande).
+     * $suffix : '_approved', '_rejected', ou null (cas général).
      */
-    private function generateAndSavePdf(User $user, array $requests, ?string $batchCode, ?string $forceTitle = null): ?string
+    private function generateAndSavePdf(User $user, array $requests, ?string $batchCode, ?string $suffix = null): ?string
     {
         try {
             $data = [
                 'user'       => $user,
                 'requests'   => collect($requests),
                 'batch_code' => $batchCode,
-                'forceTitle' => $forceTitle,
+                'forceTitle' => null,
             ];
 
             $pdf = Pdf::loadView('pdf.consumable_request', $data);
 
-            $firstRequest  = collect($requests)->first();
-            $status        = strtolower($firstRequest->status ?? 'pending');
+            $firstRequest = collect($requests)->first();
+            $status       = strtolower($firstRequest->status ?? 'pending');
 
-            $statusPrefix  = match (true) {
+            $statusPrefix = match (true) {
                 $status === 'rejected'              => 'refus',
                 $status === 'approved'              => 'sortie',
                 $status === 'approved_pending_exit' => 'approuve',
@@ -866,8 +941,9 @@ class ConsumableRequestController extends Controller
                 default                             => 'demande',
             };
 
-            $fileName = $statusPrefix . '_' . ($batchCode ?: 'REQ-' . $firstRequest->id) . '_' . uniqid() . '_' . time() . '.pdf';
-            $filePath = 'requests/' . $fileName;
+            $suffixStr = $suffix ?? '';
+            $fileName  = $statusPrefix . $suffixStr . '_' . ($batchCode ?: 'REQ-' . $firstRequest->id) . '_' . uniqid() . '_' . time() . '.pdf';
+            $filePath  = 'requests/' . $fileName;
 
             \Illuminate\Support\Facades\Storage::disk('public')->put($filePath, $pdf->output());
 
@@ -904,6 +980,14 @@ class ConsumableRequestController extends Controller
             Log::error('PDF generation error', ['msg' => $e->getMessage()]);
             return null;
         }
+    }
+
+    /**
+     * Méthode dédiée pour générer et stocker un PDF (alias avec nom explicite).
+     */
+    private function generateAndStorePdf($requests, User $user, ?string $batchCode, string $suffix): ?string
+    {
+        return $this->generateAndSavePdf($user, collect($requests)->all(), $batchCode, $suffix);
     }
 
     private function notifyDirectors($requests): int
@@ -972,6 +1056,30 @@ class ConsumableRequestController extends Controller
             return 1;
         } catch (\Throwable $e) {
             Log::error('Notification requester error', ['err' => $e->getMessage()]);
+            return 0;
+        }
+    }
+
+    /**
+     * Notification dédiée pour l'approbation partielle :
+     * envoie UN seul mail avec les 2 collections (approuvés + rejetés)
+     * afin que la notification puisse attacher les 2 PDFs.
+     */
+    private function notifyRequesterPartial($approvedRequests, $rejectedRequests): int
+    {
+        $approvedRequests = collect($approvedRequests);
+        $rejectedRequests = collect($rejectedRequests);
+
+        // Fusionner pour que la notification reçoive tous les items du lot
+        $allRequests = $approvedRequests->merge($rejectedRequests);
+        $first       = $allRequests->first();
+        if (!$first || !$first->user) return 0;
+
+        try {
+            $first->user->notify(new \App\Notifications\ConsumableRequestNotification($allRequests));
+            return 1;
+        } catch (\Throwable $e) {
+            Log::error('Notification requester partial error', ['err' => $e->getMessage()]);
             return 0;
         }
     }

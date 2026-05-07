@@ -211,9 +211,6 @@
             <th>Date</th>
             <th>Article</th>
             <th *ngIf="isResponsable || viewMode === 'validation'">Demandeur</th>
-            <th *ngIf="isResponsable || viewMode === 'validation'">Service / Poste</th>
-            <th *ngIf="isResponsable || viewMode === 'validation'">Qte dem.</th>
-            <th *ngIf="isResponsable || viewMode === 'validation'">Qte approuvee</th>
             <th>Statut</th>
             <th>Actions</th>
           </tr>
@@ -226,12 +223,6 @@
               <small *ngIf="r.batch_code" class="cr-batch-tag">Groupe: {{ r.batch_code.substring(0,8) }}</small>
             </td>
             <td *ngIf="isResponsable || viewMode === 'validation'">{{ r.requester_name || r.user?.nomprenom || '-' }}</td>
-            <td *ngIf="isResponsable || viewMode === 'validation'">
-              <div class="cr-sub">{{ r.requester_service || '-' }}</div>
-              <div class="cr-sub cr-sub--mini">{{ r.requester_poste || '-' }}</div>
-            </td>
-            <td class="cr-td-num" *ngIf="isResponsable || viewMode === 'validation'">{{ r.requested_quantity }}</td>
-            <td class="cr-td-num" *ngIf="isResponsable || viewMode === 'validation'">{{ r.approved_quantity ?? '-' }}</td>
             <td>
               <span class="cr-status-pill" [ngStyle]="{'background-color': getStatusColor(r.status)}">
                 {{ getStatusLabel(r.status) }}
@@ -269,7 +260,7 @@
 
               <!-- Directeur peut approuver/rejeter depuis historique si encore en attente -->
               <button
-                *ngIf="canApprove && r.status === 'pending'"
+                *ngIf="canApprove && (r.status === 'pending' || r.status === 'validated_by_manager' || r.status === 'partiellement_accepte')"
                 class="cr-btn cr-btn--approve"
                 (click)="openApproveModal(r)"
               >Approuver</button>

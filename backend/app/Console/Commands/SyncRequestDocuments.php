@@ -24,14 +24,14 @@ class SyncRequestDocuments extends Command
 
             foreach ($group as $req) {
                 $productId = $req->product_id;
-                
+
                 // Fallback resolution if product_id is null
                 if (!$productId && $req->item_name) {
                     $productId = Product::where('title', 'like', $req->item_name)
                         ->orWhere('reference', 'like', $req->item_name)
                         ->orWhereRaw('LOWER(title) = ?', [mb_strtolower($req->item_name, 'UTF-8')])
                         ->value('id');
-                    
+
                     if ($productId) {
                         $req->update(['product_id' => $productId]);
                     }
@@ -50,8 +50,9 @@ class SyncRequestDocuments extends Command
                         $titlePrefix = 'Refus de demande';
                     } elseif ($indStatus === 'approved_pending_exit') {
                         $docType = 'demande_approuvee';
-                        $titlePrefix = 'Demande approuvée';
-                    }
+                        $titlePrefix = 'Demande approuvée';                    } elseif ($indStatus === 'partiellement_accepte') {
+                        $docType = 'demande_partielle';
+                        $titlePrefix = 'Approbation partielle';                    }
 
                     $title = $titlePrefix . ' - ' . ($req->item_name ?: 'Produit') . ' (' . ($batchCode ?: 'REQ-' . $req->id) . ')';
 

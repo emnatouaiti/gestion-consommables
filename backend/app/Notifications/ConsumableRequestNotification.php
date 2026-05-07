@@ -18,8 +18,8 @@ class ConsumableRequestNotification extends Notification
     public function __construct($requests)
     {
         // Handle both single model or collection/array
-        $this->requests = is_array($requests) || $requests instanceof \Illuminate\Support\Collection 
-            ? collect($requests) 
+        $this->requests = is_array($requests) || $requests instanceof \Illuminate\Support\Collection
+            ? collect($requests)
             : collect([$requests]);
     }
 
@@ -29,7 +29,7 @@ class ConsumableRequestNotification extends Notification
         if (Schema::hasTable('notifications')) {
             $channels[] = 'database';
         }
-        
+
         $channels[] = 'mail';
         return $channels;
     }
@@ -42,19 +42,28 @@ class ConsumableRequestNotification extends Notification
         $user = $firstRequest->user;
         $status = Str::lower($firstRequest->status);
         $isOwner = $notifiable->id === $firstRequest->user_id;
-        
-        $isApproval = $status === 'approved_pending_exit';
-        $isRejected = $status === 'rejected';
+
+        // Detecter si c'est une approbation partielle (mélange d'approuvés et de rejetés)
+        $approvedCount = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']))->count();
+        $rejectedCount = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected')->count();
+        $isPartialApproval = $approvedCount > 0 && $rejectedCount > 0;
+
+        $isApproval = in_array($status, ['approved_pending_exit', 'partiellement_accepte']) || $isPartialApproval;
+        $isRejected = $status === 'rejected' && !$isPartialApproval;
         $isPending = $status === 'pending' || $status === 'validated_by_manager';
-        
+
         $frontendUrl = "http://localhost:4200/consumable-requests";
-        
-        $itemTitle = $this->requests->count() > 1 
-            ? $this->requests->count() . " articles" 
+
+        $itemTitle = $this->requests->count() > 1
+            ? $this->requests->count() . " articles"
             : ($firstRequest->item_name ?: 'Consommable');
 
         $subject = "Mise à jour de votre demande : " . $itemTitle;
-        if ($isApproval) $subject = $isOwner ? "Demande Approuvée : " . $itemTitle : "Ordre de sortie : " . $itemTitle;
+        if ($isPartialApproval) {
+            $subject = $isOwner ? "Demande Partiellement Acceptée : " . $itemTitle : "Approbation Partielle : " . $itemTitle;
+        } elseif ($isApproval) {
+            $subject = $isOwner ? "Demande Approuvée : " . $itemTitle : "Ordre de sortie : " . $itemTitle;
+        }
         if ($isRejected) $subject = "Demande Refusée : " . $itemTitle;
         if ($isPending && !$isOwner) $subject = "Nouvelle demande à valider : " . $itemTitle;
 
@@ -64,19 +73,56 @@ class ConsumableRequestNotification extends Notification
 
         if ($isApproval) {
             if ($isOwner) {
-                $mail->line("Bonne nouvelle ! Votre demande de consommable a été approuvée par le Directeur.");
-                $mail->line("Articles approuvés :");
-                foreach ($this->requests as $req) {
-                    $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                if ($isPartialApproval) {
+                    $mail->line("Votre demande de consommable a été traitée par le Directeur : certains articles ont été approuvés et d'autres refusés.");
+                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit']));
+                    if ($approvedReqs->count() > 0) {
+                        $mail->line("Articles approuvés :");
+                        foreach ($approvedReqs as $req) {
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                        }
+                    }
+                    $rejectedReqs = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected');
+                    if ($rejectedReqs->count() > 0) {
+                        $mail->line("Articles refusés :");
+                        foreach ($rejectedReqs as $req) {
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Raison : " . ($req->reject_reason ?: 'Non spécifiée') . ")");
+                        }
+                    }
+                } else {
+                    $mail->line("Bonne nouvelle ! Votre demande de consommable a été approuvée par le Directeur.");
+                    $mail->line("Articles approuvés :");
+                    foreach ($this->requests as $req) {
+                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                    }
                 }
                 $mail->line("Vous recevrez votre matériel prochainement après confirmation du Responsable Logistique.")
                     ->action("Voir mes demandes", $frontendUrl);
             } else {
-                $mail->line("Une nouvelle demande de consommable a été approuvée par la Direction et attend votre confirmation de sortie.")
-                    ->line("Demandeur : {$user->nomprenom}");
-                $mail->line("Articles à sortir :");
-                foreach ($this->requests as $req) {
-                    $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                if ($isPartialApproval) {
+                    $mail->line("Une demande de consommable a été traitée par la Direction (approbation partielle) et attend votre confirmation de sortie pour les articles approuvés.")
+                        ->line("Demandeur : {$user->nomprenom}");
+                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit']));
+                    if ($approvedReqs->count() > 0) {
+                        $mail->line("Articles à sortir :");
+                        foreach ($approvedReqs as $req) {
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                        }
+                    }
+                    $rejectedReqs = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected');
+                    if ($rejectedReqs->count() > 0) {
+                        $mail->line("Articles refusés :");
+                        foreach ($rejectedReqs as $req) {
+                            $mail->line("- " . ($req->item_name ?: 'Produit'));
+                        }
+                    }
+                } else {
+                    $mail->line("Une nouvelle demande de consommable a été approuvée par la Direction et attend votre confirmation de sortie.")
+                        ->line("Demandeur : {$user->nomprenom}");
+                    $mail->line("Articles à sortir :");
+                    foreach ($this->requests as $req) {
+                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                    }
                 }
                 $mail->line("Veuillez valider la sortie physique dans votre tableau de bord.")
                     ->action("Gérer les sorties", "http://localhost:4200/admin/validation-demandes");
@@ -112,13 +158,37 @@ class ConsumableRequestNotification extends Notification
 
         $mail->salutation("Cordialement,\nL'équipe Logistique");
 
-        // Attach PDF if it exists in any of the requests (usually same for batch)
-        $reqWithPdf = $this->requests->first(fn($r) => $r->pdf_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
-        if ($reqWithPdf) {
-            $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($reqWithPdf->pdf_path), [
-                'as' => basename($reqWithPdf->pdf_path),
+        // Attach PDFs for partial approvals (approved and rejected items)
+        $approvedRequests = $this->requests->filter(fn($r) => in_array($r->status, ['approved', 'approved_pending_exit', 'validated_by_manager']));
+        $rejectedRequests = $this->requests->filter(fn($r) => $r->status === 'rejected');
+
+        // Attach approved PDF
+        $approvedPdf = $approvedRequests->first(fn($r) => $r->pdf_path && str_contains($r->pdf_path, '_approved') && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
+        if ($approvedPdf) {
+            $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($approvedPdf->pdf_path), [
+                'as' => basename($approvedPdf->pdf_path),
                 'mime' => 'application/pdf',
             ]);
+        }
+
+        // Attach rejected PDF
+        $rejectedPdf = $rejectedRequests->first(fn($r) => $r->pdf_path && str_contains($r->pdf_path, '_rejected') && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
+        if ($rejectedPdf) {
+            $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($rejectedPdf->pdf_path), [
+                'as' => basename($rejectedPdf->pdf_path),
+                'mime' => 'application/pdf',
+            ]);
+        }
+
+        // Fallback to single PDF for non-partial cases
+        if (!$approvedPdf && !$rejectedPdf) {
+            $reqWithPdf = $this->requests->first(fn($r) => $r->pdf_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
+            if ($reqWithPdf) {
+                $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($reqWithPdf->pdf_path), [
+                    'as' => basename($reqWithPdf->pdf_path),
+                    'mime' => 'application/pdf',
+                ]);
+            }
         }
 
         return $mail;
