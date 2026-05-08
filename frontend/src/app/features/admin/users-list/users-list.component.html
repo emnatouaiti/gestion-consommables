@@ -1,6 +1,14 @@
 <div class="page-header">
   <h1 class="page-title">Utilisateurs</h1>
   <span class="page-count" *ngIf="!isLoading">{{ displayedUsers.length }} utilisateur(s)</span>
+  <div class="page-size-control" *ngIf="!isLoading && displayedUsers.length > 0">
+    <label>Par page :</label>
+    <select [(ngModel)]="pageSize" (ngModelChange)="onPageSizeChange()">
+      <option [value]="5">5</option>
+      <option [value]="10">10</option>
+      <option [value]="20">20</option>
+    </select>
+  </div>
 </div>
 
 <div class="card">
@@ -46,12 +54,6 @@
           <option *ngFor="let r of roleFilterOptions" [value]="r">{{ r }}</option>
         </select>
       </div>
-      <div class="select-wrapper">
-        <select class="form-control" [(ngModel)]="selectedSiegeFilter">
-          <option value="">Tous les sieges</option>
-          <option *ngFor="let s of siegeFilterOptions" [value]="s">{{ s }}</option>
-        </select>
-      </div>
       <button class="btn small" (click)="resetFilters()">Reinitialiser</button>
     </div>
   </div>
@@ -94,6 +96,7 @@
           <th>Service</th>
           <th>Poste</th>
           <th>Siege</th>
+          <th>Depot</th>
           <th>Adresse</th>
           <th>Telephone</th>
           <th class="actions">Actions</th>
@@ -101,7 +104,7 @@
       </thead>
       <tbody>
 
-        <tr *ngFor="let u of displayedUsers">
+        <tr *ngFor="let u of paginatedUsers">
 
           <!-- Avatar cliquable pour zoom -->
           <td class="photo-cell">
@@ -123,14 +126,27 @@
               {{ roleNames(u) || '�' }}
             </span>
           </td>
-          <td>{{ u.service || '�' }}</td>
-          <td>{{ u.poste || '�' }}</td>
-          <td>{{ u.siege || '�' }}</td>
-          <td>{{ u.adresse || '�' }}</td>
-          <td>{{ u.telephone || '�' }}</td>
-          <td class="actions">
+          <td>{{ u.service || '-' }}</td>
+          <td>{{ u.poste || '-' }}</td>
+          <td>{{ u.siege || '-' }}</td>
+          <td>
+            <span *ngIf="u.depot?.name" style="font-weight: 500; color: #3b82f6;">
+              {{ u.depot.name }}
+            </span>
+            <span *ngIf="!u.depot?.name">-</span>
+          </td>
+          <td>{{ u.adresse || '-' }}</td>
+          <td>{{ u.telephone || '-' }}</td>
+          <td class="act1ons">
             <button class="btn small" (click)="openEditModal(u)">Editer</button>
-            <button class="btn danger small" (click)="remove(u.id)">Archiver</button>
+            <button
+              class="btn danger small"
+              (click)="remove(u.id, u)"
+              [disabled]="!canDelete(u)"
+              [style.opacity]="!canDelete(u) ? '0.5' : '1'"
+              [title]="!canDelete(u) ? 'Les administrateurs ne peuvent pas être archivés' : 'Archiver'">
+              Archiver
+            </button>
           </td>
         </tr>
 
@@ -151,6 +167,17 @@
 
       </tbody>
     </table>
+
+    <!-- Pagination -->
+    <div class="pagination-controls" *ngIf="totalPages > 1">
+      <button class="btn small" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
+        < Précédent
+      </button>
+      <span class="page-info">Page {{ currentPage }} sur {{ totalPages }}</span>
+      <button class="btn small" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
+        Suivant >
+      </button>
+    </div>
   </div>
 
 </div>
@@ -210,56 +237,13 @@
           />
         </div>
 
-        <div class="form-group">
-          <label>Service</label>
-          <div class="select-wrapper">
-            <select
-              [(ngModel)]="form.service"
-              (ngModelChange)="onServiceChange()"
-              name="service"
-              class="form-control"
-            >
-              <option value="">-- Selectionner un service --</option>
-              <option *ngFor="let service of serviceOptions" [value]="service">
-                {{ service }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label>Poste</label>
-          <div class="select-wrapper">
-            <select
-              [(ngModel)]="form.poste"
-              name="poste"
-              class="form-control"
-            >
-              <option value="">-- Selectionner un poste --</option>
-              <option *ngFor="let poste of availablePostes" [value]="poste">{{ poste }}</option>
-            </select>
-          </div>
-
-        <div class="form-group">
-          <label>Siege</label>
-          <div class="select-wrapper">
-            <select
-              [(ngModel)]="form.siege"
-              name="siege"
-              class="form-control"
-            >
-              <option value="">-- Selectionner un siege --</option>
-              <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
-            </select>
-          </div>
-        </div>
-        </div>
-
+        <!-- Role - en premier pour déterminer les champs à afficher -->
         <div class="form-group">
           <label>Role *</label>
           <div class="select-wrapper">
             <select
               [(ngModel)]="form.roles"
+              (ngModelChange)="onRoleChange()"
               name="roles"
               class="form-control"
             >
@@ -270,6 +254,91 @@
             </select>
           </div>
         </div>
+
+        <!-- Pour Administrateur : seulement Siege -->
+        <div *ngIf="form.roles === 'Administrateur'">
+          <div class="form-group">
+            <label>Siege *</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.siege"
+                name="siege"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un siege --</option>
+                <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pour Responsable/Agent : seulement Depot -->
+        <div *ngIf="form.roles === 'Responsable' || form.roles === 'Agent'">
+          <div class="form-group">
+            <label>Depot *</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.depot_id"
+                name="depot_id"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un depot --</option>
+                <option *ngFor="let depot of depots" [value]="depot.id">
+                  {{ depot.name }}
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pour les autres rôles : Service, Poste, Siege -->
+        <div *ngIf="form.roles !== 'Administrateur' && form.roles !== 'Responsable' && form.roles !== 'Agent' && form.roles !== ''">
+          <div class="form-group">
+            <label>Service</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.service"
+                (ngModelChange)="onServiceChange()"
+                name="service"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un service --</option>
+                <option *ngFor="let service of serviceOptions" [value]="service">
+                  {{ service }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Poste</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.poste"
+                name="poste"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un poste --</option>
+                <option *ngFor="let poste of availablePostes" [value]="poste">{{ poste }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Siege</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.siege"
+                name="siege"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un siege --</option>
+                <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <!-- Fin autres rôles -->
 
         <div class="form-group">
           <label>Adresse</label>

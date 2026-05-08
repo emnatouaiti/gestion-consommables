@@ -7,16 +7,33 @@ use App\Models\ProductStock;
 use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 
 class ProductStockController extends Controller
 {
     public function getProductStocks(Product $product)
     {
-        $stocks = $product->stocks()
+        $user = Auth::user();
+        $query = $product->stocks()
             ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
-            ->where('quantity', '>', 0)
-            ->get();
-        
+            ->where('quantity', '>', 0);
+
+        // Filtrer par dépôt de l'utilisateur si c'est un responsable/agent
+        if ($user && $user->depot_id) {
+            $isStockManager = $user->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
+                || in_array(strtolower($user->role ?? ''), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+
+            if ($isStockManager) {
+                $query->whereHas('warehouseLocation.room', function ($q) use ($user) {
+                    $q->where('warehouse_id', $user->depot_id);
+                })->orWhereHas('warehouseCabinet.room', function ($q) use ($user) {
+                    $q->where('warehouse_id', $user->depot_id);
+                });
+            }
+        }
+
+        $stocks = $query->get();
+
         $formatted = $stocks->map(function ($s) {
             $room = $s->warehouseLocation?->room ?: $s->warehouseCabinet?->room;
             $wh = $room?->warehouse;
@@ -34,7 +51,7 @@ class ProductStockController extends Controller
             $loc = $product->warehouseLocation;
             $room = $loc?->room;
             $wh = $room?->warehouse ?: $loc?->warehouse; // Fallback to location's direct warehouse if room is missing
-            
+
             $formatted->push([
                 'id' => 999999 + $product->id,
                 'product_id' => $product->id,
@@ -286,11 +303,28 @@ class ProductStockController extends Controller
 
     public function searchStocks(Request $request)
     {
+        $user = Auth::user();
         $search = $request->get('q', '');
         $perPage = $request->get('per_page', 20);
 
         $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
             ->whereHas('product', fn ($q) => $q->where('status', 'active'));
+
+        // Filtrer par dépôt de l'utilisateur si c'est un responsable/agent
+        if ($user && $user->depot_id) {
+            $isStockManager = $user->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
+                || in_array(strtolower($user->role ?? ''), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+
+            if ($isStockManager) {
+                $query->where(function($q) use ($user) {
+                    $q->whereHas('warehouseLocation.room', function ($subQ) use ($user) {
+                        $subQ->where('warehouse_id', $user->depot_id);
+                    })->orWhereHas('warehouseCabinet.room', function ($subQ) use ($user) {
+                        $subQ->where('warehouse_id', $user->depot_id);
+                    });
+                });
+            }
+        }
 
         if ($search) {
             $query->whereHas('product', function ($q) use ($search) {

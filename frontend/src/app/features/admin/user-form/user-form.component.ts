@@ -20,6 +20,7 @@ export class UserFormComponent implements OnInit {
   isEdit = false;
   userId: any = null;
   roles: any[] = [];
+  depots: any[] = [];
   isLoading = false;
   errorMessage = '';
   siegeOptions: string[] = [
@@ -27,6 +28,7 @@ export class UserFormComponent implements OnInit {
     'Mohamed_V_Tunis',
     'Kheireddine_Pacha_Tunis'
   ];
+  selectedRole: string = '';
 
   private readonly apiBase = '/api';
 
@@ -43,7 +45,17 @@ export class UserFormComponent implements OnInit {
       adresse:   ['', [Validators.maxLength(255)]],
       telephone: ['', [Validators.pattern('^[0-9]{8,15}$')]], // Format flexible mais numérique
       siege:     [''],
+      service:   [''],
+      poste:     [''],
+      depot_id:  [null],
       roles:     ['', Validators.required]
+    });
+
+    // Watch for role changes to show/hide fields
+    this.form.get('roles')?.valueChanges.subscribe(role => {
+      this.selectedRole = role;
+      this.updateFieldVisibility(role);
+      this.cdr.detectChanges(); // Force change detection to update the view
     });
   }
 
@@ -53,13 +65,49 @@ export class UserFormComponent implements OnInit {
     this.userId = this.route.snapshot.paramMap.get('id');
     this.isEdit = !!this.userId;
 
-    // Charger les rôles depuis l'API
-    this.loadRoles().then(() => {
+    // Charger les rôles et les dépôts depuis l'API
+    Promise.all([this.loadRoles(), this.loadDepots()]).then(() => {
       // Charger l'utilisateur seulement après avoir les rôles (mode édition)
       if (this.isEdit) {
         this.loadUser();
       }
     });
+  }
+
+  /**
+   * Update field visibility based on selected role
+   * For "Responsable" or "Agent": hide service, poste, siege; show depot (required)
+   * For other roles: show service, poste, siege; hide depot
+   */
+  updateFieldVisibility(role: string): void {
+    const needsDepot = role === 'Responsable' || role === 'Agent';
+
+    const serviceCtrl = this.form.get('service');
+    const posteCtrl = this.form.get('poste');
+    const siegeCtrl = this.form.get('siege');
+    const depotCtrl = this.form.get('depot_id');
+
+    if (needsDepot) {
+      // Clear and reset service, poste, siege for responsable/agent
+      serviceCtrl?.clearValidators();
+      serviceCtrl?.reset();
+      posteCtrl?.clearValidators();
+      posteCtrl?.reset();
+      siegeCtrl?.clearValidators();
+      siegeCtrl?.reset();
+      // Depot is required for responsable/agent
+      depotCtrl?.setValidators([Validators.required]);
+    } else {
+      // Clear depot for other roles
+      depotCtrl?.clearValidators();
+      depotCtrl?.reset();
+    }
+
+    // Re-evaluate validators
+    serviceCtrl?.updateValueAndValidity();
+    posteCtrl?.updateValueAndValidity();
+    siegeCtrl?.updateValueAndValidity();
+    depotCtrl?.updateValueAndValidity();
   }
 
   private getHeaders(): Record<string, string> {
@@ -81,6 +129,19 @@ export class UserFormComponent implements OnInit {
     }
   }
 
+  private async loadDepots(): Promise<void> {
+    try {
+      const res = await fetch(`${this.apiBase}/warehouses`, { headers: this.getHeaders() });
+      const data = await res.json();
+      // Filter only depots (warehouses with kind = 'depot' or without kind)
+      const warehouses = Array.isArray(data) ? data : (data?.data ?? []);
+      this.depots = warehouses.filter((w: any) => !w.kind || w.kind === 'depot');
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('[UserForm] Erreur chargement dépôts:', err);
+    }
+  }
+
   private loadUser(): void {
     this.isLoading = true;
     this.cdr.detectChanges();
@@ -90,6 +151,7 @@ export class UserFormComponent implements OnInit {
       .then((u: any) => {
         // Récupérer le nom du rôle actuel de l'utilisateur
         const currentRole = u.roles?.[0]?.name || u.role || '';
+        this.selectedRole = currentRole;
 
         this.form.patchValue({
           nomprenom: u.nomprenom || '',
@@ -97,8 +159,14 @@ export class UserFormComponent implements OnInit {
           adresse:   u.adresse   || '',
           telephone: u.telephone || '',
           siege:     u.siege     || '',
+          service:   u.service   || '',
+          poste:     u.poste     || '',
+          depot_id:  u.depot_id  || null,
           roles:     currentRole
         });
+
+        // Update field visibility based on loaded role
+        this.updateFieldVisibility(currentRole);
 
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -126,6 +194,9 @@ export class UserFormComponent implements OnInit {
       adresse:   raw.adresse,
       telephone: raw.telephone,
       siege:     raw.siege,
+      service:   raw.service,
+      poste:     raw.poste,
+      depot_id:  raw.depot_id,
       roles:     [raw.roles]  // ex: ["Administrateur"]
     };
 

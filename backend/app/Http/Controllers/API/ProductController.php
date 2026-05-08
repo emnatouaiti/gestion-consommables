@@ -224,8 +224,6 @@ class ProductController extends Controller
         }
 
         $product = Product::create($data);
-        $product->barcode_value = $this->buildBarcodeValue($product->reference, $product->id);
-        $product->save();
 
         // Sync suppliers
         if (!empty($supplierIds)) {
@@ -327,14 +325,7 @@ class ProductController extends Controller
             unset($data['photo']);
         }
 
-        $referenceChanged = $product->reference !== $data['reference'];
-
         $product->update($data);
-
-        if ($referenceChanged || empty($product->barcode_value)) {
-            $product->barcode_value = $this->buildBarcodeValue($product->reference, $product->id);
-            $product->save();
-        }
 
         // Sync suppliers
         if (!empty($supplierIds)) {
@@ -388,65 +379,6 @@ class ProductController extends Controller
         $product->delete();
 
         return response()->json(['message' => 'Produit supprime']);
-    }
-
-    public function downloadBarcode(int $id)
-    {
-        $product = Product::findOrFail($id);
-        $value = $product->barcode_value ?: $this->buildBarcodeValue($product->reference, $product->id);
-
-        if (!$product->barcode_value) {
-            $product->barcode_value = $value;
-            $product->save();
-        }
-
-        $svg = $this->generateBarcodeSvg($value);
-
-        return response($svg, 200, [
-            'Content-Type' => 'image/svg+xml',
-            'Content-Disposition' => 'attachment; filename="barcode-' . $product->id . '.svg"',
-        ]);
-    }
-
-    private function buildBarcodeValue(string $reference, int $id): string
-    {
-        $normalizedRef = preg_replace('/[^A-Za-z0-9-]/', '', strtoupper($reference)) ?: 'REF';
-        return 'PRD-' . $id . '-' . $normalizedRef;
-    }
-
-    private function generateBarcodeSvg(string $value): string
-    {
-        $cleanValue = preg_replace('/[^A-Za-z0-9\-]/', '', strtoupper($value)) ?: 'PRD-000';
-
-        $x = 20;
-        $y = 20;
-        $height = 80;
-        $bars = '';
-
-        foreach (str_split($cleanValue) as $char) {
-            $ascii = ord($char);
-
-            for ($bit = 0; $bit < 7; $bit++) {
-                $isDark = (($ascii >> $bit) & 1) === 1;
-
-                if ($isDark) {
-                    $bars .= '<rect x="' . $x . '" y="' . $y . '" width="2" height="' . $height . '" fill="#000" />';
-                    $x += 3;
-                } else {
-                    $x += 2;
-                }
-            }
-
-            $x += 2;
-        }
-
-        $width = max(260, $x + 20);
-
-        return '<svg xmlns="http://www.w3.org/2000/svg" width="' . $width . '" height="140" viewBox="0 0 ' . $width . ' 140">'
-            . '<rect width="100%" height="100%" fill="#fff" />'
-            . $bars
-            . '<text x="20" y="125" font-size="14" font-family="Arial, sans-serif" fill="#111">' . htmlspecialchars($cleanValue, ENT_QUOTES, 'UTF-8') . '</text>'
-            . '</svg>';
     }
 
     /**

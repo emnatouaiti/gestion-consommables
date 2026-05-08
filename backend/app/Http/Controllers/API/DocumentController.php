@@ -28,7 +28,7 @@ class DocumentController extends Controller
     private function userHasAnyRole($user, array $roles): bool
     {
         if (!$user) return false;
-        
+
         // Check spatie roles
         if (method_exists($user, 'hasRole')) {
             foreach ($roles as $role) {
@@ -70,6 +70,14 @@ class DocumentController extends Controller
             'supplier_name'=> 'nullable|string|max:255',
             'supplier_email'=> 'nullable|email|max:255',
         ]);
+
+        $user = $request->user();
+
+        // Auto-select warehouse (depot) based on user's depot if not provided
+        $warehouseId = $request->warehouse_id;
+        if (!$warehouseId && $user && $user->depot_id) {
+            $warehouseId = $user->depot_id;
+        }
 
         if ($request->filled('product_id')) {
             $product = Product::query()->select(['id', 'title', 'status'])->find((int) $request->input('product_id'));
@@ -198,7 +206,7 @@ class DocumentController extends Controller
             'user_id'      => optional($request->user())->id,
             'product_id'   => $request->product_id,
             'supplier_id'  => $supplierId,
-            'warehouse_id' => $request->warehouse_id,
+            'warehouse_id' => $warehouseId,
             'title'        => $autoTitle,
             'type'         => $guessedType,
             'direction'    => $direction,
@@ -378,7 +386,7 @@ class DocumentController extends Controller
                 $product = $action['product'];
                 $locId   = $action['warehouse_location_id'] ?? null;
                 $cabinetId = $action['cabinet_id'] ?? null;
-                
+
                 if (!$product) {
                     if (!$locId && !$cabinetId) {
                         throw new \Exception('Choisissez soit un emplacement, soit une armoire pour ce produit.');
@@ -429,7 +437,7 @@ class DocumentController extends Controller
                         }
                         if ($action['expiration_date']) $ps->expiration_date = $action['expiration_date'];
                         if ($action['batch_number']) $ps->batch_number = $action['batch_number'];
-                        
+
                         $delta = $dir === 'in' ? $quantity : -$quantity;
                         $ps->quantity = max(0, (int)($ps->quantity ?? 0) + $delta);
                         $ps->last_updated = now();
@@ -474,12 +482,23 @@ class DocumentController extends Controller
                 }
             }
 
-            // Notify if pending
+            // Notify if pending - Filter by depot for agents
             if (!$isManager) {
                 try {
-                    $responsables = User::whereHas('roles', function ($q) { 
-                        $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']); 
-                    })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur'])->get();
+                    $query = User::whereHas('roles', function ($q) {
+                        $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+                    })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+
+                    // If the creator is an agent (not admin), only notify responsables of the same depot
+                    if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['administrateur'])) {
+                        // Filter responsables by depot (same depot as user or no depot restriction for admins)
+                        $query->where(function ($q) use ($user) {
+                            $q->where('depot_id', $user->depot_id)
+                              ->orWhereNull('depot_id'); // Include admins without depot restriction
+                        });
+                    }
+
+                    $responsables = $query->get();
 
                     foreach ($responsables as $resp) {
                         if ($user && $resp->id !== $user->id) {
@@ -983,5 +1002,177 @@ class DocumentController extends Controller
         return str_contains($normalized, 'client')
             || str_contains($normalized, 'destinataire')
             || str_contains($normalized, 'livraison');
+    }
+
+    /**
+     * Find an available warehouse location for a given warehouse
+     * Based on availability (current_units < capacity_units)
+     */
+    public function findAvailableLocation(Request $request)
+    {
+        $user = $request->user();
+
+        // Get warehouse_id from user's depot if not provided
+        $warehouseId = $request->input('warehouse_id');
+        if (!$warehouseId && $user && $user->depot_id) {
+            $warehouseId = $user->depot_id;
+        }
+
+        if (!$warehouseId) {
+            return response()->json(['message' => 'Aucun dépôt trouvé pour cet utilisateur.'], 404);
+        }
+
+        $quantity = (int) ($request->input('quantity') ?? 1);
+
+        // Find available locations with enough capacity
+        $availableLocation = \App\Models\WarehouseLocation::join('warehouse_rooms', 'warehouse_locations.room_id', '=', 'warehouse_rooms.id')
+            ->where('warehouse_rooms.warehouse_id', $warehouseId)
+            ->where('warehouse_rooms.status', 'active')
+            ->where('warehouse_locations.status', 'active')
+            ->where(function ($q) use ($quantity) {
+                $q->whereRaw('capacity_units IS NULL')
+                  ->orWhereRaw('capacity_units = 0')
+                  ->orWhereRaw('(capacity_units - current_units) >= ?', [$quantity]);
+            })
+            ->orderBy('warehouse_locations.current_units', 'asc')
+            ->select('warehouse_locations.*')
+            ->first();
+
+        if ($availableLocation) {
+            return response()->json([
+                'found' => true,
+                'location' => [
+                    'id' => $availableLocation->id,
+                    'name' => $availableLocation->name,
+                    'code' => $availableLocation->code,
+                    'room_id' => $availableLocation->room_id,
+                    'room_name' => $availableLocation->room->name ?? null,
+                    'warehouse_id' => $availableLocation->room->warehouse_id ?? null,
+                    'warehouse_name' => $availableLocation->room->warehouse->name ?? null,
+                    'current_units' => $availableLocation->current_units,
+                    'capacity_units' => $availableLocation->capacity_units,
+                ],
+                'quantity_requested' => $quantity,
+            ]);
+        }
+
+        // If no location found, try to find an available cabinet
+        $availableCabinet = \App\Models\WarehouseCabinet::join('warehouse_rooms', 'warehouse_cabinets.room_id', '=', 'warehouse_rooms.id')
+            ->where('warehouse_rooms.warehouse_id', $warehouseId)
+            ->where('warehouse_rooms.status', 'active')
+            ->where('warehouse_cabinets.status', 'active')
+            ->where(function ($q) use ($quantity) {
+                $q->whereRaw('capacity_units IS NULL')
+                  ->orWhereRaw('capacity_units = 0')
+                  ->orWhereRaw('(capacity_units - current_units) >= ?', [$quantity]);
+            })
+            ->orderBy('warehouse_cabinets.current_units', 'asc')
+            ->select('warehouse_cabinets.*')
+            ->first();
+
+        if ($availableCabinet) {
+            return response()->json([
+                'found' => true,
+                'cabinet' => [
+                    'id' => $availableCabinet->id,
+                    'name' => $availableCabinet->name,
+                    'code' => $availableCabinet->code,
+                    'room_id' => $availableCabinet->room_id,
+                    'room_name' => $availableCabinet->room->name ?? null,
+                    'warehouse_id' => $availableCabinet->room->warehouse_id ?? null,
+                    'warehouse_name' => $availableCabinet->room->warehouse->name ?? null,
+                    'current_units' => $availableCabinet->current_units,
+                    'capacity_units' => $availableCabinet->capacity_units,
+                ],
+                'quantity_requested' => $quantity,
+                'suggestion' => 'Aucun emplacement disponible, mais une armoire est disponible.',
+            ]);
+        }
+
+        // No available location or cabinet found
+        return response()->json([
+            'found' => false,
+            'message' => 'Aucun emplacement ou armoire disponible avec la capacité requise.',
+            'quantity_requested' => $quantity,
+            'warehouse_id' => $warehouseId,
+        ], 404);
+    }
+
+    /**
+     * Get all available locations for a warehouse
+     */
+    public function getAvailableLocations(Request $request)
+    {
+        $user = $request->user();
+
+        // Get warehouse_id from user's depot if not provided
+        $warehouseId = $request->input('warehouse_id');
+        if (!$warehouseId && $user && $user->depot_id) {
+            $warehouseId = $user->depot_id;
+        }
+
+        if (!$warehouseId) {
+            return response()->json(['message' => 'Aucun dépôt trouvé pour cet utilisateur.'], 404);
+        }
+
+        $locations = \App\Models\WarehouseLocation::join('warehouse_rooms', 'warehouse_locations.room_id', '=', 'warehouse_rooms.id')
+            ->where('warehouse_rooms.warehouse_id', $warehouseId)
+            ->where('warehouse_rooms.status', 'active')
+            ->where('warehouse_locations.status', 'active')
+            ->where(function ($q) {
+                $q->whereRaw('capacity_units IS NULL')
+                  ->orWhereRaw('capacity_units = 0')
+                  ->orWhereRaw('capacity_units > current_units');
+            })
+            ->orderBy('warehouse_rooms.name')
+            ->orderBy('warehouse_locations.name')
+            ->select('warehouse_locations.*', 'warehouse_rooms.name as room_name')
+            ->get()
+            ->map(function ($loc) {
+                return [
+                    'id' => $loc->id,
+                    'name' => $loc->name,
+                    'code' => $loc->code,
+                    'room_id' => $loc->room_id,
+                    'room_name' => $loc->room_name,
+                    'current_units' => $loc->current_units,
+                    'capacity_units' => $loc->capacity_units,
+                    'available_units' => $loc->capacity_units ? ($loc->capacity_units - $loc->current_units) : 'unlimited',
+                ];
+            });
+
+        $cabinets = \App\Models\WarehouseCabinet::join('warehouse_rooms', 'warehouse_cabinets.room_id', '=', 'warehouse_rooms.id')
+            ->where('warehouse_rooms.warehouse_id', $warehouseId)
+            ->where('warehouse_rooms.status', 'active')
+            ->where('warehouse_cabinets.status', 'active')
+            ->where(function ($q) {
+                $q->whereRaw('capacity_units IS NULL')
+                  ->orWhereRaw('capacity_units = 0')
+                  ->orWhereRaw('capacity_units > current_units');
+            })
+            ->orderBy('warehouse_rooms.name')
+            ->orderBy('warehouse_cabinets.name')
+            ->select('warehouse_cabinets.*', 'warehouse_rooms.name as room_name')
+            ->get()
+            ->map(function ($cab) {
+                return [
+                    'id' => $cab->id,
+                    'name' => $cab->name,
+                    'code' => $cab->code,
+                    'room_id' => $cab->room_id,
+                    'room_name' => $cab->room_name,
+                    'current_units' => $cab->current_units,
+                    'capacity_units' => $cab->capacity_units,
+                    'available_units' => $cab->capacity_units ? ($cab->capacity_units - $cab->current_units) : 'unlimited',
+                ];
+            });
+
+        return response()->json([
+            'warehouse_id' => $warehouseId,
+            'locations' => $locations,
+            'cabinets' => $cabinets,
+            'total_locations' => $locations->count(),
+            'total_cabinets' => $cabinets->count(),
+        ]);
     }
 }

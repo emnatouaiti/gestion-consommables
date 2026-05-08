@@ -33,4 +33,9 @@ class ConsumableRequest extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function depot(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'depot_id');
+    }
 }

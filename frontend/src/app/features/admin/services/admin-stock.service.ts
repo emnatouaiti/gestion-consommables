@@ -90,12 +90,6 @@ export class AdminStockService {
     return this.api.delete(`admin/products/${id}`);
   }
 
-  downloadBarcode(productId: number): Observable<Blob> {
-    return this.http.get(`${this.apiBase}/admin/products/${productId}/barcode`, {
-      responseType: 'blob'
-    });
-  }
-
   getProduct(productId: number): Observable<any> {
     return this.api.get(`admin/products/${productId}`);
   }

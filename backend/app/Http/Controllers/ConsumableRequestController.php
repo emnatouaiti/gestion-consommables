@@ -9,7 +9,6 @@ use App\Models\User;
 use App\Models\AuditLog;
 use App\Models\StockMovement;
 use App\Models\StockMovementLine;
-use App\Notifications\StockMovementNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +25,7 @@ class ConsumableRequestController extends Controller
     {
         $user = Auth::user();
 
-        $query = ConsumableRequest::with('user.roles', 'product')->latest();
+        $query = ConsumableRequest::with('user.roles', 'product', 'depot')->latest();
 
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->input('start_date'));
@@ -41,6 +40,14 @@ class ConsumableRequestController extends Controller
                     $q->where('service', $user->service)
                       ->where('siege', $user->siege);
                 });
+            } elseif ($this->isStockManager($user)) {
+                // Les responsables/agents ne voient QUE les demandes assignées à leur dépôt
+                if ($user->depot_id) {
+                    $query->where('depot_id', $user->depot_id);
+                } else {
+                    $query->whereRaw('1 = 0');
+                }
+                // Si pas de depot_id assigné à l'utilisateur, voir toutes les demandes
             }
 
             $requests = $query->get()
@@ -285,10 +292,21 @@ class ConsumableRequestController extends Controller
         $currentStatus = Str::lower((string) $consumableRequest->status);
         $nextStatus    = null;
 
+        // Check if director is using new status workflow
+        $directorAction = $request->input('action'); // 'accept', 'reject', 'partial'
+
         if ($isManager && $currentStatus === 'pending') {
             $nextStatus = 'validated_by_manager';
         } elseif ($isDirector && in_array($currentStatus, ['pending', 'validated_by_manager', 'partiellement_accepte'])) {
-            $nextStatus = 'approved_pending_exit';
+            // Director can choose: 'accepte' (approved_pending_exit), 'approved_pending_exit', or 'rejected'
+            if ($directorAction === 'reject') {
+                $nextStatus = 'rejected';
+            } elseif ($directorAction === 'partial') {
+                $nextStatus = 'approved_pending_exit'; // After partial approval, status becomes approved_pending_exit
+            } else {
+                // Default: 'approved_pending_exit' - director approves, waiting for stock manager to confirm exit
+                $nextStatus = 'approved_pending_exit';
+            }
         } else {
             $role = $isManager ? 'gestionnaire' : 'utilisateur';
             $validStatuses = $isManager ? 'pending' : 'pending, validated_by_manager, partiellement_accepte';
@@ -320,15 +338,21 @@ class ConsumableRequestController extends Controller
         $finalStatus       = $nextStatus;
         $approvedRequests  = collect();
         $rejectedRequests  = collect();
+        $depotWarnings     = [];
+        $insufficientWarnings = [];
+        $splitRequests     = []; // Track if requests were split across depots
 
         DB::transaction(function () use (
-            $requestsToApprove, $request, $nextStatus,
-            &$finalStatus, &$approvedRequests, &$rejectedRequests
+            $requestsToApprove, $request, $nextStatus, $isDirector,
+            &$finalStatus, &$approvedRequests, &$rejectedRequests, &$depotWarnings, &$insufficientWarnings, &$splitRequests
         ) {
             $approvedQuantitiesMap = collect($request->input('approved_quantities', []))
                 ->mapWithKeys(fn($qty, $key) => [(int) $key => (int) $qty]);
             $rejectionMap          = collect($request->input('rejections', []))
                 ->mapWithKeys(fn($reason, $key) => [(int) $key => (string) $reason]);
+
+            // Check stock by depot for all requests
+            $requestsByDepot = [];
 
             foreach ($requestsToApprove as $req) {
                 $availableStock = $this->getAvailableStock($req);
@@ -353,21 +377,120 @@ class ConsumableRequestController extends Controller
                 } else {
                     $req->approved_quantity = max(0, $approvedQty);
                     $req->status            = $nextStatus;
+
+                    // Check which depot has the stock for this product
+                    $productId = $this->resolveProductId($req->product_id, $req->item_name);
+
+                    if ($productId && $approvedQty > 0) {
+                        $stockByDepot = $this->getStockByDepot($productId, $approvedQty);
+                        if (!empty($stockByDepot)) {
+                            // Find the depot with enough stock
+                            $assignedDepot = null;
+                            $eligibleDepots = collect($stockByDepot)
+                                ->filter(fn($depotInfo) => (int) ($depotInfo['total_quantity'] ?? 0) >= (int) $approvedQty)
+                                ->sortByDesc(fn($depotInfo) => (int) ($depotInfo['total_quantity'] ?? 0));
+
+                            if ($eligibleDepots->isNotEmpty()) {
+                                $assignedDepot = (int) $eligibleDepots->keys()->first();
+                            }
+
+                            if ($assignedDepot) {
+                                // Single depot has enough stock
+                                $req->depot_id = $assignedDepot;
+                                $requestsByDepot[$assignedDepot][] = $req;
+                                $req->save();
+                            } else {
+                                // Stock is spread across multiple depots - SPLIT the request
+                                $remainingQty = $approvedQty;
+                                $firstSplit = true;
+                                $splitInfo = [
+                                    'product' => $req->item_name,
+                                    'requested' => $approvedQty,
+                                    'splits' => []
+                                ];
+
+                                // Sort depots by quantity descending
+                                $sortedDepots = collect($stockByDepot)->sortByDesc('total_quantity');
+
+                                foreach ($sortedDepots as $depotId => $depotInfo) {
+                                    if ($remainingQty <= 0) break;
+
+                                    $qtyFromThisDepot = min($depotInfo['total_quantity'], $remainingQty);
+
+                                    if ($firstSplit) {
+                                        // Update the original request with first depot
+                                        $req->depot_id = $depotId;
+                                        $req->approved_quantity = $qtyFromThisDepot;
+                                        $req->save();
+                                        $requestsByDepot[$depotId][] = $req;
+                                        $firstSplit = false;
+                                    } else {
+                                        // Create a new split request for additional depots
+                                        $splitRequest = $req->replicate();
+                                        $splitRequest->depot_id = $depotId;
+                                        $splitRequest->approved_quantity = $qtyFromThisDepot;
+                                        $splitRequest->status = $nextStatus;
+                                        // Keep the same batch_code to maintain grouping
+                                        $splitRequest->save();
+                                        $requestsByDepot[$depotId][] = $splitRequest;
+                                        $splitRequests[] = $splitRequest;
+                                    }
+
+                                    $splitInfo['splits'][] = [
+                                        'depot_id' => $depotId,
+                                        'depot_name' => $depotInfo['depot_name'],
+                                        'quantity' => $qtyFromThisDepot
+                                    ];
+                                    $remainingQty -= $qtyFromThisDepot;
+                                }
+
+                                if ($remainingQty > 0) {
+                                    $insufficientWarnings[] = [
+                                        'product' => $req->item_name,
+                                        'requested' => $approvedQty,
+                                        'allocated' => max(0, $approvedQty - $remainingQty),
+                                        'missing' => $remainingQty,
+                                    ];
+                                }
+
+                                if (count($splitInfo['splits']) > 1) {
+                                    $depotWarnings[] = $splitInfo;
+                                }
+
+                                // Update the original approved_quantity to reflect the split
+                                if (!$firstSplit) {
+                                    $req->refresh();
+                                }
+                            }
+                        }
+                    }
                 }
-                $req->save();
+
+                if (!$req->wasRecentlyCreated && !$req->is($req->fresh())) {
+                    $req->save();
+                }
+            }
+
+            // Get all requests (including splits) for notification
+            $allApprovedRequests = collect();
+            foreach ($requestsByDepot as $depotRequests) {
+                foreach ($depotRequests as $r) {
+                    $allApprovedRequests->push($r);
+                }
             }
 
             // Séparer approuvés et rejetés après la première passe
             $approvedRequests = $requestsToApprove->filter(
                 fn($r) => in_array($r->status, ['approved_pending_exit', 'validated_by_manager', 'approved'])
             );
+            if (!empty($splitRequests)) {
+                $approvedRequests = $approvedRequests->concat(collect($splitRequests));
+            }
             $rejectedRequests = $requestsToApprove->filter(fn($r) => $r->status === 'rejected');
 
             // Approbation partielle : certains approuvés, certains rejetés
             if ($approvedRequests->count() > 0 && $rejectedRequests->count() > 0) {
                 $finalStatus = 'partiellement_accepte';
-                // Les items approuvés restent dans nextStatus (approved_pending_exit / validated_by_manager)
-                // Les items rejetés gardent 'rejected' — on ne les modifie pas ici
             }
 
             $batchUser = $requestsToApprove->first()?->user;
@@ -388,6 +511,7 @@ class ConsumableRequestController extends Controller
                             $req->update(['pdf_path' => $approvedPdfPath]);
                         }
                     }
+
                 } catch (\Throwable $e) {
                     Log::error('PDF generation error for approved items', ['error' => $e->getMessage()]);
                 }
@@ -412,16 +536,6 @@ class ConsumableRequestController extends Controller
                     Log::error('PDF generation error for rejected items', ['error' => $e->getMessage()]);
                 }
             }
-
-            // --- Cas tout approuvé : un seul PDF (sans suffixe _approved) ---
-            if ($approvedRequests->count() > 0 && $rejectedRequests->count() === 0 && $batchUser) {
-                // PDF déjà généré ci-dessus avec suffixe _approved, on garde tel quel
-            }
-
-            // --- Cas tout rejeté : un seul PDF (sans suffixe _rejected) ---
-            if ($rejectedRequests->count() > 0 && $approvedRequests->count() === 0 && $batchUser) {
-                // PDF déjà généré ci-dessus avec suffixe _rejected, on garde tel quel
-            }
         });
 
         // --- Notifications (hors transaction) ---
@@ -430,16 +544,36 @@ class ConsumableRequestController extends Controller
         } elseif ($nextStatus === 'approved_pending_exit') {
             // Notifier le demandeur avec les 2 collections séparées pour les 2 PDFs
             $this->notifyRequesterPartial($approvedRequests, $rejectedRequests);
-            // Notifier le responsable stock uniquement pour les items approuvés
+
+            // Notifier le responsable stock UNIQUEMENT pour les items approuvés dans SON depot
+            // Each responsible only gets notified for products in their depot
             if ($approvedRequests->count() > 0) {
-                $this->notifyStockManagers($approvedRequests);
+                $this->notifyStockManagersByDepot($approvedRequests);
+            }
+
+            // If director approved and requests were split across depots, notify director about the split
+            if ($isDirector && !empty($depotWarnings)) {
+                // Director is already informed via the response, no need for separate notification
             }
         }
 
-        return response()->json([
+        $responseData = [
             'message' => 'Demande passee au statut : ' . $finalStatus,
             'status'  => $finalStatus,
-        ]);
+        ];
+
+        // Add depot warnings if products are in multiple depots (request was split)
+        if (!empty($depotWarnings)) {
+            $responseData['depot_warnings'] = $depotWarnings;
+            $responseData['warning_message'] = 'Certains produits sont disponibles dans plusieurs dépôts. La demande a été divisée selon la disponibilité dans chaque dépôt.';
+            $responseData['split_info'] = 'La demande a été automatiquement divisée et chaque responsable de dépôt recevra uniquement les quantités disponibles dans son dépôt.';
+        }
+
+        if (!empty($insufficientWarnings)) {
+            $responseData['insufficient_warnings'] = $insufficientWarnings;
+        }
+
+        return response()->json($responseData);
     }
 
     // Confirmer la sortie physique (responsable stock)
@@ -462,6 +596,29 @@ class ConsumableRequestController extends Controller
             'destination_text'             => 'nullable|string|max:255',
             'motif'                        => 'nullable|string|max:500',
         ]);
+
+        // Responsable/agent: sortie strictement dans leur depot
+        if ($user->depot_id) {
+            if ($consumableRequest->depot_id && (int) $consumableRequest->depot_id !== (int) $user->depot_id) {
+                return response()->json(['message' => 'Cette demande est assignée à un autre dépôt.'], 403);
+            }
+
+            $sourceLocationId = $request->input('source_warehouse_location_id');
+            if ($sourceLocationId) {
+                $loc = \App\Models\WarehouseLocation::with('room')->find($sourceLocationId);
+                if (!$loc || !$loc->room || (int) $loc->room->warehouse_id !== (int) $user->depot_id) {
+                    return response()->json(['message' => 'Emplacement source hors de votre dépôt.'], 422);
+                }
+            }
+
+            $sourceCabinetId = $request->input('source_cabinet_id');
+            if ($sourceCabinetId) {
+                $cab = \App\Models\WarehouseCabinet::with('room')->find($sourceCabinetId);
+                if (!$cab || !$cab->room || (int) $cab->room->warehouse_id !== (int) $user->depot_id) {
+                    return response()->json(['message' => 'Armoire source hors de votre dépôt.'], 422);
+                }
+            }
+        }
 
         Log::info('confirmExit payload', $request->all());
 
@@ -520,7 +677,9 @@ class ConsumableRequestController extends Controller
                     'source_cabinet_id'           => $sourceCabinetId,
                     'motif'                       => $motif,
                     'destination_text'            => $destinationText,
-                    'status'                      => 'validated',
+                    'status'                      => 'executed',
+                    'executed_at'                 => now(),
+                    'validated_by'                => $user->id,
                 ]);
 
                 StockMovementLine::create([
@@ -548,7 +707,6 @@ class ConsumableRequestController extends Controller
                         : collect([$consumableRequest]);
 
                     $consumableRequest->user->notify(new \App\Notifications\ConsumableRequestNotification($batchRequests));
-                    $consumableRequest->user->notify(new \App\Notifications\StockMovementNotification($movement));
                 } catch (\Throwable $e) {
                     Log::error('Failed to notify owner on confirmExit', ['err' => $e->getMessage()]);
                 }
@@ -565,8 +723,9 @@ class ConsumableRequestController extends Controller
         });
 
         return response()->json([
-            'message' => 'Sortie confirmee. Stock mis a jour.',
-            'request' => $consumableRequest->fresh(['user.roles', 'product']),
+            'message' => 'Sortie confirmée. Stock mis à jour.',
+            'request' => $consumableRequest->fresh(['user.roles', 'product', 'depot']),
+            'depot_name' => $consumableRequest->depot?->name,
         ]);
     }
 
@@ -661,6 +820,102 @@ class ConsumableRequestController extends Controller
 
         $stocksSum = (int) $product->stocks()->sum('quantity');
         return $stocksSum > 0 ? $stocksSum : (int) ($product->stock_quantity ?? 0);
+    }
+
+    /**
+     * Get stock availability by depot for a product
+     */
+    private function getStockByDepot($productId, $requestedQuantity): array
+    {
+        $stockRows = $this->aggregateActiveStockByDepot((int) $productId);
+        $stockInDepots = $stockRows->keyBy('depot_id')->toArray();
+
+        // Also check product's own warehouse_location_id (stock_quantity field)
+        $product = \App\Models\Product::find($productId);
+        if ($product && $product->warehouse_location_id && $product->stock_quantity > 0) {
+            $location = \App\Models\WarehouseLocation::with('room.warehouse')->find($product->warehouse_location_id);
+            if ($location && $location->room && $location->room->warehouse) {
+                $depotId = $location->room->warehouse->id;
+                $depotName = $location->room->warehouse->name;
+
+                if (isset($stockInDepots[$depotId])) {
+                    $stockInDepots[$depotId]['total_quantity'] += $product->stock_quantity;
+                } else {
+                    $stockInDepots[$depotId] = [
+                        'depot_id' => $depotId,
+                        'depot_name' => $depotName,
+                        'total_quantity' => $product->stock_quantity
+                    ];
+                }
+            }
+        }
+
+        return $stockInDepots;
+    }
+
+    private function aggregateActiveStockByDepot(int $productId): \Illuminate\Support\Collection
+    {
+        $stocks = \App\Models\ProductStock::query()
+            ->with(['warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse'])
+            ->where('product_id', $productId)
+            ->where('quantity', '>', 0)
+            ->where(function ($q) {
+                $q->whereNull('batch_status')
+                  ->orWhere('batch_status', 'active');
+            })
+            ->get();
+
+        $byDepot = [];
+        foreach ($stocks as $s) {
+            $warehouse = $s->warehouseLocation?->room?->warehouse ?: $s->warehouseCabinet?->room?->warehouse;
+            if (!$warehouse) {
+                continue;
+            }
+
+            $depotId = (int) $warehouse->id;
+            if (!isset($byDepot[$depotId])) {
+                $byDepot[$depotId] = [
+                    'depot_id' => $depotId,
+                    'depot_name' => (string) ($warehouse->name ?? ('Depot ' . $depotId)),
+                    'total_quantity' => 0,
+                ];
+            }
+            $byDepot[$depotId]['total_quantity'] += (int) $s->quantity;
+        }
+
+        return collect(array_values($byDepot));
+    }
+
+    /**
+     * Resolve product id from explicit product_id or from free-text item name.
+     */
+    private function resolveProductId($productId, $itemName): ?int
+    {
+        if ($productId) {
+            return (int) $productId;
+        }
+
+        $itemName = trim((string) $itemName);
+        if ($itemName === '') {
+            return null;
+        }
+
+        $nameLower = mb_strtolower($itemName, 'UTF-8');
+
+        $product = \App\Models\Product::query()
+            ->whereRaw('LOWER(title) = ?', [$nameLower])
+            ->orWhereRaw('LOWER(reference) = ?', [$nameLower])
+            ->first();
+
+        if (!$product) {
+            $like = '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $nameLower) . '%';
+            $product = \App\Models\Product::query()
+                ->whereRaw('LOWER(title) LIKE ?', [$like])
+                ->orWhereRaw('LOWER(reference) LIKE ?', [$like])
+                ->first();
+        }
+
+        return $product?->id ? (int) $product->id : null;
     }
 
     private function buildRequestPayload(Request $request): array
@@ -1020,6 +1275,156 @@ class ConsumableRequestController extends Controller
     }
 
     private function notifyStockManagers($requests): int
+    {
+        $requests = collect($requests);
+        $first    = $requests->first();
+        if (!$first) return 0;
+
+        // Find the responsable who has the quantities in their depot
+        // First, get the product from the request
+        $productId = $this->resolveProductId($first->product_id, $first->item_name);
+
+        if (!$productId) {
+            // If no product found, notify all managers as fallback
+            return $this->notifyAllStockManagers($requests);
+        }
+
+        // Find which depot has stock for this product
+        // Hierarchy: ProductStock -> WarehouseLocation -> WarehouseRoom -> Warehouse
+        $stockInDepots = $this->aggregateActiveStockByDepot((int) $productId);
+
+        if ($stockInDepots->isEmpty()) {
+            // No stock found in any depot, notify all managers
+            return $this->notifyAllStockManagers($requests);
+        }
+
+        // Find responsables assigned to these depots
+        $depotIds = $stockInDepots->pluck('depot_id')->unique()->toArray();
+        $responsables = User::query()
+            ->whereIn('depot_id', $depotIds)
+            ->where(function ($q) {
+                $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
+                  ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+            })
+            ->where('id', '!=', Auth::id())
+            ->get();
+
+        if ($responsables->isEmpty()) {
+            // No responsables found for these depots, notify all managers
+            return $this->notifyAllStockManagers($requests);
+        }
+
+        // Notify only the responsables who have stock for this product
+        $count = 0;
+        foreach ($responsables as $manager) {
+            try {
+                $manager->notify(new \App\Notifications\ConsumableRequestNotification($requests));
+                $count++;
+            } catch (\Throwable $e) {
+                Log::error('Notification manager error', ['err' => $e->getMessage()]);
+            }
+        }
+
+        return $count;
+    }
+
+    /**
+     * Notify stock managers grouped by depot
+     * Only notifies responsables who actually have the product stock in their depot
+     */
+    private function notifyStockManagersByDepot($requests): int
+    {
+        $requests = collect($requests);
+        if ($requests->isEmpty()) return 0;
+
+        // Check if any request has depot_id assigned
+        $requestsWithDepot = $requests->filter(fn($r) => $r->depot_id);
+
+        if ($requestsWithDepot->isEmpty()) {
+            // No depot assigné: ne pas diffuser globalement
+            return 0;
+        }
+
+        // Group requests by depot_id
+        $requestsByDepot = $requestsWithDepot->groupBy('depot_id');
+        $totalNotified = 0;
+
+        foreach ($requestsByDepot as $depotId => $depotRequests) {
+            // For each request, check if the product actually has stock in this depot
+            $validRequests = collect();
+            foreach ($depotRequests as $req) {
+                $productId = $this->resolveProductId($req->product_id, $req->item_name);
+
+                if ($productId) {
+                    // Check if this product has stock in this specific depot
+                    $hasStockInDepot = $this->aggregateActiveStockByDepot((int) $productId)
+                        ->contains(fn($row) => (int) ($row['depot_id'] ?? 0) === (int) $depotId);
+
+                    if ($hasStockInDepot) {
+                        $validRequests->push($req);
+                    }
+                } else {
+                    // If no product found, include the request anyway
+                    $validRequests->push($req);
+                }
+            }
+
+            if ($validRequests->isEmpty()) {
+                // No valid requests with stock in this depot, skip notification
+                continue;
+            }
+
+            // Find responsables assigned to this depot
+            $responsables = User::query()
+                ->where('depot_id', $depotId)
+                ->where(function ($q) {
+                    $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
+                      ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+                })
+                ->where('id', '!=', Auth::id())
+                ->get();
+
+            // Generate a depot-specific PDF for responsible notifications only.
+            $depotPdfPath = null;
+            try {
+                $firstReq = $validRequests->first();
+                if ($firstReq && $firstReq->user) {
+                    $depotPdfPath = $this->generateAndSavePdf(
+                        $firstReq->user,
+                        $validRequests->values()->all(),
+                        $firstReq->batch_code,
+                        '_approved_depot_' . (int) $depotId
+                    );
+                }
+            } catch (\Throwable $e) {
+                Log::error('Depot PDF generation error', ['err' => $e->getMessage(), 'depot_id' => $depotId]);
+            }
+
+            $requestsForNotification = $validRequests->map(function ($req) use ($depotPdfPath) {
+                $clone = clone $req;
+                if ($depotPdfPath) {
+                    $clone->pdf_path = $depotPdfPath;
+                }
+                return $clone;
+            });
+
+            foreach ($responsables as $manager) {
+                try {
+                    $manager->notify(new \App\Notifications\ConsumableRequestNotification($requestsForNotification));
+                    $totalNotified++;
+                } catch (\Throwable $e) {
+                    Log::error('Notification manager by depot error', ['err' => $e->getMessage()]);
+                }
+            }
+        }
+
+        return $totalNotified;
+    }
+
+    /**
+     * Notify all stock managers (fallback method)
+     */
+    private function notifyAllStockManagers($requests): int
     {
         $requests = collect($requests);
         $first    = $requests->first();

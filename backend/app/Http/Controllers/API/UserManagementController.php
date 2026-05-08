@@ -7,6 +7,7 @@ use App\Mail\NewUserCreated;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
@@ -43,7 +44,7 @@ class UserManagementController extends Controller
     $q = trim($request->get('q', ''));
     $status = $request->get('status', 'active');
 
-    $query = User::with('roles');
+    $query = User::with('roles', 'depot');
 
     // 🔥 filtrer explicitement les actifs
     if ($status === 'active') {
@@ -74,6 +75,7 @@ class UserManagementController extends Controller
             'service' => 'nullable|string|max:255',
             'poste' => 'nullable|string|max:255',
             'siege' => 'nullable|string|max:255',
+            'depot_id' => 'nullable|exists:warehouses,id',
             'roles' => 'nullable',
         ]);
 
@@ -92,16 +94,29 @@ class UserManagementController extends Controller
         }
 
         $plain = bin2hex(random_bytes(4));
+        $primaryRole = strtolower($validRoleNames[0]);
+        $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent']);
 
-        $user = User::create([
+        $userData = [
             'nomprenom' => $request->nomprenom,
             'email' => $request->email,
             'password' => Hash::make($plain),
-            'service' => $request->input('service', 'Non defini'),
-            'poste' => $request->input('poste', 'Non defini'),
-            'siege' => $request->input('siege', 'Non defini'),
             'role' => $validRoleNames[0],
-        ]);
+        ];
+
+        if ($isResponsableOrAgent) {
+            $userData['depot_id'] = $request->input('depot_id');
+            $userData['service'] = null;
+            $userData['poste'] = null;
+            $userData['siege'] = null;
+        } else {
+            $userData['service'] = $request->input('service', 'Non defini');
+            $userData['poste'] = $request->input('poste', 'Non defini');
+            $userData['siege'] = $request->input('siege', 'Non defini');
+            $userData['depot_id'] = null;
+        }
+
+        $user = User::create($userData);
 
         $user->syncRoles($validRoleNames);
 
@@ -113,13 +128,13 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'Utilisateur cree',
-            'user' => $user->load('roles')
+            'user' => $user->load('roles', 'depot')
         ]);
     }
 
     public function show($id)
     {
-        $user = User::with('roles')->findOrFail($id);
+        $user = User::with('roles', 'depot')->findOrFail($id);
         return response()->json($user);
     }
 
@@ -127,7 +142,7 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
 
-        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste', 'siege']);
+        $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste', 'siege', 'depot_id']);
 
         if ($request->filled('password')) {
             $data['password'] = Hash::make($request->password);
@@ -146,13 +161,28 @@ class UserManagementController extends Controller
                 $validRoleNames = ['Utilisateur'];
             }
 
+            $primaryRole = strtolower($validRoleNames[0]);
+            $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent']);
+
+            if ($isResponsableOrAgent) {
+                $data['depot_id'] = $request->input('depot_id');
+                $data['service'] = null;
+                $data['poste'] = null;
+                $data['siege'] = null;
+            } else {
+                $data['service'] = $request->input('service', 'Non defini');
+                $data['poste'] = $request->input('poste', 'Non defini');
+                $data['siege'] = $request->input('siege', 'Non defini');
+                $data['depot_id'] = null;
+            }
+
             $user->syncRoles($validRoleNames);
             $user->update(['role' => $validRoleNames[0]]);
         }
 
         return response()->json([
             'message' => 'Utilisateur mis a jour',
-            'user' => $user->load('roles')
+            'user' => $user->load('roles', 'depot')
         ]);
     }
 
@@ -167,7 +197,7 @@ class UserManagementController extends Controller
     {
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
-        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('roles')]);
+        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('roles', 'depot')]);
     }
 
     public function forceDestroy($id)

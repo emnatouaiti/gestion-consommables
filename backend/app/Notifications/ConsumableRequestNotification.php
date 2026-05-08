@@ -42,6 +42,8 @@ class ConsumableRequestNotification extends Notification
         $user = $firstRequest->user;
         $status = Str::lower($firstRequest->status);
         $isOwner = $notifiable->id === $firstRequest->user_id;
+        $isStockManagerRecipient = $notifiable->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
+            || in_array(strtolower((string) ($notifiable->role ?? '')), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
         // Detecter si c'est une approbation partielle (mélange d'approuvés et de rejetés)
         $approvedCount = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']))->count();
@@ -163,7 +165,32 @@ class ConsumableRequestNotification extends Notification
         $rejectedRequests = $this->requests->filter(fn($r) => $r->status === 'rejected');
 
         // Attach approved PDF
-        $approvedPdf = $approvedRequests->first(fn($r) => $r->pdf_path && str_contains($r->pdf_path, '_approved') && \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path));
+        $approvedPdf = null;
+        if ($isStockManagerRecipient) {
+            // Responsable/agent: prefer depot-specific approved PDF
+            $approvedPdf = $approvedRequests->first(fn($r) =>
+                $r->pdf_path &&
+                str_contains($r->pdf_path, '_approved_depot_') &&
+                \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path)
+            );
+        }
+        if (!$approvedPdf) {
+            // Owner/director/others: prefer global approved PDF
+            $approvedPdf = $approvedRequests->first(fn($r) =>
+                $r->pdf_path &&
+                str_contains($r->pdf_path, '_approved') &&
+                !str_contains($r->pdf_path, '_approved_depot_') &&
+                \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path)
+            );
+        }
+        if (!$approvedPdf) {
+            // Last fallback: any approved PDF
+            $approvedPdf = $approvedRequests->first(fn($r) =>
+                $r->pdf_path &&
+                str_contains($r->pdf_path, '_approved') &&
+                \Illuminate\Support\Facades\Storage::disk('public')->exists($r->pdf_path)
+            );
+        }
         if ($approvedPdf) {
             $mail->attach(\Illuminate\Support\Facades\Storage::disk('public')->path($approvedPdf->pdf_path), [
                 'as' => basename($approvedPdf->pdf_path),
@@ -205,4 +232,3 @@ class ConsumableRequestNotification extends Notification
         ];
     }
 }
-

@@ -31,7 +31,6 @@ import { DocumentsComponent } from './documents/documents.component';
 import { ChatComponent } from './chat/chat.component';
 import { ThreadWidgetComponent } from './chat/thread-widget.component';
 import { MiniThreadsComponent } from './chat/mini-threads.component';
-import { BarcodeScannerComponent } from '../../shared/barcode-scanner/barcode-scanner.component';
 import { ProductBatchLifecycleComponent } from './components/product-batch-lifecycle/product-batch-lifecycle.component';
 import { StockFormComponent } from './components/stock-form/stock-form.component';
 import { Storage3dViewerComponent } from './components/storage-3d-viewer/storage-3d-viewer.component';
@@ -63,8 +62,6 @@ import { Storage3dViewerComponent } from './components/storage-3d-viewer/storage
     FabricantsComponent,
     MarquesComponent,
     ModelesComponent,
-    // Barcode scanner (standalone)
-    BarcodeScannerComponent,
     ProductBatchLifecycleComponent,
     StockFormComponent,
     ReferencesComponent,

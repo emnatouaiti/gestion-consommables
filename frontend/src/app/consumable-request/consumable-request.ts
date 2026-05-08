@@ -1,4 +1,4 @@
-﻿import { ChangeDetectorRef, Component, Inject, NgZone, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -8,6 +8,7 @@ import { AdminWarehouseService } from '../features/admin/services/admin-warehous
 import { forkJoin } from 'rxjs';
 
 type NavTab = 'pending' | 'history' | 'exits';
+type RequestViewMode = 'table' | 'columns';
 
 // Decision individuelle par produit dans un lot
 type ItemDecision = 'approved' | 'rejected' | 'pending';
@@ -19,7 +20,7 @@ type ItemDecision = 'approved' | 'rejected' | 'pending';
   templateUrl: './consumable-request.html',
   styleUrls: ['./consumable-request.css']
 })
-export class ConsumableRequestComponent implements OnInit {
+export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
   // Data
   requests: any[] = [];
@@ -49,6 +50,7 @@ export class ConsumableRequestComponent implements OnInit {
   itemsPerPage = 10;
   pageSize = 10;
   totalPages = 1;
+  requestViewMode: RequestViewMode = 'table';
   productSearchTerm = '';
 
   // Request Modal
@@ -71,6 +73,8 @@ export class ConsumableRequestComponent implements OnInit {
   modalApprovedQuantity = 0;
   modalApprovedQuantities: Record<number, number> = {};
   approving = false;
+  depotWarnings: any[] = [];
+  depotWarningMessage: string = '';
 
   // Approve per-item (lot) state
   // itemDecisions: { [itemId]: 'approved' | 'rejected' | 'pending' }
@@ -88,14 +92,17 @@ export class ConsumableRequestComponent implements OnInit {
   rejectReason = '';
   rejecting = false;
 
-  // Exit Modal
+  // Exit Modal - Per product location selection for batches
   selectedRequestForExit: any = null;
-  exitSourceStocks: any[] = [];
-  exitSourceLocationId: number | null = null;
+  exitRequestsForExit: any[] = []; // Array of requests in the batch
+  exitProductLocations: { [productId: number]: { depot: any; salle: any; emplacement: any; stocks: any[]; depotsList: any[]; sallesList: any[]; locationsList: any[] } } = {};
   exitMotif = '';
   exitRequesterName = '';
   exitLocalText = '';
   confirmingExit = false;
+  // Legacy single-product fields (for backward compatibility)
+  exitSourceStocks: any[] = [];
+  exitSourceLocationId: number | null = null;
   selectedDepot: any = null;
   selectedSalle: any = null;
   selectedEmplacement: any = null;
@@ -106,6 +113,7 @@ export class ConsumableRequestComponent implements OnInit {
 
   // Expanded rows
   expandedRequestIds = new Set<number>();
+  private autoRefreshHandle: any = null;
 
   constructor(
     private consumableRequestService: ConsumableRequestService,
@@ -146,6 +154,7 @@ export class ConsumableRequestComponent implements OnInit {
 
         this.loadProducts();
         this.loadRequests();
+        this.startAutoRefresh();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -153,7 +162,13 @@ export class ConsumableRequestComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+
   }
+
+  ngOnDestroy(): void {
+    this.stopAutoRefresh();
+  }
+
 
   // Data loading
 
@@ -189,18 +204,38 @@ export class ConsumableRequestComponent implements OnInit {
     });
   }
 
+  private startAutoRefresh(): void {
+    this.stopAutoRefresh();
+    this.autoRefreshHandle = setInterval(() => {
+      if (this.isResponsable && (this.activeTab === 'exits' || this.activeTab === 'history') && !this.loading) {
+        this.loadRequests();
+      }
+    }, 10000);
+  }
+
+  private stopAutoRefresh(): void {
+    if (this.autoRefreshHandle) {
+      clearInterval(this.autoRefreshHandle);
+      this.autoRefreshHandle = null;
+    }
+  }
+
   // Navigation
 
   setTab(tab: NavTab): void {
     this.activeTab = tab;
     this.currentPage = 1;
+    if (tab === 'exits') {
+      this.loadRequests();
+    }
   }
 
   get tabs(): Array<{ id: NavTab; label: string; count?: number }> {
     const tabs: Array<{ id: NavTab; label: string; count?: number }> = [];
 
-    const canSeeValidation = (this.viewMode === 'validation') || this.isResponsable || this.canApprove;
-    if (canSeeValidation) {
+    // Only show "Demandes ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â  valider" for directors, not for responsables
+    const isDirector = this.isDirectorUser(this.currentUser);
+    if (this.viewMode === 'validation' && isDirector) {
       tabs.push({ id: 'pending', label: 'Demandes a valider', count: this.pendingValidationRequests.length });
     }
 
@@ -231,8 +266,8 @@ export class ConsumableRequestComponent implements OnInit {
     return this.sortedByDate.filter(r => {
       const s = r.status?.toLowerCase();
       if (isDirector) {
-        // Directors can see: pending, validated_by_manager, and partially accepted
-        return ['validated_by_manager', 'partiellement_accepte'].includes(s);
+        // Directors can see: pending (direct submissions), validated_by_manager, and partially accepted
+        return ['pending', 'validated_by_manager', 'partiellement_accepte'].includes(s);
       }
       if (isManager) {
         return s === 'pending';
@@ -242,18 +277,53 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   get pendingExitRequests(): any[] {
-    return this.sortedByDate.filter(r => r.status === 'approved_pending_exit');
+    const rows: any[] = [];
+    const seen = new Set<number>();
+
+    for (const group of this.sortedByDate) {
+      const items = Array.isArray(group?.items) && group.items.length > 0 ? group.items : [group];
+
+      for (const it of items) {
+        if (String(it?.status || '').toLowerCase() !== 'approved_pending_exit') continue;
+        const itemId = Number(it?.id || 0);
+        if (itemId > 0 && seen.has(itemId)) continue;
+        if (itemId > 0) seen.add(itemId);
+
+        rows.push({
+          ...group,
+          ...it,
+          id: itemId || group.id,
+          item_name: it?.item_name || group.item_name,
+          created_at: it?.created_at || group.created_at,
+          pdf_path: it?.pdf_path || group.pdf_path,
+          requester_name: group.requester_name,
+          requester_poste: group.requester_poste,
+          user: group.user,
+          items: [it],
+        });
+      }
+    }
+
+    return rows.sort((a, b) => {
+      const da = new Date(a?.created_at || 0).getTime();
+      const db = new Date(b?.created_at || 0).getTime();
+      return db - da;
+    });
   }
 
   get historyRequests(): any[] {
     let data = this.sortedByDate;
+    const isDirector = this.isDirectorUser(this.currentUser);
 
     if (this.isResponsable) {
-      data = data.filter(r => r.status === 'approved_pending_exit' || r.status === 'approved');
-      if (this.statusFilter !== 'all') {
-        data = data.filter(r => r.status === this.statusFilter);
-      }
+      // Historique responsable: uniquement les demandes deja livrees/terminees
+      data = data.filter(r => r.status === 'approved');
       return data;
+    }
+
+    // Directeur: ne jamais afficher les demandes "Livre / Termine"
+    if (isDirector) {
+      data = data.filter(r => String(r?.status || '').toLowerCase() !== 'approved');
     }
 
     if (this.viewMode === 'validation') {
@@ -277,11 +347,22 @@ export class ConsumableRequestComponent implements OnInit {
     return this.pendingValidationRequests.slice(start, start + this.pageSize);
   }
 
+  get paginatedPendingExitRequests(): any[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    return this.pendingExitRequests.slice(start, start + this.pageSize);
+  }
+
   get totalPagesComputed(): number {
     const total = this.activeTab === 'pending'
       ? this.pendingValidationRequests.length
-      : this.historyRequests.length;
+      : this.activeTab === 'exits'
+        ? this.pendingExitRequests.length
+        : this.historyRequests.length;
     return Math.max(1, Math.ceil(total / this.pageSize));
+  }
+
+  get computedTotalPages(): number {
+    return this.totalPagesComputed;
   }
 
   prevPage(): void {
@@ -290,7 +371,7 @@ export class ConsumableRequestComponent implements OnInit {
   }
 
   nextPage(): void {
-    if (this.currentPage >= this.totalPages) return;
+    if (this.currentPage >= this.computedTotalPages) return;
     this.currentPage += 1;
   }
 
@@ -314,60 +395,6 @@ export class ConsumableRequestComponent implements OnInit {
       String(p.title || '').toLowerCase().includes(t) ||
       String(p.reference || '').toLowerCase().includes(t)
     );
-  }
-
-  // Exit modal stock helpers
-
-  updateAvailableDepots(): void {
-    const depotsMap = new Map<number, any>();
-    if (!this.exitSourceStocks || !Array.isArray(this.exitSourceStocks)) {
-      this.depotsList = [];
-      return;
-    }
-    for (const s of this.exitSourceStocks) {
-      const whId = s.warehouse_id || s.warehouseId;
-      const whName = s.warehouse_name || s.warehouseName;
-      if (whId && s.quantity > 0) {
-        const idNum = Number(whId);
-        if (!depotsMap.has(idNum)) {
-          depotsMap.set(idNum, { id: idNum, name: whName || `Depot ${idNum}` });
-        }
-      }
-    }
-    this.depotsList = Array.from(depotsMap.values());
-  }
-
-  updateAvailableSalles(): void {
-    if (!this.selectedDepot) { this.sallesList = []; return; }
-    const sallesMap = new Map();
-    for (const s of this.exitSourceStocks) {
-      const whId = s.warehouse_id || s.warehouseId;
-      const roomId = s.room_id || s.roomId;
-      const roomName = s.room_name || s.roomName;
-      if (whId == this.selectedDepot.id && roomId && !sallesMap.has(roomId)) {
-        sallesMap.set(roomId, { id: roomId, name: roomName || `Salle ${roomId}` });
-      }
-    }
-    this.sallesList = Array.from(sallesMap.values());
-  }
-
-  updateAvailableEmplacements(): void {
-    const salle = this.selectedSalle;
-    if (!salle) { this.locationsList = []; return; }
-    this.locationsList = this.exitSourceStocks.filter(s => (s.room_id || s.roomId) == salle.id);
-  }
-
-  getEmplacementLabel(s: any): string {
-    const type = s.cabinet_id ? 'Armoire' : 'Empl.';
-    const label = s.location_label || 'Inconnu';
-    return `${type}: ${label} (Stock: ${s.quantity})`;
-  }
-
-  getLocationName(s: any): string {
-    if (s.cabinet_id) {
-      return `Armoire: ${s.warehouseCabinet?.code || s.cabinet_id} (Dispo: ${s.quantity})`;
-    }
-    return `${s.warehouseLocation?.name || s.warehouseLocation?.code || 'Emplacement'} (Dispo: ${s.quantity})`;
   }
 
   get filteredRequests(): any[] { return this.sortedByDate; }
@@ -640,6 +667,8 @@ export class ConsumableRequestComponent implements OnInit {
     this.itemApprovedQuantities = {};
     this.itemRejectReasons = {};
     this.approving = false;
+    this.depotWarnings = [];
+    this.depotWarningMessage = '';
   }
 
   useSuggestedQuantity(): void {
@@ -719,7 +748,7 @@ export class ConsumableRequestComponent implements OnInit {
       rejections: {}
     };
 
-    // Ajouter les quantités approuvées
+    // Ajouter les quantitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©s approuvÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©es
     for (const item of approvedItems) {
       payload.approved_quantities[item.id] = Number(this.itemApprovedQuantities[item.id]);
     }
@@ -731,10 +760,22 @@ export class ConsumableRequestComponent implements OnInit {
 
     // Envoyer un seul appel API pour tout le lot
     this.consumableRequestService.approveRequest(this.selectedRequestForApproval.id, payload).subscribe({
-      next: () => {
+      next: (res: any) => {
         const approvedCount = approvedItems.length;
         const rejectedCount = rejectedItems.length;
         const pendingCount = items.length - approvedCount - rejectedCount;
+
+        // Handle depot warnings
+        if (res?.depot_warnings && res.depot_warnings.length > 0) {
+          this.depotWarnings = res.depot_warnings;
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´ts.';
+        }
+        if (res?.insufficient_warnings?.length > 0) {
+          const details = res.insufficient_warnings
+            .map((w: any) => `${w.product}: manque ${w.missing}`)
+            .join(', ');
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©.`;
+        }
 
         if (rejectedCount > 0 && approvedCount > 0) {
           this.message = `Lot traite : ${approvedCount} produit(s) approuve(s), ${rejectedCount} produit(s) rejete(s)${pendingCount > 0 ? `, ${pendingCount} sans decision` : ''}.`;
@@ -748,7 +789,11 @@ export class ConsumableRequestComponent implements OnInit {
         this.loadRequests();
         this.ngZone.runOutsideAngular(() => {
           setTimeout(() => {
-            this.ngZone.run(() => { this.message = ''; });
+            this.ngZone.run(() => {
+              this.message = '';
+              this.depotWarnings = [];
+              this.depotWarningMessage = '';
+            });
           }, 4000);
         });
       },
@@ -805,6 +850,18 @@ export class ConsumableRequestComponent implements OnInit {
 
     this.consumableRequestService.approveRequest(request.id, JSON.parse(JSON.stringify(payload))).subscribe({
       next: (res: any) => {
+        // Handle depot warnings
+        if (res?.depot_warnings && res.depot_warnings.length > 0) {
+          this.depotWarnings = res.depot_warnings;
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´ts.';
+        }
+        if (res?.insufficient_warnings?.length > 0) {
+          const details = res.insufficient_warnings
+            .map((w: any) => `${w.product}: manque ${w.missing}`)
+            .join(', ');
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©.`;
+        }
+
         this.message = res?.status === 'validated_by_manager'
           ? 'Demande validee et transmise a la direction.'
           : 'Demande approuvee avec succes.';
@@ -812,7 +869,11 @@ export class ConsumableRequestComponent implements OnInit {
         this.loadRequests();
         this.ngZone.runOutsideAngular(() => {
           setTimeout(() => {
-            this.ngZone.run(() => { this.message = ''; });
+            this.ngZone.run(() => {
+              this.message = '';
+              this.depotWarnings = [];
+              this.depotWarningMessage = '';
+            });
           }, 3000);
         });
       },
@@ -899,65 +960,259 @@ export class ConsumableRequestComponent implements OnInit {
     window.open(`/api/docs/${request.pdf_path}`, '_blank');
   }
 
-  // Exit Modal
+  downloadPdfApproved(request: any): void {
+    if (!request?.pdf_path_approved) {
+      alert('Le PDF des produits acceptes n\'est pas disponible.');
+      return;
+    }
+    window.open(`/api/docs/${request.pdf_path_approved}`, '_blank');
+  }
+
+  downloadPdfRejected(request: any): void {
+    if (!request?.pdf_path_rejected) {
+      alert('Le PDF des produits refuses n\'est pas disponible.');
+      return;
+    }
+    window.open(`/api/docs/${request.pdf_path_rejected}`, '_blank');
+  }
+
+  // Exit Modal - Per product location selection for batches
+
+  /** Load stocks for a specific product and initialize its location data */
+  private loadProductStocksForExit(productId: number, item: any): void {
+    // Initialize product location data structure
+    this.exitProductLocations[productId] = {
+      depot: null,
+      salle: null,
+      emplacement: null,
+      stocks: [],
+      depotsList: [],
+      sallesList: [],
+      locationsList: []
+    };
+
+    this.consumableRequestService.getProductStocks(productId).subscribe({
+      next: (res: any) => {
+        let stocks = Array.isArray(res) ? res : [];
+        const productLoc = this.exitProductLocations[productId];
+        // Safety filter: for responsable/agent keep only own depot stocks client-side too.
+        if (this.isResponsable && this.currentUser?.depot_id) {
+          const userDepotId = Number(this.currentUser.depot_id);
+          stocks = stocks.filter(s => Number(this.getStockWarehouseId(s) || 0) === userDepotId);
+        }
+        productLoc.stocks = stocks;
+
+        // Build depots list from stocks - include all depots with stock (quantity > 0)
+        const depotsMap = new Map<number, any>();
+        for (const s of stocks) {
+          const whId = s.warehouse_id || s.warehouseId;
+          const whName = s.warehouse_name || s.warehouseName;
+          if (whId && s.quantity > 0) {
+            const idNum = Number(whId);
+            if (!depotsMap.has(idNum)) {
+              depotsMap.set(idNum, { id: idNum, name: whName || `Depot ${idNum}` });
+            }
+          }
+        }
+        productLoc.depotsList = Array.from(depotsMap.values());
+
+        // Responsable/agent: depot verrouille sur leur depot uniquement
+        if (this.isResponsable && this.currentUser?.depot_id) {
+          const userDepotId = Number(this.currentUser.depot_id);
+          productLoc.depotsList = productLoc.depotsList.filter(d => Number(d.id) === userDepotId);
+
+          const userDepot = productLoc.depotsList[0] || {
+            id: userDepotId,
+            name: this.currentUser.depot?.name || `Depot ${userDepotId}`
+          };
+          productLoc.depotsList = [userDepot];
+          productLoc.depot = userDepot;
+          this.onProductDepotChange(productId);
+        }
+
+        this.cdr.detectChanges();
+      },
+      error: (err: any) => {
+        console.error('Erreur chargement stocks pour produit ' + productId + ':', err);
+        this.message = 'Erreur chargement stocks pour ' + (item.item_name || 'produit');
+        this.cdr.detectChanges();
+      }
+    });
+  }
 
   openExitModal(request: any): void {
-    const item = (request.items && request.items.length === 1) ? request.items[0] : request;
     this.selectedRequestForExit = request;
-    this.exitSourceLocationId = null;
-    this.selectedDepot = null;
-    this.selectedSalle = null;
-    this.selectedEmplacement = null;
     this.exitMotif = 'Remise physique effectuee';
     this.exitRequesterName = request.requester_name || (request.user?.nomprenom || request.user?.name || '');
     this.exitLocalText = request.requester_poste || '';
-    this.exitSourceStocks = [];
-    this.depotsList = [];
-    this.sallesList = [];
-    this.locationsList = [];
-    this.cabinetsList = [];
+    this.exitProductLocations = {};
 
-    let productId = item.product_id || request.product_id ||
-      (request.items && request.items[0]?.product_id) ||
-      (request.items && request.items[0]?.product?.id) ||
-      item.product?.id;
+    // Determine if this is a batch (multiple items) or single item
+    const items = request.items && request.items.length > 0 ? request.items : [request];
 
-    if (!productId) {
-      const name = (item.item_name || request.item_name || item.product?.title || '').toLowerCase().trim();
-      if (name) {
-        const found = this.products.find(p => (p.title || '').toLowerCase().trim() === name);
-        if (found) productId = found.id;
-      }
-    }
+    // Load stocks for each product in the request
+    for (const item of items) {
+      let productId = item.product_id || request.product_id || item.product?.id;
 
-    if (productId) {
-      this.consumableRequestService.getProductStocks(productId).subscribe({
-        next: (res: any) => {
-          this.exitSourceStocks = Array.isArray(res) ? res : [];
-          this.updateAvailableDepots();
-          this.cdr.detectChanges();
-        },
-        error: (err: any) => {
-          console.error('Erreur chargement stocks:', err);
-          this.exitSourceStocks = [];
-          this.depotsList = [];
-          this.message = 'Erreur chargement stocks.';
-          this.cdr.detectChanges();
+      if (!productId) {
+        const name = (item.item_name || request.item_name || item.product?.title || '').toLowerCase().trim();
+        if (name) {
+          const found = this.products.find(p => (p.title || '').toLowerCase().trim() === name);
+          if (found) productId = found.id;
         }
-      });
-    } else {
-      console.error('Aucun product ID determine pour cette demande.');
+      }
+
+      if (productId) {
+        this.loadProductStocksForExit(productId, item);
+      }
     }
   }
 
   closeExitModal(): void {
     this.selectedRequestForExit = null;
+    this.exitProductLocations = {};
+    // Legacy cleanup
     this.exitSourceStocks = [];
+    this.selectedDepot = null;
+    this.selectedSalle = null;
+    this.selectedEmplacement = null;
+  }
+
+  /** Get product location data for a specific product */
+  getProductLocation(productId: number) {
+    return this.exitProductLocations[productId] || null;
+  }
+
+  /** Resolve product id reliably for exit modal (single or batch item). */
+  getExitProductId(item: any): number | null {
+    const direct = Number(item?.product_id || item?.product?.id || 0);
+    if (direct > 0) return direct;
+
+    const name = String(item?.item_name || item?.product?.title || '').toLowerCase().trim();
+    if (!name) return null;
+
+    const found = this.products.find(p => String(p?.title || '').toLowerCase().trim() === name);
+    return found?.id ? Number(found.id) : null;
+  }
+
+  /** Update salles list when depot changes for a specific product */
+  onProductDepotChange(productId: number): void {
+    const productLoc = this.exitProductLocations[productId];
+    if (!productLoc) return;
+
+    if (this.isResponsable && this.currentUser?.depot_id) {
+      const userDepotId = Number(this.currentUser.depot_id);
+      if (!productLoc.depot || Number(productLoc.depot.id) !== userDepotId) {
+        const userDepot = productLoc.depotsList.find(d => Number(d.id) === userDepotId)
+          || { id: userDepotId, name: this.currentUser.depot?.name || `Depot ${userDepotId}` };
+        productLoc.depot = userDepot;
+      }
+    }
+
+    productLoc.salle = null;
+    productLoc.emplacement = null;
+    productLoc.sallesList = [];
+    productLoc.locationsList = [];
+
+    if (productLoc.depot) {
+      const sallesMap = new Map();
+      for (const s of productLoc.stocks) {
+        const whId = s.warehouse_id || s.warehouseId;
+        const roomId = s.room_id || s.roomId;
+        const roomName = s.room_name || s.roomName;
+        if (whId == productLoc.depot.id && roomId && !sallesMap.has(roomId)) {
+          sallesMap.set(roomId, { id: roomId, name: roomName || `Salle ${roomId}` });
+        }
+      }
+      productLoc.sallesList = Array.from(sallesMap.values());
+    }
+  }
+
+  /** Update locations list when salle changes for a specific product */
+  onProductSalleChange(productId: number): void {
+    const productLoc = this.exitProductLocations[productId];
+    if (!productLoc) return;
+
+    productLoc.emplacement = null;
+    productLoc.locationsList = [];
+
+    if (productLoc.salle) {
+      const selectedRoomId = Number(productLoc.salle.id);
+      const selectedDepotId = Number(productLoc.depot?.id || 0);
+
+      const filtered = productLoc.stocks.filter(s => {
+        const roomId = Number(this.getStockRoomId(s) || 0);
+        const depotId = Number(this.getStockWarehouseId(s) || 0);
+        const qty = Number(s?.quantity || 0);
+        return roomId === selectedRoomId && (!selectedDepotId || depotId === selectedDepotId) && qty > 0;
+      });
+
+      // Deduplicate by exact source id (location or cabinet) to avoid mixed/duplicate options.
+      const seen = new Set<string>();
+      productLoc.locationsList = filtered.filter(s => {
+        const key = s?.warehouse_location_id
+          ? `loc:${s.warehouse_location_id}`
+          : s?.cabinet_id
+            ? `cab:${s.cabinet_id}`
+            : `row:${s?.id}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+  }
+
+  private getStockWarehouseId(s: any): number | null {
+    const v = s?.warehouse_id ?? s?.warehouseId ?? null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  private getStockRoomId(s: any): number | null {
+    const v = s?.room_id ?? s?.roomId ?? null;
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+
+  /** Get label for emplacement */
+  getEmplacementLabel(s: any): string {
+    const type = s.cabinet_id ? 'Armoire' : 'Empl.';
+    const label = s.location_label || 'Inconnu';
+    return `${type}: ${label} (Stock: ${s.quantity})`;
+  }
+
+  /** Check if all products have selected locations */
+  areAllLocationsSelected(): boolean {
+    const items = this.selectedRequestForExit?.items?.length > 0
+      ? this.selectedRequestForExit.items
+      : [this.selectedRequestForExit];
+
+    for (const item of items) {
+      const productId = this.getExitProductId(item) || this.getExitProductId(this.selectedRequestForExit);
+      if (!productId) continue;
+
+      const productLoc = this.exitProductLocations[productId];
+      if (!productLoc || !productLoc.emplacement) {
+        return false;
+      }
+    }
+    return true;
   }
 
   confirmExitAction(): void {
     if (!this.selectedRequestForExit) return;
     this.confirmingExit = true;
+
+    const items = this.selectedRequestForExit.items && this.selectedRequestForExit.items.length > 0
+      ? this.selectedRequestForExit.items
+      : [this.selectedRequestForExit];
+
+    // For now, confirm exit for the first item (we'll need to handle batch exits differently)
+    // The backend confirmExit works on a single request at a time
+    const firstItem = items[0];
+    const productId = this.getExitProductId(firstItem) || this.getExitProductId(this.selectedRequestForExit);
+
+    const productLoc = productId ? this.exitProductLocations[productId] : null;
 
     const destinationText = this.exitRequesterName +
       (this.selectedRequestForExit.requester_siege ? ' - ' + this.selectedRequestForExit.requester_siege : '') +
@@ -969,15 +1224,16 @@ export class ConsumableRequestComponent implements OnInit {
       exit_mode: 'depot'
     };
 
-    if (this.selectedEmplacement) {
-      const s = this.selectedEmplacement;
+    if (productLoc && productLoc.emplacement) {
+      const s = productLoc.emplacement;
       if (s.warehouse_location_id) payload.source_warehouse_location_id = s.warehouse_location_id;
       else if (s.cabinet_id) payload.source_cabinet_id = s.cabinet_id;
     }
 
     this.consumableRequestService.confirmExit(this.selectedRequestForExit.id, payload).subscribe({
-      next: () => {
-        this.message = 'Remise effectuee et stock mis a jour.';
+      next: (res: any) => {
+        const depotName = res?.depot_name ? ` (DÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´t: ${res.depot_name})` : '';
+        this.message = 'Remise effectuee et stock mis a jour.' + depotName;
         this.confirmingExit = false;
         this.closeExitModal();
         this.loadRequests();
@@ -990,25 +1246,6 @@ export class ConsumableRequestComponent implements OnInit {
         this.confirmingExit = false;
       }
     });
-  }
-
-  onDepotChange(): void {
-    this.selectedSalle = null;
-    this.selectedEmplacement = null;
-    this.updateAvailableSalles();
-  }
-
-  onSalleChange(): void {
-    this.selectedEmplacement = null;
-    this.updateAvailableEmplacements();
-  }
-
-  onEmplacementChange(): void {
-    if (!this.selectedEmplacement) { this.exitSourceLocationId = null; return; }
-    this.exitSourceLocationId = this.selectedEmplacement.warehouse_location_id
-      || this.selectedEmplacement.cabinet_id
-      || this.selectedEmplacement.id
-      || null;
   }
 
   // Helpers
@@ -1049,3 +1286,4 @@ export class ConsumableRequestComponent implements OnInit {
     return byRole || aliases.includes(poste) || aliases.includes(legacyRole);
   }
 }
+

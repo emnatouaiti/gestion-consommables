@@ -248,7 +248,7 @@ td {
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--e-25); }
 
-/* Colonnes gardées : Produit · Réf · Catégorie · Code-barres · Statut · Actions */
+/* Colonnes gardées : Produit · Réf · Catégorie · Statut · Actions */
 
 .product-cell { display: flex; align-items: center; gap: 10px; }
 
@@ -271,7 +271,6 @@ tbody tr:hover { background: var(--e-25); }
   border: 1px solid var(--silver);
 }
 
-.barcode-img { height: 32px; width: auto; border-radius: 4px; }
 
 .status-badge {
   padding: 3px 10px; border-radius: 50px;
@@ -280,7 +279,7 @@ tbody tr:hover { background: var(--e-25); }
 .status-badge.active   { background: var(--ok-bg);  color: var(--ok-text);  border: 1px solid var(--ok-border); }
 .status-badge.inactive { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
-/* ── Actions (barcode + modifier + supprimer uniquement) ───── */
+/* ── Actions (modifier + supprimer) ───── */
 .table-actions { display: flex; align-items: center; gap: 5px; }
 
 .icon-btn {
@@ -290,8 +289,6 @@ tbody tr:hover { background: var(--e-25); }
   cursor: pointer; transition: all .2s var(--ease); background: transparent;
 }
 
-.icon-btn.barcode  { background: var(--e-50);    color: var(--e-600);    border-color: var(--e-100); }
-.icon-btn.barcode:hover  { background: var(--e-400); color: white; border-color: var(--e-400); }
 
 .icon-btn.edit     { background: var(--warn-bg);  color: var(--warn-text); border-color: var(--warn-border); }
 .icon-btn.edit:hover     { background: #d97706; color: white; border-color: #d97706; }

@@ -7,6 +7,7 @@ use App\Models\StockMovementLine;
 use App\Models\User;
 use App\Models\Document;
 use App\Notifications\StockMovementResponseNotification;
+use App\Notifications\StockMovementNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProductStock;
@@ -156,7 +157,7 @@ class StockMovementController extends Controller
 
             // Generate PDF and notify agent
             $this->generateResponsePdf($movement, $request->input('notes'));
-            
+
             if ($movement->creator) {
                 $movement->creator->notify(new StockMovementResponseNotification($movement));
             }
@@ -205,7 +206,7 @@ class StockMovementController extends Controller
 
             // Generate PDF and notify agent
             $this->generateResponsePdf($movement, $request->input('notes'));
-            
+
             if ($movement->creator) {
                 $movement->creator->notify(new StockMovementResponseNotification($movement));
             }
@@ -232,12 +233,12 @@ class StockMovementController extends Controller
     {
         $movement->load(['lines.product', 'creator', 'validator']);
         $movement->response_notes = $notes; // Temporary set if not saved yet
-        
+
         $pdf = Pdf::loadView('pdf.movement_response', ['movement' => $movement]);
-        
+
         $filename = 'responses/decision_' . $movement->id . '_' . time() . '.pdf';
         Storage::disk('public')->put($filename, $pdf->output());
-        
+
         $movement->update(['response_pdf_path' => $filename]);
     }
 
@@ -247,7 +248,7 @@ class StockMovementController extends Controller
     private function userHasAnyRole($user, array $roles): bool
     {
         if (!$user) return false;
-        
+
         // Check spatie roles
         foreach ($roles as $role) {
             if ($user->hasRole($role)) return true;
@@ -288,7 +289,11 @@ class StockMovementController extends Controller
         ]);
 
         $movementType = $request->input('movement_type', $request->input('type'));
-        
+
+        // Pour les agents et responsables, assigner automatiquement leur dépôt
+        $isStockManager = $this->userHasAnyRole($user, ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+        $autoAssignDepot = $isStockManager && $user->depot_id;
+
         // 1. Inactive products check
         $productIds = collect($request->input('lines'))->pluck('product_id')->all();
         $inactive = Product::whereIn('id', $productIds)->where('status', '!=', 'active')->pluck('title')->all();
@@ -309,9 +314,42 @@ class StockMovementController extends Controller
 
         $reference = $request->input('reference') ?: 'SMV-' . now()->format('Ymd-His') . '-' . Str::upper(Str::random(4));
 
-        $movement = DB::transaction(function () use ($request, $user, $movementType, $reference) {
+        $movement = DB::transaction(function () use ($request, $user, $movementType, $reference, $autoAssignDepot) {
             $isManager = $this->userHasAnyRole($user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
             $status = $isManager ? 'executed' : 'pending_validation';
+
+            // Pour les agents/responsables, valider que les emplacements appartiennent à leur dépôt
+            if ($autoAssignDepot) {
+                $sourceLocationId = $request->input('source_warehouse_location_id');
+                $sourceCabinetId = $request->input('source_cabinet_id');
+                $destLocationId = $request->input('destination_warehouse_location_id');
+                $destCabinetId = $request->input('destination_cabinet_id');
+
+                if ($sourceLocationId) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($sourceLocationId);
+                    if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
+                        throw ValidationException::withMessages(['source_warehouse_location_id' => ['Cet emplacement n\'appartient pas à votre dépôt.']]);
+                    }
+                }
+                if ($sourceCabinetId) {
+                    $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($sourceCabinetId);
+                    if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
+                        throw ValidationException::withMessages(['source_cabinet_id' => ['Cette armoire n\'appartient pas à votre dépôt.']]);
+                    }
+                }
+                if ($destLocationId) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($destLocationId);
+                    if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
+                        throw ValidationException::withMessages(['destination_warehouse_location_id' => ['Cet emplacement n\'appartient pas à votre dépôt.']]);
+                    }
+                }
+                if ($destCabinetId) {
+                    $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($destCabinetId);
+                    if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
+                        throw ValidationException::withMessages(['destination_cabinet_id' => ['Cette armoire n\'appartient pas à votre dépôt.']]);
+                    }
+                }
+            }
 
             $movementData = [
                 'movement_type' => $movementType,
@@ -373,7 +411,7 @@ class StockMovementController extends Controller
                 if (Schema::hasColumn('stock_movements', 'validated_by')) $updateData['validated_by'] = $user->id;
                 if (Schema::hasColumn('stock_movements', 'executed_at')) $updateData['executed_at'] = now();
                 if (!empty($updateData)) $movement->update($updateData);
-                
+
                 $this->applyStockChanges($movement);
             }
 
@@ -391,11 +429,36 @@ class StockMovementController extends Controller
             ]);
         } catch (\Throwable $e) {}
 
-        // Notifications
+        // Notifications - Filter by depot for agents, notify all responsables for admins
         try {
-            $responsables = User::whereHas('roles', function ($q) { 
-                $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']); 
-            })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur'])->get();
+            $query = User::whereHas('roles', function ($q) {
+                $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+            })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+
+            // If the creator is an agent (not admin), only notify responsables of the same depot
+            if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['administrateur'])) {
+                // Get the depot of the movement (from source or destination location)
+                $movementDepotId = null;
+                if ($movement->source_warehouse_location_id) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($movement->source_warehouse_location_id);
+                    if ($loc) {
+                        $movementDepotId = $loc->room->warehouse_id;
+                    }
+                } elseif ($movement->destination_warehouse_location_id) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($movement->destination_warehouse_location_id);
+                    if ($loc) {
+                        $movementDepotId = $loc->room->warehouse_id;
+                    }
+                }
+
+                // Filter responsables by depot (same depot as movement or no depot restriction for admins)
+                $query->where(function ($q) use ($movementDepotId) {
+                    $q->where('depot_id', $movementDepotId)
+                      ->orWhereNull('depot_id'); // Include admins without depot restriction
+                });
+            }
+
+            $responsables = $query->get();
 
             foreach ($responsables as $resp) {
                 if ($user && $resp->id !== $user->id) {
@@ -455,13 +518,13 @@ class StockMovementController extends Controller
             if (in_array($movement->movement_type, ['in', 'transfer'])) {
                 $destStock = null;
                 $query = ProductStock::where('product_id', $product->id);
-                
+
                 if ($movement->destination_warehouse_location_id) {
                     $query->where('warehouse_location_id', $movement->destination_warehouse_location_id);
                 } else {
                     $query->where('cabinet_id', $movement->destination_cabinet_id);
                 }
-                
+
                 $destStock = $query->lockForUpdate()->first();
 
                 if (!$destStock) {

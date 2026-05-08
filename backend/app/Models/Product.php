@@ -43,7 +43,6 @@ class Product extends Model
         'unit',
         'location',
         'photo',
-        'barcode_value',
         'warehouse_location_id',
         'has_expiration',
     ];

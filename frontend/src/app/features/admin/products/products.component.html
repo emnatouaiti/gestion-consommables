@@ -152,7 +152,6 @@
             <th>Produit</th>
             <th>Réf</th>
             <th>Catégorie</th>
-            <th>Code-barres</th>
             <th>Statut</th>
             <th>Actions</th>
           </tr>
@@ -174,23 +173,11 @@
 
             <td>{{ p.category?.title || getCategoryTitle(p.categorie_id) }}</td>
 
-            <td>
-              <img *ngIf="p.barcode_value || p.reference"
-                   class="barcode-img"
-                   [src]="barcodeImage(p.barcode_value || p.reference)"
-                   alt=""
-                   (error)="$event.target.style.display='none'" />
-              <span *ngIf="!p.barcode_value && !p.reference" style="color:var(--mist);">—</span>
-            </td>
-
             <td><span class="status-badge" [ngClass]="p.status">{{ p.status }}</span></td>
 
             <td>
               <div class="table-actions">
                 
-                <button class="icon-btn barcode" title="Télécharger barcode"  (click)="downloadBarcode(p)">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
-                </button>
                 <button class="icon-btn edit"    title="Modifier"             (click)="openEditModal(p)">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 </button>

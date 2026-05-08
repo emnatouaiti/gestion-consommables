@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject, ViewChild } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
@@ -8,8 +8,6 @@ import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { UnitService } from '../../../core/services/unit.service';
 import { AuthService } from '../../../core/services/auth.service';
-import JsBarcode from 'jsbarcode';
-import { BarcodeScannerComponent } from '../../../shared/barcode-scanner/barcode-scanner.component';
 
 @Component({
   selector: 'app-products',
@@ -25,20 +23,16 @@ export class ProductsComponent implements OnInit {
   brands: any[] = [];
   modelsList: any[] = [];
   selectedMarqueId: number | null = null;
-  showScannerModal = false;
   flatCategories: { id: number; title: string; level: number; displayTitle: string }[] = [];
   overview: any = null;
   isLoading = false;
   errorMessage = '';
   successMessage = '';
-  scanCode = '';
-  scanMessage = '';
   selectedSupplier: any | null = null;
   selectedProductDetails: any | null = null;
   showSupplierDetailsModal = false;
   newReviewContent = '';
   newReviewRating: number | null = 5;
-  scannedProduct: any | null = null;
   highlightedProductId: number | null = null;
   selectedPhotoFiles: File[] = [];
   photoPreviewUrls: string[] = [];
@@ -52,7 +46,6 @@ export class ProductsComponent implements OnInit {
     total: 0,
     lastPage: 1
   };
-  private readonly barcodeCache = new Map<string, string>();
   updatingPhotoId: number | null = null;
   // Réactivation modal
   showReactivateModal = false;
@@ -287,7 +280,6 @@ export class ProductsComponent implements OnInit {
         this.pagination.total = Number(data?.total || this.products.length || 0);
         this.pagination.last_page = Number(data?.last_page || 1);
         this.pagination.page = Number(data?.current_page || this.pagination.page);
-        this.refreshScannedProduct();
         this.isLoading = false;
         this.cdr.detectChanges();
       },
@@ -323,21 +315,6 @@ export class ProductsComponent implements OnInit {
     this.showModal = true;
   }
 
-  openScanner(): void {
-    this.showScannerModal = true;
-    setTimeout(() => { try { this.scanner?.start(); } catch (e) { } }, 150);
-  }
-
-  closeScanner(): void {
-    try { this.scanner?.stop(); } catch (e) { }
-    this.showScannerModal = false;
-  }
-
-  onCodeDetected(code: string): void {
-    this.scanCode = code;
-    this.closeScanner();
-    setTimeout(() => this.onScanSubmit(), 50);
-  }
 
   openEditModal(item: any): void {
     this.editingId = item.id;
@@ -397,8 +374,6 @@ export class ProductsComponent implements OnInit {
   manageProductStocks(product: any): void {
     this.router.navigate(['/admin/produit', product.id, 'stocks']);
   }
-
-  @ViewChild(BarcodeScannerComponent) scanner?: BarcodeScannerComponent;
 
   closeModal(): void {
     this.showModal = false;
@@ -545,36 +520,6 @@ export class ProductsComponent implements OnInit {
     this.errorMessage = '';
   }
 
-  /* --- Barcode --- */
-
-  downloadBarcode(item: any): void {
-    const value = item?.barcode_value || item?.reference || '';
-    if (!value) return;
-    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-    JsBarcode(svg, value, { format: 'CODE128', displayValue: true });
-    const serializer = new XMLSerializer();
-    const svgData = serializer.serializeToString(svg);
-    const blob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `barcode-${item.id}.svg`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  barcodeImage(value: string): string {
-    const barcodeValue = (value || '').trim();
-    if (!barcodeValue) return '';
-    const cached = this.barcodeCache.get(barcodeValue);
-    if (cached) return cached;
-    const canvas = document.createElement('canvas');
-    JsBarcode(canvas, barcodeValue, { format: 'CODE128', displayValue: false, height: 30 });
-    const dataUrl = canvas.toDataURL('image/png');
-    this.barcodeCache.set(barcodeValue, dataUrl);
-    return dataUrl;
-  }
-
   /* --- Photo --- */
 
   onPhotoSelected(event: Event): void {
@@ -670,32 +615,6 @@ export class ProductsComponent implements OnInit {
     this.productHistory = [];
   }
 
-  /* --- Scan --- */
-
-  onScanSubmit(): void {
-    const code = (this.scanCode || '').trim().toLowerCase();
-    if (!code) return;
-    const found = this.products.find((p: any) => {
-      const barcode = String(p?.barcode_value || '').trim().toLowerCase();
-      const ref = String(p?.reference || '').trim().toLowerCase();
-      return code === barcode || code === ref;
-    });
-    if (found) {
-      this.scannedProduct = found;
-      this.highlightedProductId = found.id;
-      this.scanMessage = '';
-    } else {
-      this.scanMessage = 'Produit non trouvé.';
-    }
-  }
-
-  clearScan(): void {
-    this.scanCode = '';
-    this.scanMessage = '';
-    this.scannedProduct = null;
-    this.highlightedProductId = null;
-  }
-
   /* --- Filters & Pagination --- */
 
   applyFilters(): void {
@@ -772,13 +691,6 @@ export class ProductsComponent implements OnInit {
   }
 
   /* --- Helpers --- */
-
-  private refreshScannedProduct(): void {
-    if (!this.scannedProduct?.id) return;
-    const found = this.products.find((p: any) => p.id === this.scannedProduct.id);
-    this.scannedProduct = found || null;
-    this.highlightedProductId = found ? found.id : null;
-  }
 
   private extractApiError(err: any, fallback: string): string {
     if (!err) return fallback;

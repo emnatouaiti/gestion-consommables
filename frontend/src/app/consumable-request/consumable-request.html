@@ -39,13 +39,30 @@
   </div>
 
   <!-- Flash message -->
-  <div *ngIf="message" class="cr-alert" [class.cr-alert--error]="message.includes('Erreur')">
+  <div *ngIf="message" class="cr-alert" [class.cr-alert--error]="message.includes('Erreur')" [class.cr-alert--warning]="message.includes('dépôt')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"/>
       <line x1="12" y1="8" x2="12" y2="12"/>
       <line x1="12" y1="16" x2="12.01" y2="16"/>
     </svg>
     {{ message }}
+  </div>
+
+  <!-- Depot warnings alert -->
+  <div *ngIf="depotWarnings.length > 0" class="cr-alert cr-alert--warning" style="margin-bottom: 12px;">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+      <line x1="12" y1="9" x2="12" y2="13"/>
+      <line x1="12" y1="17" x2="12.01" y2="17"/>
+    </svg>
+    <div style="display: flex; flex-direction: column; gap: 4px;">
+      <strong>{{ depotWarningMessage }}</strong>
+      <ul style="margin: 4px 0 0 20px; font-size: 13px;">
+        <li *ngFor="let warning of depotWarnings">
+          {{ warning.product }} (demandé: {{ warning.requested }}) - disponible dans plusieurs dépôts
+        </li>
+      </ul>
+    </div>
   </div>
 
   <!-- Navigation Tabs -->
@@ -105,10 +122,10 @@
         </tbody>
       </table>
       <div class="cr-table-footer" *ngIf="pendingValidationRequests.length > pageSize">
-        <span>Page {{ currentPage }} / {{ totalPages }} - {{ pendingValidationRequests.length }} demandes</span>
+        <span>Page {{ currentPage }} / {{ computedTotalPages }} - {{ pendingValidationRequests.length }} demandes</span>
         <div>
           <button class="cr-btn cr-btn--ghost" [disabled]="currentPage <= 1" (click)="prevPage()">Precedent</button>
-          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= totalPages" (click)="nextPage()">Suivant</button>
+          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= computedTotalPages" (click)="nextPage()">Suivant</button>
         </div>
       </div>
     </div>
@@ -137,7 +154,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let r of pendingExitRequests">
+          <tr *ngFor="let r of paginatedPendingExitRequests">
             <td class="cr-td-date">{{ r.created_at | date: 'dd/MM/yy HH:mm' }}</td>
             <td class="cr-td-main">{{ r.item_name }}</td>
             <td>{{ r.requester_name || r.user?.nomprenom || '-' }}</td>
@@ -160,6 +177,13 @@
         </tbody>
       </table>
     </div>
+    <div class="cr-table-footer" *ngIf="pendingExitRequests.length > pageSize">
+      <span>Page {{ currentPage }} / {{ computedTotalPages }} - {{ pendingExitRequests.length }} demandes</span>
+      <div>
+        <button class="cr-btn cr-btn--ghost" [disabled]="currentPage <= 1" (click)="prevPage()">Precedent</button>
+        <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= computedTotalPages" (click)="nextPage()">Suivant</button>
+      </div>
+    </div>
   </div>
 
   <!-- TAB: HISTORIQUE (tous les roles) -->
@@ -167,19 +191,30 @@
 
     <!-- Filter bar -->
     <div class="cr-filter-bar">
-      <div class="cr-filter-group">
+      <div class="cr-filter-group" *ngIf="!isResponsable">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
         </svg>
         <select [(ngModel)]="statusFilter">
           <option value="all">Tous les statuts</option>
-          <ng-container *ngIf="!isResponsable">
+          <ng-container *ngIf="!isResponsable && viewMode !== 'validation'">
             <option value="draft">Brouillon</option>
             <option value="pending">En attente</option>
+            <option value="approved_pending_exit">Approuve</option>
+            <option value="approved">Livre / Termine</option>
             <option value="rejected">Refuse</option>
+            <option value="partiellement_accepte">Partiellement accepte</option>
           </ng-container>
-          <option value="approved_pending_exit">Approuve (Attente sortie)</option>
-          <option value="approved">Livre / Termine</option>
+          <ng-container *ngIf="viewMode === 'validation'">
+            <!-- Pour directeur : seulement les statuts pertinents -->
+            <option value="approved_pending_exit">Approuve (Attente sortie)</option>
+            <option value="rejected">Refuse</option>
+            <option value="partiellement_accepte">Partiellement accepte</option>
+          </ng-container>
+          <ng-container *ngIf="isResponsable">
+            <!-- Pour responsable : seulement Livre/Terminé -->
+            <option value="approved">Livre / Termine</option>
+          </ng-container>
         </select>
       </div>
 
@@ -194,6 +229,10 @@
       <span class="cr-count" *ngIf="historyRequests.length > 0">
         {{ historyRequests.length }} demande{{ historyRequests.length > 1 ? 's' : '' }}
       </span>
+      <div class="cr-filter-group">
+        <button class="cr-btn cr-btn--ghost" [class.cr-tab--active]="requestViewMode==='table'" (click)="requestViewMode='table'">Tableau</button>
+        <button class="cr-btn cr-btn--ghost" [class.cr-tab--active]="requestViewMode==='columns'" (click)="requestViewMode='columns'">Colonnes</button>
+      </div>
     </div>
 
     <div *ngIf="loading && requests.length === 0" class="cr-empty">
@@ -204,7 +243,7 @@
       Aucune demande enregistree pour le moment.
     </div>
 
-    <div *ngIf="historyRequests.length > 0" class="cr-table-wrap">
+    <div *ngIf="historyRequests.length > 0 && requestViewMode === 'table'" class="cr-table-wrap">
       <table class="cr-table">
         <thead>
           <tr>
@@ -243,12 +282,29 @@
 
               <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Details</button>
 
-              <!-- PDF visible pour tous les statuts si pdf_path existe -->
-              <button
-                *ngIf="r.pdf_path"
-                class="cr-btn cr-btn--pdf"
-                (click)="downloadPdf(r)"
-              >
+              <!-- For partially accepted: show 2 PDF buttons -->
+              <ng-container *ngIf="r.status === 'partiellement_accepte'">
+                <button *ngIf="r.pdf_path_approved" class="cr-btn cr-btn--pdf" (click)="downloadPdfApproved(r)" title="PDF produits acceptes">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  PDF Acceptes
+                </button>
+                <button *ngIf="r.pdf_path_rejected" class="cr-btn cr-btn--pdf" style="background: #fecaca; color: #991b1b;" (click)="downloadPdfRejected(r)" title="PDF produits refuses">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="12" y1="18" x2="12" y2="12"/>
+                    <line x1="9" y1="15" x2="15" y2="15"/>
+                  </svg>
+                  PDF Refuses
+                </button>
+              </ng-container>
+              <!-- PDF visible pour tous les autres statuts si pdf_path existe -->
+              <button *ngIf="r.pdf_path && r.status !== 'partiellement_accepte'" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -270,10 +326,38 @@
       </table>
 
       <div class="cr-table-footer" *ngIf="historyRequests.length > pageSize">
-        <span>Page {{ currentPage }} / {{ totalPages }} - {{ historyRequests.length }} demandes</span>
+        <span>Page {{ currentPage }} / {{ computedTotalPages }} - {{ historyRequests.length }} demandes</span>
         <div>
           <button class="cr-btn cr-btn--ghost" [disabled]="currentPage <= 1" (click)="prevPage()">Precedent</button>
-          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= totalPages" (click)="nextPage()">Suivant</button>
+          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= computedTotalPages" (click)="nextPage()">Suivant</button>
+        </div>
+      </div>
+    </div>
+    <div *ngIf="historyRequests.length > 0 && requestViewMode === 'columns'" class="cr-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;">
+      <div *ngFor="let r of paginatedHistory" style="border:1px solid var(--e-200);border-radius:10px;padding:12px;background:#fff;">
+        <div style="font-weight:700;margin-bottom:6px;">{{ r.item_name }}</div>
+        <div style="font-size:12px;color:var(--e-600);margin-bottom:10px;">{{ r.created_at | date: 'dd/MM/yy HH:mm' }}</div>
+        <div style="font-size:13px;margin-bottom:10px;">{{ r.requester_name || r.user?.nomprenom || '-' }} - {{ r.requester_poste || '-' }}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Details</button>
+          <ng-container *ngIf="r.status === 'partiellement_accepte'; else singlePdfCard">
+            <button *ngIf="r.pdf_path_approved" class="cr-btn cr-btn--pdf" (click)="downloadPdfApproved(r)" title="PDF produits acceptes">
+              PDF Acceptes
+            </button>
+            <button *ngIf="r.pdf_path_rejected" class="cr-btn cr-btn--pdf" style="background: #fecaca; color: #991b1b;" (click)="downloadPdfRejected(r)" title="PDF produits refuses">
+              PDF Refuses
+            </button>
+          </ng-container>
+          <ng-template #singlePdfCard>
+            <button *ngIf="r.pdf_path" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">PDF</button>
+          </ng-template>
+        </div>
+      </div>
+      <div class="cr-table-footer" *ngIf="historyRequests.length > pageSize" style="grid-column:1/-1;">
+        <span>Page {{ currentPage }} / {{ computedTotalPages }} - {{ historyRequests.length }} demandes</span>
+        <div>
+          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage <= 1" (click)="prevPage()">Precedent</button>
+          <button class="cr-btn cr-btn--ghost" [disabled]="currentPage >= computedTotalPages" (click)="nextPage()">Suivant</button>
         </div>
       </div>
     </div>
@@ -289,10 +373,14 @@
       <button class="cr-modal-close" (click)="closeExitModal()">&times;</button>
     </div>
 
-    <div class="cr-modal-summary">
+    <!-- Summary for single product or batch -->
+    <div class="cr-modal-summary" *ngIf="!selectedRequestForExit.items || selectedRequestForExit.items.length <= 1">
       <div style="display: flex; flex-direction: column; gap: 4px;">
         <span class="cr-modal-label">Article a sortir</span>
         <strong style="font-size: 16px; color: var(--e-800);">{{ selectedRequestForExit.item_name }}</strong>
+        <span *ngIf="selectedRequestForExit.depot?.name" style="font-size: 13px; color: var(--e-600); font-weight: 500;">
+          Dépôt assigné : {{ selectedRequestForExit.depot.name }}
+        </span>
       </div>
       <div style="margin-left: auto; text-align: right;">
         <span class="cr-modal-label">Quantite approuvee</span>
@@ -300,46 +388,119 @@
       </div>
     </div>
 
+    <!-- Batch summary -->
+    <div class="cr-modal-summary" *ngIf="selectedRequestForExit.items && selectedRequestForExit.items.length > 1">
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <span class="cr-modal-label">Articles a sortir</span>
+        <strong style="font-size: 16px; color: var(--e-800);">{{ selectedRequestForExit.items.length }} produits</strong>
+        <ul style="margin: 4px 0 0 20px; font-size: 13px;">
+          <li *ngFor="let item of selectedRequestForExit.items">
+            {{ item.item_name }} - Qte: {{ item.approved_quantity || item.requested_quantity }}
+          </li>
+        </ul>
+      </div>
+    </div>
+
     <div class="cr-exit-section" style="padding-top: 10px;">
-      <div class="cr-form-row">
-        <div class="cr-field">
-          <label>Depot avec stock</label>
-          <select [(ngModel)]="selectedDepot" (change)="onDepotChange()">
-            <option [ngValue]="null" disabled>Selectionner un depot...</option>
-            <option *ngFor="let d of depotsList" [ngValue]="d">{{ d.name }}</option>
-          </select>
+      <!-- Single product: use simple selection -->
+      <ng-container *ngIf="!selectedRequestForExit.items || selectedRequestForExit.items.length <= 1">
+        <ng-container *ngIf="getExitProductId(selectedRequestForExit) as singleProductId">
+        <ng-container *ngIf="getProductLocation(singleProductId) as productLoc">
+          <div class="cr-form-row">
+            <div class="cr-field">
+              <label>Depot avec stock</label>
+              <select [(ngModel)]="productLoc.depot" (change)="onProductDepotChange(singleProductId)" [disabled]="isResponsable">
+                <option [ngValue]="null" disabled>Selectionner un depot...</option>
+                <option *ngFor="let d of productLoc.depotsList" [ngValue]="d">{{ d.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cr-form-row" *ngIf="productLoc.depot">
+            <div class="cr-field">
+              <label>Salle</label>
+              <select [(ngModel)]="productLoc.salle" (change)="onProductSalleChange(singleProductId)">
+                <option [ngValue]="null" disabled>Selectionner une salle...</option>
+                <option *ngFor="let s of productLoc.sallesList" [ngValue]="s">{{ s.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cr-form-row" *ngIf="productLoc.salle">
+            <div class="cr-field">
+              <label>Emplacement / Armoire (avec stock)</label>
+              <select [(ngModel)]="productLoc.emplacement">
+                <option [ngValue]="null" disabled>Choisir la source precise...</option>
+                <option *ngFor="let s of productLoc.locationsList" [ngValue]="s">
+                  {{ getEmplacementLabel(s) }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="cr-no-stock" *ngIf="productLoc.depot && productLoc.salle && productLoc.locationsList.length === 0" style="margin-top: 10px;">
+            Aucun stock enregistre pour ce produit dans cette salle.
+          </div>
+
+          <div class="cr-no-stock" *ngIf="productLoc.depotsList.length === 0 && !loading" style="margin-top: 10px;">
+            Aucun stock disponible pour ce produit. Contactez l'administrateur.
+          </div>
+        </ng-container>
+        </ng-container>
+      </ng-container>
+
+      <!-- Batch: per-product location selection -->
+      <ng-container *ngIf="selectedRequestForExit.items && selectedRequestForExit.items.length > 1">
+        <div *ngFor="let item of selectedRequestForExit.items; let i = index" style="border: 1px solid var(--e-200); border-radius: 8px; padding: 14px; margin-bottom: 12px; background: #fff;">
+          <div style="font-weight: 600; font-size: 14px; color: var(--e-800); margin-bottom: 12px;">
+            {{ i + 1 }}. {{ item.item_name }} - Qte: {{ item.approved_quantity || item.requested_quantity }}
+          </div>
+
+          <ng-container *ngIf="getExitProductId(item) as itemProductId">
+          <ng-container *ngIf="getProductLocation(itemProductId) as productLoc">
+            <div class="cr-form-row">
+              <div class="cr-field">
+                <label>Depot avec stock</label>
+                <select [(ngModel)]="productLoc.depot" (change)="onProductDepotChange(itemProductId)" [disabled]="isResponsable">
+                  <option [ngValue]="null" disabled>Selectionner un depot...</option>
+                  <option *ngFor="let d of productLoc.depotsList" [ngValue]="d">{{ d.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="cr-form-row" *ngIf="productLoc.depot">
+              <div class="cr-field">
+                <label>Salle</label>
+                <select [(ngModel)]="productLoc.salle" (change)="onProductSalleChange(itemProductId)">
+                  <option [ngValue]="null" disabled>Selectionner une salle...</option>
+                  <option *ngFor="let s of productLoc.sallesList" [ngValue]="s">{{ s.name }}</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="cr-form-row" *ngIf="productLoc.salle">
+              <div class="cr-field">
+                <label>Emplacement / Armoire (avec stock)</label>
+                <select [(ngModel)]="productLoc.emplacement">
+                  <option [ngValue]="null" disabled>Choisir la source precise...</option>
+                  <option *ngFor="let s of productLoc.locationsList" [ngValue]="s">
+                    {{ getEmplacementLabel(s) }}
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <div class="cr-no-stock" *ngIf="productLoc.depot && productLoc.salle && productLoc.locationsList.length === 0" style="margin-top: 10px;">
+              Aucun stock enregistre pour ce produit dans cette salle.
+            </div>
+
+            <div class="cr-no-stock" *ngIf="productLoc.depotsList.length === 0 && !loading" style="margin-top: 10px;">
+              Aucun stock disponible pour ce produit.
+            </div>
+          </ng-container>
+          </ng-container>
         </div>
-      </div>
-
-      <div class="cr-form-row" *ngIf="selectedDepot">
-        <div class="cr-field">
-          <label>Salle</label>
-          <select [(ngModel)]="selectedSalle" (change)="onSalleChange()">
-            <option [ngValue]="null" disabled>Selectionner une salle...</option>
-            <option *ngFor="let s of sallesList" [ngValue]="s">{{ s.name }}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="cr-form-row" *ngIf="selectedSalle">
-        <div class="cr-field">
-          <label>Emplacement / Armoire (avec stock)</label>
-          <select [(ngModel)]="selectedEmplacement">
-            <option [ngValue]="null" disabled>Choisir la source precise...</option>
-            <option *ngFor="let s of locationsList" [ngValue]="s">
-              {{ getEmplacementLabel(s) }}
-            </option>
-          </select>
-        </div>
-      </div>
-
-      <div class="cr-no-stock" *ngIf="selectedDepot && selectedSalle && locationsList.length === 0" style="margin-top: 10px;">
-        Aucun stock enregistre pour ce produit dans cette salle.
-      </div>
-
-      <div class="cr-no-stock" *ngIf="depotsList.length === 0 && !loading" style="margin-top: 10px;">
-        Aucun stock disponible pour ce produit. Contactez l'administrateur.
-      </div>
+      </ng-container>
 
       <div class="cr-field" style="margin-top: 15px;">
         <label>Destination prevue</label>
@@ -357,7 +518,7 @@
     <div class="cr-modal-footer">
       <button
         class="cr-btn cr-btn--approve cr-btn--lg"
-        [disabled]="confirmingExit || !selectedEmplacement"
+        [disabled]="confirmingExit || !areAllLocationsSelected()"
         (click)="confirmExitAction()"
       >
         {{ confirmingExit ? 'Traitement...' : 'Confirmer la remise' }}

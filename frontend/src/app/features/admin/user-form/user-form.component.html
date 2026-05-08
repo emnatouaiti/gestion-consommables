@@ -239,8 +239,8 @@
           </div>
         </div>
 
-        <!-- Siege -->
-        <div class="form-group">
+        <!-- Siege (hidden for Responsable and Agent) -->
+        <div class="form-group" *ngIf="selectedRole !== 'Responsable' && selectedRole !== 'Agent'">
           <label class="form-label" for="siege">Siège</label>
           <div class="select-wrapper">
             <span class="input-icon">
@@ -259,6 +259,42 @@
                 <polyline points="6 9 12 15 18 9"/>
               </svg>
             </span>
+          </div>
+        </div>
+
+        <!-- Depot (visible only for Responsable and Agent) -->
+        <div class="form-group" *ngIf="selectedRole === 'Responsable' || selectedRole === 'Agent'">
+          <label class="form-label" for="depot_id">
+            Dépôt <span class="required">*</span>
+          </label>
+          <div class="select-wrapper"
+            [class.has-error]="form.get('depot_id')?.invalid && form.get('depot_id')?.touched">
+            <span class="input-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              </svg>
+            </span>
+            <select id="depot_id" formControlName="depot_id" class="form-select">
+              <option value="">— Sélectionner un dépôt —</option>
+              <option *ngFor="let d of depots" [value]="d.id">{{ d.name }}</option>
+            </select>
+            <span class="select-arrow">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </span>
+          </div>
+          <div class="field-error"
+            *ngIf="form.get('depot_id')?.invalid && form.get('depot_id')?.touched">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="12" y1="8" x2="12" y2="12"/>
+              <line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span *ngIf="form.get('depot_id')?.errors?.['required']">Le dépôt est obligatoire pour ce rôle.</span>
           </div>
         </div>
 

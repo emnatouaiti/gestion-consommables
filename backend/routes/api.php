@@ -125,6 +125,9 @@ Route::prefix('api')->group(function () {
     });
 
     Route::middleware(['auth:sanctum'])->group(function () {
+        // Public warehouses list for all authenticated users (needed for user form)
+        Route::get('warehouses/list', [WarehouseController::class, 'index']);
+
         // Section: ADMIN ONLY
         Route::middleware('role:Administrateur')->group(function () {
             Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
@@ -169,7 +172,6 @@ Route::prefix('api')->group(function () {
             Route::put('admin/products/{id}', [ProductController::class, 'update']);
             Route::put('admin/products/{id}/activate', [ProductController::class, 'activate']);
             Route::delete('admin/products/{id}', [ProductController::class, 'destroy']);
-            Route::get('admin/products/{id}/barcode', [ProductController::class, 'downloadBarcode']);
             Route::get('admin/manufacturers', [ProductController::class, 'manufacturers']);
             Route::get('admin/brands', [ProductController::class, 'brands']);
             Route::get('admin/models', [ProductController::class, 'models']);
@@ -249,7 +251,7 @@ Route::prefix('api')->group(function () {
             Route::get('admin/products/{product}/expiration/batches', [\App\Http\Controllers\API\ExpirationController::class, 'getBatches']);
             Route::get('admin/products/{product}/expiration/expiring-soon', [\App\Http\Controllers\API\ExpirationController::class, 'getExpiringSoon']);
             Route::get('admin/products/{product}/expiration-events', [\App\Http\Controllers\API\ExpirationController::class, 'getEvents']);
-            
+
             Route::prefix('admin')->group(function () {
                 include_once __DIR__ . '/expiration-routes.php';
             });
@@ -262,6 +264,10 @@ Route::prefix('api')->group(function () {
             Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
             Route::post('admin/documents/{id}/apply', [DocumentController::class, 'apply']);
             Route::post('admin/documents/diagnostic', [DocumentController::class, 'diagnostic']);
+
+            // Available location endpoints for auto-selection
+            Route::get('admin/warehouse/available-location', [DocumentController::class, 'findAvailableLocation']);
+            Route::get('admin/warehouse/available-locations', [DocumentController::class, 'getAvailableLocations']);
         });
 
         // Shared across Admin, Responsable, Agent
@@ -308,4 +314,3 @@ Route::prefix('api')->group(function () {
         abort(404);
     })->where('path', '.*');
 });
-

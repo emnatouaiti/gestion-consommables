@@ -30,6 +30,7 @@ class User extends Authenticatable
         'service',
         'poste',
         'siege',
+        'depot_id',
         'photo',
         'role',
         'google_id',
@@ -102,5 +103,13 @@ class User extends Authenticatable
             'password' => 'hashed',
             'last_seen_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Get the depot (warehouse) assigned to this user (for responsables).
+     */
+    public function depot()
+    {
+        return $this->belongsTo(\App\Models\Warehouse::class, 'depot_id');
     }
 }

@@ -11,3 +11,4 @@ Artisan::command('inspire', function () {
 Schedule::command('expirations:alert')->dailyAt('08:00');
 Schedule::command('stock:alert')->dailyAt('08:00');
 Schedule::command('capacity:alert')->dailyAt('08:00');
+Schedule::command('consumable-requests:send-reminders')->dailyAt('09:00');

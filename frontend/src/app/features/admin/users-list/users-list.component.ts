@@ -22,7 +22,6 @@ export class UsersListComponent implements OnInit {
   roles: any[] = [];
   selectedServiceFilter = '';
   selectedRoleFilter = '';
-  selectedSiegeFilter = '';
   siegeOptions: string[] = [
     'Charguia_II_Ariana',
     'Mohamed_V_Tunis',
@@ -68,8 +67,12 @@ export class UsersListComponent implements OnInit {
     service: '',
     poste: '',
     roles: '',
-    siege: ''
+    siege: '',
+    depot_id: null
   };
+
+  depots: any[] = [];
+  selectedRole: string = '';
 
   // Avatar modal
   avatarModalOpen = false;
@@ -90,6 +93,7 @@ export class UsersListComponent implements OnInit {
 
     this.q = this.route.snapshot.queryParams['q'] || '';
     this.loadRoles();
+    this.loadDepots();
     this.load();
 
     this.route.queryParams.subscribe(params => {
@@ -112,6 +116,36 @@ export class UsersListComponent implements OnInit {
         console.error('Erreur chargement roles:', err);
       }
     });
+  }
+
+  private async loadDepots(): Promise<void> {
+    try {
+      const res = await fetch(`${this.apiBase}/warehouses/list`, { headers: this.getHeaders() });
+      const data = await res.json();
+      const warehouses = Array.isArray(data) ? data : (data?.data ?? []);
+      this.depots = warehouses.filter((w: any) => !w.kind || w.kind === 'depot');
+      this.cdr.detectChanges();
+    } catch (err) {
+      console.error('Erreur chargement dépôts:', err);
+    }
+  }
+
+  private getHeaders(): Record<string, string> {
+    const token = localStorage.getItem('auth_token');
+    const headers: Record<string, string> = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+  }
+
+  onRoleChange(): void {
+    this.selectedRole = this.form.roles;
+    this.updateFieldVisibility();
+    this.cdr.detectChanges();
+  }
+
+  updateFieldVisibility(): void {
+    // Pour Responsable et Agent, on masque service, poste, siege et on affiche depot
+    // La logique d'affichage est gérée dans le template avec *ngIf
   }
 
   photoUrl(path: string | null | undefined): string {
@@ -170,10 +204,13 @@ export class UsersListComponent implements OnInit {
       service: user.service || '',
       poste: user.poste || '',
       siege: user.siege || '',
-      roles: user.roles?.[0]?.name || user.role || ''
+      roles: user.roles?.[0]?.name || user.role || '',
+      depot_id: user.depot_id || null
     };
+    this.selectedRole = this.form.roles;
     this.showModal = true;
     this.ensureRoleMatchesService();
+    this.cdr.detectChanges();
   }
 
   closeModal(): void {
@@ -189,7 +226,8 @@ export class UsersListComponent implements OnInit {
 
   resetForm(): void {
     this.editingId = null;
-    this.form = { nomprenom: '', email: '', adresse: '', telephone: '', service: '', poste: '', siege: '', roles: '' };
+    this.form = { nomprenom: '', email: '', adresse: '', telephone: '', service: '', poste: '', siege: '', roles: '', depot_id: null };
+    this.selectedRole = '';
     this.errorMessage = '';
   }
 
@@ -219,21 +257,27 @@ export class UsersListComponent implements OnInit {
     return Array.from(new Set([...base, ...fromData, ...fromLegacy]));
   }
 
-  get siegeFilterOptions(): string[] {
-    const fromData = this.users
-      .map((u) => String(u?.siege || '').trim())
-      .filter(Boolean);
-    return Array.from(new Set(fromData));
-  }
   get displayedUsers(): any[] {
+    // Récupérer le rôle de l'utilisateur connecté
+    const currentUser = this.getCurrentUser();
+    const userRole = currentUser?.role || '';
+    const userSiege = currentUser?.siege || '';
+
     return this.users.filter((u) => {
-      const serviceOk = !this.selectedServiceFilter || String(u?.service || '').toLowerCase() === this.selectedServiceFilter.toLowerCase();
-      if (!serviceOk) {
-        return false;
+      // Pour les Administrateurs : ne montrer que les users de son siège
+      // Et exclure les autres admins (car un siège n'a qu'un seul admin)
+      if (userRole === 'Administrateur') {
+        if (u.siege !== userSiege) {
+          return false;
+        }
+        // Exclure les autres admins
+        if (u.role === 'Administrateur' && u.id !== currentUser?.id) {
+          return false;
+        }
       }
 
-      const siegeOk = !this.selectedSiegeFilter || String(u?.siege || '').toLowerCase() === this.selectedSiegeFilter.toLowerCase();
-      if (!siegeOk) {
+      const serviceOk = !this.selectedServiceFilter || String(u?.service || '').toLowerCase() === this.selectedServiceFilter.toLowerCase();
+      if (!serviceOk) {
         return false;
       }
 
@@ -246,6 +290,44 @@ export class UsersListComponent implements OnInit {
       const wanted = this.selectedRoleFilter.toLowerCase();
       return userRoles.includes(wanted) || legacyRole === wanted;
     });
+  }
+
+  private getCurrentUser(): any {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    try {
+      const userJson = localStorage.getItem('current_user');
+      return userJson ? JSON.parse(userJson) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Pagination
+  pageSize: number = 10;
+  currentPage: number = 1;
+
+  get paginatedUsers(): any[] {
+    const start = (this.currentPage - 1) * this.pageSize;
+    const end = start + this.pageSize;
+    return this.displayedUsers.slice(start, end);
+  }
+
+  get totalPages(): number {
+    return Math.ceil(this.displayedUsers.length / this.pageSize);
+  }
+
+  get pageNumbers(): number[] {
+    return Array.from({ length: this.totalPages }, (_, i) => i + 1);
+  }
+
+  changePage(page: number): void {
+    if (page >= 1 && page <= this.totalPages) {
+      this.currentPage = page;
+    }
+  }
+
+  onPageSizeChange(): void {
+    this.currentPage = 1;
   }
 
   onServiceChange(): void {
@@ -267,14 +349,41 @@ export class UsersListComponent implements OnInit {
       return;
     }
 
+    // Pour Responsable/Agent, depot_id est obligatoire
+    const needsDepot = this.form.roles === 'Responsable' || this.form.roles === 'Agent';
+    if (needsDepot && !this.form.depot_id) {
+      this.errorMessage = 'Le dépôt est obligatoire pour les responsables et agents.';
+      return;
+    }
+
+    // Pour Administrateur, siege est obligatoire
+    if (this.form.roles === 'Administrateur' && !this.form.siege) {
+      this.errorMessage = 'Le siège est obligatoire pour les administrateurs.';
+      return;
+    }
+
+    // Vérifier qu'il n'y a qu'un seul admin par siège
+    if (this.form.roles === 'Administrateur' && this.form.siege) {
+      const existingAdmin = this.users.find(u =>
+        u.role === 'Administrateur' &&
+        u.siege === this.form.siege &&
+        u.id !== this.editingId
+      );
+      if (existingAdmin) {
+        this.errorMessage = `Un administrateur existe déjà pour le siège ${this.form.siege}.`;
+        return;
+      }
+    }
+
     const payload: any = {
       nomprenom: (this.form.nomprenom || '').trim(),
       email: (this.form.email || '').trim(),
       adresse: (this.form.adresse || '').trim(),
       telephone: (this.form.telephone || '').trim(),
-      service: (this.form.service || '').trim(),
-      poste: (this.form.poste || '').trim(),
-      siege: (this.form.siege || '').trim(),
+      service: needsDepot ? '' : (this.form.service || '').trim(),
+      poste: needsDepot ? '' : (this.form.poste || '').trim(),
+      siege: this.form.siege || '',
+      depot_id: needsDepot ? this.form.depot_id : null,
       roles: [this.form.roles]
     };
 
@@ -298,7 +407,23 @@ export class UsersListComponent implements OnInit {
     });
   }
 
-  remove(id: any): void {
+  canDelete(user: any): boolean {
+    // Cannot delete Administrateur users
+    if (user.role === 'Administrateur') return false;
+    // Also check roles array
+    const roleNames = (user.roles || []).map((r: any) => r.name);
+    if (roleNames.includes('Administrateur')) return false;
+    return true;
+  }
+
+  remove(id: any, user?: any): void {
+    // Check if user is an Admin
+    if (user && !this.canDelete(user)) {
+      this.errorMessage = 'Les administrateurs ne peuvent pas être archivés.';
+      this.cdr.detectChanges();
+      return;
+    }
+
     if (!confirm('Archiver cet utilisateur ?')) return;
 
     this.usersService.delete(id).subscribe({
@@ -317,7 +442,7 @@ export class UsersListComponent implements OnInit {
   resetFilters(): void {
     this.selectedServiceFilter = '';
     this.selectedRoleFilter = '';
-    this.selectedSiegeFilter = '';
+    this.currentPage = 1;
     this.cdr.detectChanges();
   }
 

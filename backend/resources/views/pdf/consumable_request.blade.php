@@ -49,7 +49,9 @@
                             ->map(fn($s) => strtolower((string) $s));
 
             $allRejected  = $statuses->isNotEmpty() && $statuses->every(fn($s) => $s === 'rejected');
-            $allApproved  = $statuses->isNotEmpty() && $statuses->every(fn($s) => in_array($s, ['approved', 'approved_pending_exit']));
+            // "BON DE SORTIE" only when ALL items have status 'approved' (after stock manager confirms exit)
+            $allApproved  = $statuses->isNotEmpty() && $statuses->every(fn($s) => $s === 'approved');
+            // For display purposes, consider both approved and approved_pending_exit as "approved"
             $anyApproved  = $statuses->contains(fn($s) => in_array($s, ['approved', 'approved_pending_exit']));
             $anyRejected  = $statuses->contains('rejected');
             $mixed        = $anyApproved && $anyRejected;
@@ -63,12 +65,14 @@
                 $title      = 'BON DE REFUS DE CONSOMMABLES';
                 $titleColor = '#dc2626';
             } elseif ($allApproved) {
+                // Only show "BON DE SORTIE DE CONSOMMABLES" when stock manager has confirmed the exit
                 $title      = 'BON DE SORTIE DE CONSOMMABLES';
                 $titleColor = '#16a34a';
             } elseif ($mixed) {
                 $title      = 'DEMANDE DE CONSOMMABLES (PARTIELLEMENT TRAITEE)';
                 $titleColor = '#ea580c';
             } elseif ($anyApproved) {
+                // Director has approved but stock manager hasn't confirmed exit yet
                 $title      = 'BON DE DEMANDE APPROUVE';
                 $titleColor = '#004a99';
             } else {
