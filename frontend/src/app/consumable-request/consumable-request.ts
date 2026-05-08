@@ -1,4 +1,4 @@
-﻿import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
+﻿import { ChangeDetectorRef, Component, Inject, NgZone, OnInit, PLATFORM_ID } from '@angular/core';
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -114,6 +114,7 @@ export class ConsumableRequestComponent implements OnInit {
     private route: ActivatedRoute,
     private readonly cdr: ChangeDetectorRef,
     private readonly adminWarehouseService: AdminWarehouseService,
+    private readonly ngZone: NgZone,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) {
     this.form = this.formBuilder.group({
@@ -181,11 +182,9 @@ export class ConsumableRequestComponent implements OnInit {
       next: (data) => {
         this.requests = Array.isArray(data) ? data : [];
         this.loading = false;
-        this.cdr.detectChanges();
       },
       error: () => {
         this.loading = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -195,7 +194,6 @@ export class ConsumableRequestComponent implements OnInit {
   setTab(tab: NavTab): void {
     this.activeTab = tab;
     this.currentPage = 1;
-    this.cdr.detectChanges();
   }
 
   get tabs(): Array<{ id: NavTab; label: string; count?: number }> {
@@ -233,6 +231,7 @@ export class ConsumableRequestComponent implements OnInit {
     return this.sortedByDate.filter(r => {
       const s = r.status?.toLowerCase();
       if (isDirector) {
+        // Directors can see: pending, validated_by_manager, and partially accepted
         return ['validated_by_manager', 'partiellement_accepte'].includes(s);
       }
       if (isManager) {
@@ -288,13 +287,11 @@ export class ConsumableRequestComponent implements OnInit {
   prevPage(): void {
     if (this.currentPage <= 1) return;
     this.currentPage -= 1;
-    this.cdr.detectChanges();
   }
 
   nextPage(): void {
     if (this.currentPage >= this.totalPages) return;
     this.currentPage += 1;
-    this.cdr.detectChanges();
   }
 
   get filteredProducts(): any[] {
@@ -432,7 +429,6 @@ export class ConsumableRequestComponent implements OnInit {
   changePageSize(size: number): void {
     this.pageSize = size;
     this.currentPage = 1;
-    this.cdr.detectChanges();
   }
 
   onDateFilterChange(): void { this.loadRequests(); }
@@ -538,13 +534,16 @@ export class ConsumableRequestComponent implements OnInit {
         this.currentBatchCode = null;
         this.loading = false;
         this.loadRequests();
-        setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 3000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 3000);
+        });
       },
       error: (err: any) => {
         this.message = 'Une erreur est survenue.';
         console.error(err);
         this.loading = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -557,14 +556,16 @@ export class ConsumableRequestComponent implements OnInit {
         this.message = 'Demande mise en attente.';
         this.loadRequests();
         this.loading = false;
-        this.cdr.detectChanges();
-        setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 3000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 3000);
+        });
       },
       error: (err: unknown) => {
         this.message = 'Erreur lors de la validation.';
         console.error(err);
         this.loading = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -578,14 +579,16 @@ export class ConsumableRequestComponent implements OnInit {
         this.message = 'Demande supprimee.';
         this.deletingRequestId = null;
         this.loadRequests();
-        this.cdr.detectChanges();
-        setTimeout(() => (this.message = ''), 3000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 3000);
+        });
       },
       error: (err: unknown) => {
         this.message = 'Erreur lors de la suppression.';
         this.deletingRequestId = null;
         console.error(err);
-        this.cdr.detectChanges();
       }
     });
   }
@@ -598,8 +601,11 @@ export class ConsumableRequestComponent implements OnInit {
     // Validate status before opening modal
     if (!this.isApprovalValid(request?.status)) {
       this.message = `Cannot approve request with status '${request?.status}'. Valid statuses: pending, validated_by_manager, partiellement_accepte.`;
-      this.cdr.detectChanges();
-      setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 4000);
+      this.ngZone.runOutsideAngular(() => {
+        setTimeout(() => {
+          this.ngZone.run(() => { this.message = ''; });
+        }, 4000);
+      });
       return;
     }
 
@@ -654,7 +660,6 @@ export class ConsumableRequestComponent implements OnInit {
         ? suggested
         : Number(item?.requested_quantity || 0);
     }
-    this.cdr.detectChanges();
   }
 
   /** Utiliser la quantite suggessee pour un item specifique */
@@ -663,7 +668,6 @@ export class ConsumableRequestComponent implements OnInit {
     this.itemApprovedQuantities[item.id] = Number.isFinite(suggested)
       ? suggested
       : Number(item?.requested_quantity || 0);
-    this.cdr.detectChanges();
   }
 
   /** Compter les decisions d'un type specifique */
@@ -742,8 +746,11 @@ export class ConsumableRequestComponent implements OnInit {
 
         this.closeApproveModal();
         this.loadRequests();
-        this.cdr.detectChanges();
-        setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 4000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 4000);
+        });
       },
       error: (err: any) => {
         // Extract detailed error message from backend
@@ -760,7 +767,6 @@ export class ConsumableRequestComponent implements OnInit {
         }
         console.error(err);
         this.approving = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -804,8 +810,11 @@ export class ConsumableRequestComponent implements OnInit {
           : 'Demande approuvee avec succes.';
         this.closeApproveModal();
         this.loadRequests();
-        this.cdr.detectChanges();
-        setTimeout(() => { this.message = ''; this.cdr.detectChanges(); }, 3000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 3000);
+        });
       },
       error: (err: any) => {
         // Extract detailed error message from backend
@@ -822,7 +831,6 @@ export class ConsumableRequestComponent implements OnInit {
         }
         console.error(err);
         this.approving = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -848,14 +856,16 @@ export class ConsumableRequestComponent implements OnInit {
         this.message = 'Demande rejetee.';
         this.closeRejectModal();
         this.loadRequests();
-        this.cdr.detectChanges();
-        setTimeout(() => (this.message = ''), 3000);
+        this.ngZone.runOutsideAngular(() => {
+          setTimeout(() => {
+            this.ngZone.run(() => { this.message = ''; });
+          }, 3000);
+        });
       },
       error: (err: unknown) => {
         this.message = 'Erreur lors du rejet.';
         console.error(err);
         this.rejecting = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -971,7 +981,6 @@ export class ConsumableRequestComponent implements OnInit {
         this.confirmingExit = false;
         this.closeExitModal();
         this.loadRequests();
-        this.cdr.detectChanges();
       },
       error: (err: any) => {
         let errorMsg = 'Inconnue';
@@ -979,7 +988,6 @@ export class ConsumableRequestComponent implements OnInit {
         else if (err.error?.message) errorMsg = err.error.message;
         this.message = 'Erreur : ' + errorMsg;
         this.confirmingExit = false;
-        this.cdr.detectChanges();
       }
     });
   }
@@ -988,13 +996,11 @@ export class ConsumableRequestComponent implements OnInit {
     this.selectedSalle = null;
     this.selectedEmplacement = null;
     this.updateAvailableSalles();
-    this.cdr.detectChanges();
   }
 
   onSalleChange(): void {
     this.selectedEmplacement = null;
     this.updateAvailableEmplacements();
-    this.cdr.detectChanges();
   }
 
   onEmplacementChange(): void {

@@ -25,7 +25,6 @@ DESCRIBE product_stocks;
 DESCRIBE expiration_events;
 ```
 
----
 
 ## ✅ Phase 2: Modèles & Services (Backend)
 
@@ -37,7 +36,7 @@ DESCRIBE expiration_events;
 
 - [ ] **2️⃣ Mettre à jour le modèle `ProductStock`**
   - Fichier: `app/Models/ProductStock.php`
-  - Ajouter: 
+  - Ajouter:
     ```php
     public function expirationEvents()
     {
@@ -93,7 +92,7 @@ DESCRIBE expiration_events;
 - [ ] **1️⃣ Crear la commande `CheckExpirationsCommand`**
   - Fichier: `app/Console/Commands/CheckExpirationsCommand.php`
   - Enregistrement automatique dans `kernel.php` si suivant les conventions Laravel
-  - Teste: 
+  - Teste:
     ```bash
     php artisan expirations:check
     php artisan expirations:check --verbose
@@ -117,7 +116,7 @@ DESCRIBE expiration_events;
   ```bash
   # Linux: crontab -e
   * 0 * * * cd /path/to/backend && php artisan schedule:run >> /dev/null 2>&1
-  
+
   # Ou directement:
   * 0 * * * cd /path/to/backend && php artisan expirations:check >> storage/logs/expirations.log 2>&1
   ```
@@ -131,7 +130,7 @@ DESCRIBE expiration_events;
   ```bash
   # Créer un produit d'abord
   # POST /api/admin/products
-  
+
   # Puis créer un stock avec expiration
   POST /api/admin/product-stocks
   {
@@ -147,7 +146,7 @@ DESCRIBE expiration_events;
   ```bash
   # Exécuter le check
   php artisan expirations:check --verbose
-  
+
   # Vérifier les alertes
   GET /api/admin/expirations/alerts
   # Doit voir: event_type='alert_7days', status='pending'
@@ -158,10 +157,10 @@ DESCRIBE expiration_events;
   // Dans tinker
   $stock = ProductStock::find(1);
   $stock->update(['expiration_date' => now()->subDays(1)]);
-  
+
   // Puis vérifier
   php artisan expirations:check
-  
+
   // Doit créer: event_type='marked_as_expired'
   ```
 
@@ -170,7 +169,7 @@ DESCRIBE expiration_events;
   # Vérifier d'abord si peut être consommé
   GET /api/admin/product-stocks/{id}/can-consume
   # Doit retourner: "can_consume": false
-  
+
   # Essayer la consommation (doit être rejeté)
   POST /api/consumable-requests
   {
@@ -348,13 +347,7 @@ tail -f storage/logs/expirations.log
 
 ## ✨ Features Futur (v2.0)
 
-- [ ] Notifications par email pour alertes urgentes
-- [ ] Dashboard Filament pour gestion admin
-- [ ] Export PDF des rapports d'expiration
-- [ ] Graphiques de tendances (produits expiréés par mois)
-- [ ] Intégration SMS pour alertes critiques
-- [ ] API webhook pour systèmes externes
-- [ ] Batch disposal tracking (où sont jetés les produits)
+- [ ] Graphiques de tendances (produits expirés par mois)
 
 ---
 

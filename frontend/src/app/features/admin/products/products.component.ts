@@ -442,7 +442,7 @@ export class ProductsComponent implements OnInit {
     if (!this.editingId && (!payload.reference || payload.reference === '')) {
       (payload as any).reference = undefined;
     }
-    
+
     if (this.editingId && (!payload.reference || payload.reference === '')) {
       this.errorMessage = 'Référence est obligatoire lors de la modification.';
       return;
@@ -838,7 +838,7 @@ export class ProductsComponent implements OnInit {
       },
       error: () => {
         this.isLoading = false;
-        this.errorMessage = 'Erreur chargement fournisseur';
+        this.errorMessage = 'Erreur lors du chargement du fournisseur';
         this.cdr.detectChanges();
       }
     });
@@ -868,7 +868,7 @@ export class ProductsComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: () => {
-        this.errorMessage = 'Erreur publication avis';
+        this.errorMessage = "Erreur lors de la publication de l'avis";
         this.isLoading = false;
         this.cdr.detectChanges();
       }

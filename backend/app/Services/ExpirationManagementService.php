@@ -15,10 +15,10 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
  *
  * Responsabilités:
  * - Détecter les produits expirant bientôt (7 jours)
- * - Marquer les produits périméés
+ * - Marquer les produits périmés
  * - Créer les alertes d'expiration
- * - Bloquer la consommation de produits expiréés
- * - Auditer les actions sur les produits expiréés
+ * - Bloquer la consommation de produits expirés
+ * - Auditer les actions sur les produits expirés
  */
 class ExpirationManagementService
 {
@@ -177,7 +177,7 @@ class ExpirationManagementService
 
     /**
      * Action 2: BLOQUER LA CONSOMMATION
-     * Les produits expiréés ne peuvent plus être consommés
+     * Les produits expirés ne peuvent plus être consommés
      */
     public function blockFromConsumption(ProductStock $stock, string $reason = null): ExpirationEvent
     {
@@ -195,7 +195,7 @@ class ExpirationManagementService
     }
 
     /**
-     * Action 3: MARQUER COMME EXPIRÉÉ
+     * Action 3: MARQUER COMME EXPIRÉ
      * Change le statut du batch et archive
      */
     public function markAsExpired(
@@ -229,7 +229,7 @@ class ExpirationManagementService
 
     /**
      * OVERRIDE ADMIN: Consommer un produit expiré (urgence)
-     * Nécessite l'authorization d'un admin
+     * Nécessite l'autorisation d'un admin
      */
     public function forceConsumeExpired(
         ProductStock $stock,
@@ -324,7 +324,7 @@ class ExpirationManagementService
     /* ============ REQUÊTES & RAPPORTS ============ */
 
     /**
-     * Obtenir tous les produits expiréés
+     * Obtenir tous les produits expirés
      */
     public function getExpiredProducts(int $perPage = 15): LengthAwarePaginator
     {
