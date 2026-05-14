@@ -4,6 +4,7 @@ import { HttpParams } from '@angular/common/http';
 
 @Injectable({ providedIn: 'root' })
 export class AdminUsersService {
+  // Service pour la gestion des utilisateurs par les administrateurs
   constructor(private api: ApiService) {}
 
   list(q: string | null = null, per_page: number = 20, status: 'active' | 'archived' | 'all' = 'active') {
@@ -11,6 +12,13 @@ export class AdminUsersService {
     params = params.set('per_page', String(per_page));
     params = params.set('status', status);
     if (q) params = params.set('q', q);
+    return this.api.get('admin/users', params);
+  }
+
+  listAll(status: 'active' | 'archived' | 'all' = 'active') {
+    let params = new HttpParams();
+    params = params.set('per_page', '1000');
+    params = params.set('status', status);
     return this.api.get('admin/users', params);
   }
 

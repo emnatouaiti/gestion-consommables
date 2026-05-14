@@ -96,8 +96,8 @@ export class ProductsComponent implements OnInit {
       short_description: ['', Validators.maxLength(500)],
       description: [''],
       commentaire: [''],
-      num_serie: ['', [Validators.pattern(/^SN.*/i)]], // Doit commencer par SN
-      num_inventaire: ['', [Validators.pattern(/^[a-zA-Z0-9-_\/]+$/)]], // Alphanumérique large
+      num_serie: ['', [Validators.required]], // Identifiant unique
+      num_inventaire: [{ value: '', disabled: true }], // Toujours auto
       model: [''],
       marque: [''],
       seuil_min: [0, [Validators.required, Validators.min(0)]],
@@ -109,6 +109,31 @@ export class ProductsComponent implements OnInit {
       unit_id: [null],
       supplier_id: [null]
     }, { validators: this.thresholdValidator });
+
+    this.productForm.valueChanges.subscribe(() => {
+      this.updateAutoDescription();
+    });
+  }
+
+  private lastAutoDesc = '';
+
+  private updateAutoDescription(): void {
+    const val = this.productForm.getRawValue();
+    const cat = this.flatCategories.find(c => c.id === Number(val.categorie_id));
+    const catName = cat ? cat.title : '';
+    const marque = this.brands.find(b => b.id === this.selectedMarqueId)?.name || '';
+    const parts = [val.title, catName, marque, val.model].filter(p => !!p && p.trim() !== '');
+    const newDesc = parts.join(', ');
+
+    const currentDesc = this.productForm.get('description')?.value || '';
+    
+    // Only update if current is empty or matches the previous auto-generated one
+    if (currentDesc === '' || currentDesc === this.lastAutoDesc) {
+      if (currentDesc !== newDesc) {
+        this.productForm.get('description')?.setValue(newDesc, { emitEvent: false });
+        this.lastAutoDesc = newDesc;
+      }
+    }
   }
 
   private thresholdValidator(control: AbstractControl): ValidationErrors | null {
@@ -409,7 +434,6 @@ export class ProductsComponent implements OnInit {
       has_expiration: val.has_expiration ? 1 : 0,
       purchase_price: val.purchase_price === null ? null : Number(val.purchase_price),
       unit_id: unitId,
-      unit: selectedUnit?.name || '',
       supplier_ids: val.supplier_id ? [Number(val.supplier_id)] : [],
       photos: this.selectedPhotoFiles
     };
@@ -559,10 +583,10 @@ export class ProductsComponent implements OnInit {
   }
 
   photoUrl(path: string | null | undefined): string {
-    if (!path) return 'assets/default-avatar.svg';
+    if (!path) return 'assets/images/placeholder-product.png';
     if (path.startsWith('http')) return path;
     const cleanPath = path.replace(/^\/+/, '').replace(/^storage\//, '');
-    return `/api/docs/${cleanPath}`;
+    return `http://localhost:8000/api/docs/${cleanPath}`;
   }
 
   onImageError(event: any): void {
@@ -724,14 +748,6 @@ export class ProductsComponent implements OnInit {
     return result;
   }
 
-  getLocationDisplay(product: any): string {
-    if (!product.warehouse_location_id) return '-';
-    const location = product.warehouseLocation;
-    if (!location) return 'Emplacement ' + product.warehouse_location_id;
-    const room = location.room || {};
-    const warehouse = room.warehouse || {};
-    return [warehouse.name || 'Dépôt', room.name || 'Salle', location.code || 'Emp.'].join(', ');
-  }
 
   viewProductsByLocation(locationId: number | null): void {
     if (!locationId) return;

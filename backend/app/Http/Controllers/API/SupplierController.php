@@ -35,7 +35,7 @@ class SupplierController extends Controller
             'notes' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
             'phone' => 'nullable|string',
-            'email' => 'nullable|email',
+            'email' => 'nullable|email|unique:suppliers,email',
             'product_ids' => 'nullable|array',
             'product_ids.*' => 'integer|exists:products,id',
         ]);

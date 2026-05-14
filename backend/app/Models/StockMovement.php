@@ -14,6 +14,7 @@ class StockMovement extends Model
         'movement_type',
         'reference',
         'created_by',
+        'depot_id',
         'related_request_id',
         'notes',
         'status',
@@ -25,6 +26,8 @@ class StockMovement extends Model
         'source_cabinet_id',
         'destination_warehouse_location_id',
         'destination_cabinet_id',
+        'destination_siege',
+        'destination_user_id',
         'supplier_id',
         'supplier_contact_id',
         'motif',
@@ -55,6 +58,11 @@ class StockMovement extends Model
     public function validator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    public function destinationUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'destination_user_id');
     }
 
     public function sourceWarehouseLocation(): BelongsTo
@@ -95,5 +103,10 @@ class StockMovement extends Model
     public function relatedRequest(): BelongsTo
     {
         return $this->belongsTo(ConsumableRequest::class, 'related_request_id');
+    }
+
+    public function depot(): BelongsTo
+    {
+        return $this->belongsTo(Warehouse::class, 'depot_id');
     }
 }

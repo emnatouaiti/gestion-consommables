@@ -9,7 +9,7 @@ This document describes the implementation of two key features:
 
 ### 1. StockMovementController (`backend/app/Http/Controllers/StockMovementController.php`)
 
-#### Modified Notification Logic in `store()` method
+#### Modified Notification Logic in `store()` method (lines 432-470)
 - Added import for `StockMovementNotification`
 - Modified the notification logic to filter responsables by depot:
   - If the creator is an agent (not admin), only notify responsables of the same depot

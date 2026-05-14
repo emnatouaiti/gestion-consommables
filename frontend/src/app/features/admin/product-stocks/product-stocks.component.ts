@@ -67,6 +67,10 @@ export class ProductStocksComponent implements OnInit {
   productHistory: any[] = [];
   historyLoading = false;
   historyPagination = { page: 1, perPage: 10, total: 0, lastPage: 1 };
+  historyFilters = {
+    date_start: '',
+    date_end: ''
+  };
 
   // ── Photos / Documents ─────────────────────────────────
   selectedPhotoIndex = 0;
@@ -192,7 +196,9 @@ export class ProductStocksComponent implements OnInit {
     });
     this.adminStockService.getProductHistory(this.productId, {
       page: this.historyPagination.page,
-      per_page: this.historyPagination.perPage
+      per_page: this.historyPagination.perPage,
+      date_start: this.historyFilters.date_start,
+      date_end: this.historyFilters.date_end
     }).subscribe({
       next: (res: any) => {
         this.productHistory = res.data || [];
@@ -864,10 +870,15 @@ export class ProductStocksComponent implements OnInit {
   downloadDoc(doc: any): void {
     const path = doc?.path;
     if (!path) return;
-    const url = `/api/docs/${path.replace(/^[/\\]+/, '').replace(/^storage\//, '')}`;
+    // Direct point to backend to avoid proxy issues with large files or specific paths
+    const url = `http://localhost:8000/api/docs/${path.replace(/^[/\\]+/, '').replace(/^storage\//, '')}`;
     const a = document.createElement('a');
-    a.href = url; a.download = doc?.title || 'document'; a.target = '_blank';
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    a.href = url;
+    a.download = doc?.title || 'document';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   // ──────────────────────────────────────────────────────

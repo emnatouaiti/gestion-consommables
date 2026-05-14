@@ -269,7 +269,7 @@ td.actions {
   background: white;
   border-radius: 20px;
   width: 90%;
-  max-width: 440px;
+  max-width: 800px; /* enlarged from 440px */
   box-shadow: 0 24px 64px rgba(6,16,31,.28), 0 4px 16px rgba(6,16,31,.12);
   overflow: hidden;
 }

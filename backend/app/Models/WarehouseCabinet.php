@@ -24,8 +24,6 @@ class WarehouseCabinet extends Model
         'room_id',
         'code',
         'name',
-        'description',
-        'status',
         'capacity_units',
         'current_units',
     ];

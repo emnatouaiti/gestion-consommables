@@ -25,10 +25,6 @@ class WarehouseCabinetController extends Controller
             });
         }
 
-        $status = $request->get('status', 'active');
-        if ($status) {
-            $query->where('status', $status);
-        }
 
         return $query->orderBy('name')->paginate($request->get('per_page', 20));
     }
@@ -39,9 +35,7 @@ class WarehouseCabinetController extends Controller
             'room_id' => 'required|exists:warehouse_rooms,id',
             'code' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         $room = WarehouseRoom::findOrFail($validated['room_id']);
@@ -65,9 +59,7 @@ class WarehouseCabinetController extends Controller
             'room_id' => 'required|exists:warehouse_rooms,id',
             'code' => 'nullable|string|max:255',
             'name' => 'required|string|max:255',
-            'description' => 'nullable|string',
             'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         $cabinet->update($validated);

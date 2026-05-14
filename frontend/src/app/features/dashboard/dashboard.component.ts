@@ -116,7 +116,7 @@ export class DashboardComponent implements OnInit {
   }
 
   get dashboardDescription(): string {
-    if (this.isAdmin) return 'Supervisez les utilisateurs, le stock, les depots et les journaux d audit sans passer par le menu de connexion.';
+    if (this.isAdmin) return 'Supervisez les utilisateurs, le stock et les depots sans passer par le menu de connexion.';
     if (this.isDirector) return 'Retrouvez les indicateurs de validation, les alertes de stock et les acces rapides utiles a la direction.';
     if (this.isManager) return 'Suivez les mouvements, les demandes et les points de stockage utiles a vos operations quotidiennes.';
     return 'Accedez rapidement a votre profil, a vos demandes et a la situation generale du stock.';
@@ -151,7 +151,6 @@ export class DashboardComponent implements OnInit {
 
       this.quickLinks = [
         { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Journal audit', route: '/admin/journal-audit', icon: '🧾' },
         { label: 'Documents OCR', route: '/admin/documents-ocr', icon: '📄' },
         { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
       ];

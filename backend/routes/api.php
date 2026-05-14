@@ -66,8 +66,6 @@ Route::prefix('api')->group(function () {
         return response()->json($result);
     });
 
-    // PUBLIC AUDIT LOG - Accessible without authentication
-    Route::get('audit-logs/public', [AdminController::class, 'publicAuditLogs']);
 
     // PUBLIC CATEGORIES - Accessible to authenticated users for OCR workflows
     Route::middleware('auth:sanctum')->get('categories/public', [CategoryController::class, 'index']);
@@ -128,11 +126,10 @@ Route::prefix('api')->group(function () {
         // Public warehouses list for all authenticated users (needed for user form)
         Route::get('warehouses/list', [WarehouseController::class, 'index']);
 
+        Route::get('admin/users', [UserManagementController::class, 'index']);
+
         // Section: ADMIN ONLY
         Route::middleware('role:Administrateur')->group(function () {
-            Route::get('admin/audit-logs', [AdminController::class, 'auditLogs']);
-
-            Route::get('admin/users', [UserManagementController::class, 'index']);
             Route::post('admin/users', [UserManagementController::class, 'store']);
             Route::get('admin/users/{id}', [UserManagementController::class, 'show']);
             Route::put('admin/users/{id}', [UserManagementController::class, 'update']);
@@ -172,9 +169,6 @@ Route::prefix('api')->group(function () {
             Route::put('admin/products/{id}', [ProductController::class, 'update']);
             Route::put('admin/products/{id}/activate', [ProductController::class, 'activate']);
             Route::delete('admin/products/{id}', [ProductController::class, 'destroy']);
-            Route::get('admin/manufacturers', [ProductController::class, 'manufacturers']);
-            Route::get('admin/brands', [ProductController::class, 'brands']);
-            Route::get('admin/models', [ProductController::class, 'models']);
             Route::post('admin/products/generate-descriptions', [ProductController::class, 'generateDescriptions']);
             Route::get('admin/products/{id}/history', [ProductController::class, 'history']);
 
@@ -301,7 +295,11 @@ Route::prefix('api')->group(function () {
             'documents/'  . $filename,        // dans documents/
             'suppliers/'  . $filename,        // dans suppliers/
             'photos/'     . $filename,        // dans photos/
-            'documents/retours/' . $filename, // retours PDF
+            'stock-movements/in/' . $filename, // Images Entrées
+            'stock-movements/out/' . $filename, // Images Sorties
+            'documents/eliminations/' . $filename, // PV d'élimination
+            'documents/returns/' . $filename,      // Bons de retour
+            'documents/retours/' . $filename,      // retours PDF (ancien)
             $filename,                        // à la racine du disk public
         ];
 

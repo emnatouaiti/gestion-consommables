@@ -237,7 +237,7 @@ class ExpirationController extends Controller
 
         // ── Créer un mouvement de stock pour l'historique ──
         try {
-            DB::transaction(function () use ($stock, $originalQuantity, $validated, &$movement, &$document) {
+            DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
                     'movement_type' => 'out',
                     'reference'     => 'ELIM-' . $stock->id . '-' . time(),
@@ -331,7 +331,7 @@ class ExpirationController extends Controller
 
         // ── Créer un mouvement de stock pour l'historique ──
         try {
-            DB::transaction(function () use ($stock, $originalQuantity, $validated, &$movement, &$document) {
+            DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
                     'movement_type' => 'out',
                     'reference'     => 'RET-' . $stock->id . '-' . time(),
@@ -385,6 +385,20 @@ class ExpirationController extends Controller
                 $product = $stock->product;
                 $product->stock_quantity = $product->stocks()->sum('quantity');
                 $product->save();
+
+                // ── Envoyer l'email au fournisseur ──
+                if ($stock->supplier && !empty($stock->supplier->email)) {
+                    try {
+                        Mail::to($stock->supplier->email)->send(new ReturnToSupplierMail(
+                            $stock, 
+                            $stock->supplier, 
+                            $validated['justification'], 
+                            storage_path('app/public/' . $path)
+                        ));
+                    } catch (\Exception $mailErr) {
+                        \Log::error('ReturnToSupplier Mail error: ' . $mailErr->getMessage());
+                    }
+                }
             });
         } catch (\Exception $err) {
             \Log::error('ReturnToSupplier StockMovement/PDF error: ' . $err->getMessage());
@@ -436,10 +450,24 @@ class ExpirationController extends Controller
      */
     public function getBatches(int $productId): JsonResponse
     {
-        $batches = ProductStock::where('product_id', $productId)
+        $query = ProductStock::where('product_id', $productId)
             ->whereNotNull('expiration_date')
-            ->whereIn('batch_status', ['active', 'expired']) // On masque les lots éliminés/retournés ici
-            ->with(['product', 'supplier', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse'])
+            ->whereIn('batch_status', ['active', 'expired']); // On masque les lots éliminés/retournés ici
+
+        // Filtrage par dépôt pour les responsables/agents
+        $user = auth()->user();
+        if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
+            $depotId = $user->depot_id;
+            $query->where(function($q) use ($depotId) {
+                $q->whereHas('warehouseLocation.room', function($sq) use ($depotId) {
+                    $sq->where('warehouse_id', $depotId);
+                })->orWhereHas('warehouseCabinet.room', function($sq) use ($depotId) {
+                    $sq->where('warehouse_id', $depotId);
+                });
+            });
+        }
+
+        $batches = $query->with(['product', 'supplier', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse'])
             ->get();
 
         $result = $batches->map(function ($stock) {
@@ -496,9 +524,30 @@ class ExpirationController extends Controller
      */
     public function getEvents(int $productId): JsonResponse
     {
-        $events = ExpirationEvent::with('document')
-            ->where('product_id', $productId)
-            ->orderBy('created_at', 'desc')
+        $query = ExpirationEvent::with('document')
+            ->where('product_id', $productId);
+
+        // Filtrage par dépôt pour les responsables/agents
+        $user = auth()->user();
+        if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
+            $depotId = $user->depot_id;
+            $query->where(function($q) use ($depotId) {
+                // Filtrer via le stock associé
+                $q->whereHas('productStock', function($sq) use ($depotId) {
+                    $sq->whereHas('warehouseLocation.room', function($ssq) use ($depotId) {
+                        $ssq->where('warehouse_id', $depotId);
+                    })->orWhereHas('warehouseCabinet.room', function($ssq) use ($depotId) {
+                        $ssq->where('warehouse_id', $depotId);
+                    });
+                })
+                // OU via le document associé (qui a un warehouse_id)
+                ->orWhereHas('document', function($sq) use ($depotId) {
+                    $sq->where('warehouse_id', $depotId);
+                });
+            });
+        }
+
+        $events = $query->orderBy('created_at', 'desc')
             ->get();
 
         return response()->json($events);

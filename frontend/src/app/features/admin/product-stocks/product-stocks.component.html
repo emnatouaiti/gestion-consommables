@@ -109,7 +109,6 @@
         <div class="card specs-card" *ngIf="product">
           <div class="card-header"><h2>Fiche technique</h2></div>
           <div class="specs-grid">
-            <div class="spec"><span class="k">Fabricant</span><span class="v">{{ product.fabricant || '—' }}</span></div>
             <div class="spec"><span class="k">Marque</span><span class="v">{{ product.marque || '—' }}</span></div>
             <div class="spec"><span class="k">Modèle</span><span class="v">{{ product.model || '—' }}</span></div>
             <div class="spec"><span class="k">N° Série</span><span class="v">{{ product.num_serie || '—' }}</span></div>
@@ -213,8 +212,6 @@
                       <td class="actions">
                         <div class="row-actions">
                           <button class="btn info small" *ngIf="stock.storage_type==='location' || stock.storage_type==='cabinet'" (click)="open3DViewer(stock); $event.stopPropagation()">Vue 3D</button>
-                          <button class="btn ghost small" (click)="editStock(stock); $event.stopPropagation()">Modifier</button>
-                          <button class="btn danger small" (click)="deleteStock(stock.id); $event.stopPropagation()">Supprimer</button>
                         </div>
                       </td>
                     </tr>
@@ -228,12 +225,6 @@
         <div class="card" *ngIf="!isLoading">
           <div class="card-header">
             <h2>Actions</h2>
-            <button class="btn primary" (click)="openAddStockModal()">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-              </svg>
-              Nouveau mouvement de stock
-            </button>
           </div>
           <div class="stock-summary" *ngIf="stocks.length>0">
             <div class="total-item">
@@ -256,13 +247,6 @@
           <div class="card-header docs-header">
             <h2>Documents liés</h2>
             <div class="docs-actions-top">
-              <button class="btn primary sm" type="button" (click)="docInput.click()" [disabled]="docUploadInProgress">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/>
-                  <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                {{ docUploadInProgress ? 'Upload…' : 'Ajouter Bon de Livraison' }}
-              </button>
               <div class="docs-filter" *ngIf="productDocuments.length>0">
                 <label for="docFilter">Filtrer :</label>
                 <select id="docFilter" [(ngModel)]="docTypeFilter">
@@ -735,16 +719,27 @@
         <div class="card">
           <div class="card-header">
             <h2>Historique des mouvements</h2>
-            <div class="history-controls">
-              <div class="limit-selector">
-                <label>Afficher :</label>
-                <select [(ngModel)]="historyPagination.perPage" (change)="onHistoryPerPageChange()">
+            <div class="history-controls" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <div class="filter-group" style="display: flex; align-items: center; gap: 6px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--mist);">Du :</label>
+                <input type="date" [(ngModel)]="historyFilters.date_start" (change)="loadHistory(1)"
+                       style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px;"/>
+              </div>
+              <div class="filter-group" style="display: flex; align-items: center; gap: 6px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--mist);">Au :</label>
+                <input type="date" [(ngModel)]="historyFilters.date_end" (change)="loadHistory(1)"
+                       style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px;"/>
+              </div>
+              <div class="limit-selector" style="display: flex; align-items: center; gap: 6px;">
+                <label style="font-size: 12px; font-weight: 600; color: var(--mist);">Afficher :</label>
+                <select [(ngModel)]="historyPagination.perPage" (change)="onHistoryPerPageChange()"
+                        style="padding: 4px 8px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 12px;">
                   <option [ngValue]="5">5</option>
                   <option [ngValue]="10">10</option>
                   <option [ngValue]="20">20</option>
                 </select>
               </div>
-              <button class="btn ghost small" (click)="loadHistory(1)">Rafraîchir</button>
+              <button class="btn ghost small" (click)="loadHistory(1)"> Rafraîchir</button>
             </div>
           </div>
 
@@ -767,7 +762,6 @@
                     <th>Produit</th>
                     <th>Type</th>
                     <th>Qté</th>
-                    <th>Origine</th>
                     <th>Destination</th>
                     <th>Auteur / Note</th>
                     <th>Statut</th>
@@ -797,7 +791,6 @@
                       </span>
                     </td>
                     <td class="qty-cell"><strong>{{ h.quantity }}</strong></td>
-                    <td class="loc-cell">{{ h.movement?.sourceWarehouseLocation?.name || h.movement?.sourceCabinet?.name || '—' }}</td>
                     <td class="loc-cell">{{ h.movement?.destinationWarehouseLocation?.name || h.movement?.destinationCabinet?.name || h.movement?.destination_text || '—' }}</td>
                     <td>
                       <div class="author-name">{{ h.movement?.creator?.nomprenom || '—' }}</div>

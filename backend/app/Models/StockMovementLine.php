@@ -11,6 +11,8 @@ class StockMovementLine extends Model
         'stock_movement_id',
         'product_id',
         'quantity',
+        'warehouse_location_id',
+        'cabinet_id',
     ];
 
     public function movement(): BelongsTo
@@ -21,5 +23,15 @@ class StockMovementLine extends Model
     public function product(): BelongsTo
     {
         return $this->belongsTo(Product::class);
+    }
+
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseLocation::class, 'warehouse_location_id');
+    }
+
+    public function cabinet(): BelongsTo
+    {
+        return $this->belongsTo(WarehouseCabinet::class, 'cabinet_id');
     }
 }

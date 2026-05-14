@@ -174,7 +174,7 @@ export class SuppliersComponent implements OnInit {
     downloadDoc(doc: any): void {
         if (!isPlatformBrowser(this.platformId)) return;
         const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '').replace(/^storage\//, '') : null;
-        const url = cleanPath ? `/api/docs/${cleanPath}` : null;
+        const url = cleanPath ? `http://localhost:8000/api/docs/${cleanPath}` : null;
         if (!url) return;
         const a = document.createElement('a');
         a.href = url;
@@ -187,7 +187,7 @@ export class SuppliersComponent implements OnInit {
     supplierImageUrl(path: string | null | undefined): string {
         if (!path) return 'assets/images/placeholder-supplier.png';
         const cleanPath = String(path).replace(/^[/\\]+/, '').replace(/^storage\//, '');
-        return `/api/docs/${cleanPath}`;
+        return `http://localhost:8000/api/docs/${cleanPath}`;
     }
 
     clearSearch(): void {

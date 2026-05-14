@@ -13,20 +13,12 @@ class WarehouseController extends Controller
     {
         $query = Warehouse::query();
 
-        if ($request->filled('kind')) {
-            $query->where('kind', $request->input('kind'));
-        }
 
         if ($request->has('q') && !empty($request->q)) {
             $search = $request->q;
-            $query->where('name', 'like', "%{$search}%")
-                ->orWhere('city', 'like', "%{$search}%");
+            $query->where('name', 'like', "%{$search}%");
         }
 
-        $status = $request->get('status', 'active');
-        if ($status) {
-            $query->where('status', $status);
-        }
 
         return $query->orderBy('name')->paginate($request->get('per_page', 20));
     }
@@ -35,17 +27,11 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'kind' => 'nullable|in:depot,local',
-            'description' => 'nullable|string',
             'address' => 'nullable|string',
-            'city' => 'nullable|string',
-            'governorate' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'phone' => 'nullable|string',
             'max_rooms' => 'nullable|integer|min:1',
-            'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         return Warehouse::create($validated);
@@ -60,17 +46,11 @@ class WarehouseController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string',
-            'kind' => 'nullable|in:depot,local',
-            'description' => 'nullable|string',
             'address' => 'nullable|string',
-            'city' => 'nullable|string',
-            'governorate' => 'nullable|string',
             'latitude' => 'nullable|numeric',
             'longitude' => 'nullable|numeric',
             'phone' => 'nullable|string',
             'max_rooms' => 'nullable|integer|min:1',
-            'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         $warehouse->update($validated);

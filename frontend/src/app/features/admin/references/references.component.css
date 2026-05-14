@@ -353,7 +353,7 @@
   background: white;
   border-radius: 20px;
   width: 90%;
-  max-width: 460px;
+  max-width: 800px; /* enlarged from 460px */
   box-shadow: 0 24px 64px rgba(6,16,31,.28), 0 4px 16px rgba(6,16,31,.12);
   display: flex;
   flex-direction: column;

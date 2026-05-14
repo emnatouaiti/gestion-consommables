@@ -28,8 +28,11 @@ class StockMovementController extends Controller
         $query = StockMovement::query()
             ->with([
                 'lines.product',
+                'lines.location',
+                'lines.cabinet',
                 'creator',
                 'validator',
+                'destinationUser',
                 'supplier',
                 'document',
                 'sourceWarehouseLocation.room.warehouse',
@@ -45,6 +48,11 @@ class StockMovementController extends Controller
 
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
+        }
+        
+        $user = Auth::user();
+        if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['Administrateur'])) {
+            $query->where('depot_id', $user->depot_id);
         }
         if ($request->filled('movement_type')) {
             $query->where('movement_type', $request->input('movement_type'));
@@ -79,6 +87,8 @@ class StockMovementController extends Controller
     {
         $movement = StockMovement::with([
             'lines.product',
+            'lines.location',
+            'lines.cabinet',
             'creator',
             'validator',
             'supplier',
@@ -280,6 +290,8 @@ class StockMovementController extends Controller
             'source_cabinet_id'                 => 'nullable|exists:warehouse_cabinets,id',
             'destination_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'destination_cabinet_id'            => 'nullable|exists:warehouse_cabinets,id',
+            'destination_siege'                 => 'nullable|string',
+            'destination_user_id'               => 'nullable|exists:users,id',
             'document_id'   => 'nullable|exists:documents,id',
             'in_image'      => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
             'out_image'     => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:10240',
@@ -351,10 +363,24 @@ class StockMovementController extends Controller
                 }
             }
 
+            $movementDepotId = $request->input('depot_id');
+            if (!$movementDepotId && $autoAssignDepot) {
+                $movementDepotId = $user->depot_id;
+            } elseif (!$movementDepotId) {
+                if ($request->input('destination_warehouse_location_id')) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($request->input('destination_warehouse_location_id'));
+                    if ($loc) $movementDepotId = $loc->room->warehouse_id;
+                } elseif ($request->input('source_warehouse_location_id')) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($request->input('source_warehouse_location_id'));
+                    if ($loc) $movementDepotId = $loc->room->warehouse_id;
+                }
+            }
+
             $movementData = [
                 'movement_type' => $movementType,
                 'reference'     => $reference,
                 'created_by'    => $user ? $user->id : null,
+                'depot_id'      => $movementDepotId,
                 'related_request_id' => $request->input('related_request_id'),
                 'notes'         => $request->input('notes'),
                 'motif'         => $request->input('motif'),
@@ -366,6 +392,8 @@ class StockMovementController extends Controller
                 'source_cabinet_id'                 => $request->input('source_cabinet_id'),
                 'destination_warehouse_location_id' => $request->input('destination_warehouse_location_id'),
                 'destination_cabinet_id'            => $request->input('destination_cabinet_id'),
+                'destination_siege'                 => $request->input('destination_siege'),
+                'destination_user_id'               => $request->input('destination_user_id'),
                 'document_id'   => $request->input('document_id'),
             ];
 
@@ -435,28 +463,14 @@ class StockMovementController extends Controller
                 $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
             })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
 
-            // If the creator is an agent (not admin), only notify responsables of the same depot
-            if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['administrateur'])) {
-                // Get the depot of the movement (from source or destination location)
-                $movementDepotId = null;
-                if ($movement->source_warehouse_location_id) {
-                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($movement->source_warehouse_location_id);
-                    if ($loc) {
-                        $movementDepotId = $loc->room->warehouse_id;
-                    }
-                } elseif ($movement->destination_warehouse_location_id) {
-                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($movement->destination_warehouse_location_id);
-                    if ($loc) {
-                        $movementDepotId = $loc->room->warehouse_id;
-                    }
-                }
-
-                // Filter responsables by depot (same depot as movement or no depot restriction for admins)
-                $query->where(function ($q) use ($movementDepotId) {
+            // Notify responsables of the movement's depot, and admins (who may have null depot_id)
+            $movementDepotId = $movement->depot_id;
+            $query->where(function ($q) use ($movementDepotId) {
+                if ($movementDepotId) {
                     $q->where('depot_id', $movementDepotId)
-                      ->orWhereNull('depot_id'); // Include admins without depot restriction
-                });
-            }
+                      ->orWhereNull('depot_id');
+                }
+            });
 
             $responsables = $query->get();
 
@@ -489,14 +503,17 @@ class StockMovementController extends Controller
             // Sortie / Transfert (Source)
             if (in_array($movement->movement_type, ['out', 'transfer'])) {
                 $sourceStock = null;
-                if ($movement->source_warehouse_location_id) {
+                $sourceLoc = $line->warehouse_location_id ?? $movement->source_warehouse_location_id;
+                $sourceCab = $line->cabinet_id ?? $movement->source_cabinet_id;
+                
+                if ($sourceLoc) {
                     $sourceStock = ProductStock::where('product_id', $product->id)
-                        ->where('warehouse_location_id', $movement->source_warehouse_location_id)
+                        ->where('warehouse_location_id', $sourceLoc)
                         ->lockForUpdate()
                         ->first();
-                } elseif ($movement->source_cabinet_id) {
+                } elseif ($sourceCab) {
                     $sourceStock = ProductStock::where('product_id', $product->id)
-                        ->where('cabinet_id', $movement->source_cabinet_id)
+                        ->where('cabinet_id', $sourceCab)
                         ->lockForUpdate()
                         ->first();
                 }
@@ -517,12 +534,15 @@ class StockMovementController extends Controller
             // Entrée / Transfert (Destination)
             if (in_array($movement->movement_type, ['in', 'transfer'])) {
                 $destStock = null;
+                $destLoc = $line->warehouse_location_id ?? $movement->destination_warehouse_location_id;
+                $destCab = $line->cabinet_id ?? $movement->destination_cabinet_id;
+                
                 $query = ProductStock::where('product_id', $product->id);
 
-                if ($movement->destination_warehouse_location_id) {
-                    $query->where('warehouse_location_id', $movement->destination_warehouse_location_id);
+                if ($destLoc) {
+                    $query->where('warehouse_location_id', $destLoc);
                 } else {
-                    $query->where('cabinet_id', $movement->destination_cabinet_id);
+                    $query->where('cabinet_id', $destCab);
                 }
 
                 $destStock = $query->lockForUpdate()->first();
@@ -530,8 +550,8 @@ class StockMovementController extends Controller
                 if (!$destStock) {
                     $destStock = ProductStock::create([
                         'product_id' => $product->id,
-                        'warehouse_location_id' => $movement->destination_warehouse_location_id,
-                        'cabinet_id' => $movement->destination_cabinet_id,
+                        'warehouse_location_id' => $destLoc,
+                        'cabinet_id' => $destCab,
                         'supplier_id' => $movement->supplier_id,
                         'quantity' => $qty,
                         'last_updated' => now(),

@@ -44,8 +44,7 @@
           <div class="item-title">{{ warehouse.name }}</div>
           <div class="warehouse-info">
             <div class="warehouse-location-info">
-              <span class="warehouse-city"><i class="fas fa-map-marker-alt"></i> {{ warehouse.governorate || 'N/A' }},
-                {{ warehouse.city || 'N/A' }}</span>
+              <span class="warehouse-city"><i class="fas fa-map-marker-alt"></i> {{ warehouse.address || 'N/A' }}</span>
               <span class="warehouse-phone"><i class="fas fa-phone"></i> {{ warehouse.phone || 'N/A' }}</span>
             </div>
             <button class="btn-map-consult" (click)="openConsultMap(warehouse); $event.stopPropagation()"
@@ -243,29 +242,15 @@
         </div>
 
         <div class="form-group">
-          <label>Type</label>
-          <select [(ngModel)]="warehouseForm.kind" name="kind" class="form-control">
-            <option value="depot">Dépôt</option>
-            <option value="local">Local (siège/agence)</option>
-          </select>
+          <label>Nom de rue *</label>
+          <input type="text" [(ngModel)]="warehouseForm.address" name="address" class="form-control" placeholder="Ex: Rue 14 Janvier" />
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Gouvernorat</label>
-            <select [(ngModel)]="warehouseForm.governorate" name="governorate" class="form-control"
-              (change)="onGovernorateChange()">
-              <option value="">Sélectionner un gouvernorat</option>
-              <option *ngFor="let gov of governorates" [value]="gov">{{ gov }}</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Ville</label>
-            <select [(ngModel)]="warehouseForm.city" name="city" class="form-control"
-              [disabled]="!warehouseForm.governorate">
-              <option value="">Sélectionner une ville</option>
-              <option *ngFor="let city of filteredCities" [value]="city">{{ city }}</option>
-            </select>
+        <div class="form-group address-search-group">
+          <label>Adresse complète (ex: 54, Avenue Mohamed V, Tunis)</label>
+          <div class="search-input-wrapper">
+            <input type="text" [(ngModel)]="warehouseForm.address" name="address" class="form-control" placeholder="Saisissez l'adresse ici..." (keyup.enter)="geocodeAddress()" />
+            <button type="button" class="btn secondary small" (click)="geocodeAddress()">Pointe sur map</button>
           </div>
         </div>
 
@@ -285,39 +270,23 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Adresse détaillée</label>
-          <textarea [(ngModel)]="warehouseForm.address" name="address" class="form-control" rows="2"></textarea>
-        </div>
+
 
         <div class="form-group">
           <label>Téléphone</label>
           <input type="tel" [(ngModel)]="warehouseForm.phone" name="phone" class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="warehouseForm.description" name="description" class="form-control"></textarea>
-        </div>
+
 
         <div class="form-row">
           <div class="form-group">
             <label>Nombre max. de salles</label>
             <input type="number" [(ngModel)]="warehouseForm.max_rooms" name="max_rooms" class="form-control" placeholder="0 = Illimité" />
           </div>
-          <div class="form-group">
-            <label>Capacité totale (unités)</label>
-            <input type="number" [(ngModel)]="warehouseForm.capacity_units" name="capacity_units" class="form-control" />
-          </div>
         </div>
 
-        <div class="form-group">
-          <label>Statut</label>
-          <select [(ngModel)]="warehouseForm.status" name="status" class="form-control">
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-          </select>
-        </div>
+
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeWarehouseModal()">Annuler</button>
@@ -345,21 +314,7 @@
           <input type="text" [(ngModel)]="roomForm.name" name="name" class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Type</label>
-          <input type="text" [(ngModel)]="roomForm.type" name="type" placeholder="Ex: Salle frigorifique"
-            class="form-control" />
-        </div>
 
-        <div class="form-group">
-          <label>Capacité (m³)</label>
-          <input type="number" [(ngModel)]="roomForm.capacity_volume" name="capacity_volume" class="form-control" />
-        </div>
-
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="roomForm.description" name="description" class="form-control"></textarea>
-        </div>
 
         <div class="form-row">
           <div class="form-group">
@@ -372,18 +327,7 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Capacité totale (unités)</label>
-          <input type="number" [(ngModel)]="roomForm.capacity_units" name="capacity_units" class="form-control" />
-        </div>
 
-        <div class="form-group">
-          <label>Statut</label>
-          <select [(ngModel)]="roomForm.status" name="status" class="form-control">
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-          </select>
-        </div>
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeRoomModal()">Annuler</button>
@@ -413,29 +357,14 @@
             class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Type</label>
-          <input type="text" [(ngModel)]="locationForm.type" name="type" placeholder="Ex: Etagère, Bac, Tiroir"
-            class="form-control" />
-        </div>
+
 
         <div class="form-group">
           <label>Capacité (unités)</label>
           <input type="number" [(ngModel)]="locationForm.capacity_units" name="capacity_units" class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="locationForm.description" name="description" class="form-control"></textarea>
-        </div>
 
-        <div class="form-group">
-          <label>Statut</label>
-          <select [(ngModel)]="locationForm.status" name="status" class="form-control">
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-          </select>
-        </div>
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeLocationModal()">Annuler</button>
@@ -464,23 +393,14 @@
         </div>
 
 
-        <div class="form-group">
-          <label>Description</label>
-          <textarea [(ngModel)]="cabinetForm.description" name="cabinet_description" class="form-control"></textarea>
-        </div>
+
 
         <div class="form-group">
           <label>Capacité (unités)</label>
           <input type="number" [(ngModel)]="cabinetForm.capacity_units" name="cabinet_capacity_units" class="form-control" />
         </div>
 
-        <div class="form-group">
-          <label>Statut</label>
-          <select [(ngModel)]="cabinetForm.status" name="cabinet_status" class="form-control">
-            <option value="active">Actif</option>
-            <option value="inactive">Inactif</option>
-          </select>
-        </div>
+
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeCabinetModal()">Annuler</button>
@@ -500,8 +420,7 @@
     </div>
     <div class="modal-body">
       <p class="map-location-text">
-        <i class="fas fa-map-marker-alt"></i> {{ viewingMapWarehouse?.governorate }}, {{ viewingMapWarehouse?.address
-        }}
+        <i class="fas fa-map-marker-alt"></i> {{ viewingMapWarehouse?.address }}
       </p>
       <div id="consultMap" style="height: 450px; border-radius: 12px; border: 1px solid #ddd;"></div>
     </div>

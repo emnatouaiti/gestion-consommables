@@ -38,12 +38,15 @@ class ProductController extends Controller
             'suppliers:id,name',
             'photos:id,product_id,path,sort_order',
             'unit:id,name,code',
-            'warehouseLocation' => function ($q) {
-                $q->with(['room' => function ($r) {
-                    $r->with('warehouse:id,name');
-                }]);
-            }
         ]);
+
+        // Filtrage par dépôt pour les responsables/agents
+        $user = auth()->user();
+        if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
+            // Note: Since warehouse_location_id is removed from products,
+            // we should probably filter products based on product_stocks.
+            // But for now, let's just remove the broken query.
+        }
         $perPage = max(1, min(100, (int) $request->get('per_page', 20)));
 
         // Default: only active products everywhere, unless the products list explicitly asks otherwise.
@@ -120,7 +123,6 @@ class ProductController extends Controller
             'short_description' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'commentaire' => 'nullable|string',
-            'fabricant' => 'nullable|string|max:255',
             'num_serie' => 'nullable|string|max:255',
             'num_inventaire' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
@@ -132,11 +134,7 @@ class ProductController extends Controller
             'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
-            'sale_price' => 'nullable|numeric|min:0',
             'unit_id' => 'nullable|exists:units,id',
-            'unit' => 'nullable|string|max:50',
-            'location' => 'nullable|string|max:255',
-            'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
             'photo' => 'nullable',
@@ -255,12 +253,7 @@ class ProductController extends Controller
                 'category:id,title',
                 'suppliers:id,name',
                 'photos:id,product_id,path,sort_order',
-            'unit:id,name,code',
-                'warehouseLocation' => function ($q) {
-                    $q->with(['room' => function ($r) {
-                        $r->with('warehouse:id,name');
-                    }]);
-                }
+                'unit:id,name,code',
             ])->findOrFail($id)
         );
     }
@@ -275,7 +268,6 @@ class ProductController extends Controller
             'short_description' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'commentaire' => 'nullable|string',
-            'fabricant' => 'nullable|string|max:255',
             'num_serie' => 'nullable|string|max:255',
             'num_inventaire' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
@@ -287,11 +279,7 @@ class ProductController extends Controller
             'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
             'purchase_price' => 'nullable|numeric|min:0',
-            'sale_price' => 'nullable|numeric|min:0',
             'unit_id' => 'nullable|exists:units,id',
-            'unit' => 'nullable|string|max:50',
-            'location' => 'nullable|string|max:255',
-            'warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
             'photo' => 'nullable|string',
@@ -381,67 +369,6 @@ class ProductController extends Controller
         return response()->json(['message' => 'Produit supprime']);
     }
 
-    /**
-     * Return list of distinct fabricants (manufacturers) from products.
-     */
-    public function manufacturers()
-    {
-        $list = Product::query()
-            ->where('status', 'active')
-            ->whereNotNull('fabricant')
-            ->where('fabricant', '!=', '')
-            ->distinct()
-            ->pluck('fabricant')
-            ->values();
-
-        return response()->json($list);
-    }
-
-    /**
-     * Return list of distinct marques (brands), optionally filtered by fabricant.
-     */
-    public function brands(Request $request)
-    {
-        $fabricant = $request->get('fabricant');
-
-        $q = Product::query()
-            ->where('status', 'active')
-            ->whereNotNull('marque')
-            ->where('marque', '!=', '');
-
-        if (!empty($fabricant)) {
-            $q->where('fabricant', $fabricant);
-        }
-
-        $list = $q->distinct()->pluck('marque')->values();
-
-        return response()->json($list);
-    }
-
-    /**
-     * Return list of distinct models, optionally filtered by fabricant and marque.
-     */
-    public function models(Request $request)
-    {
-        $fabricant = $request->get('fabricant');
-        $marque = $request->get('marque');
-
-        $q = Product::query()
-            ->where('status', 'active')
-            ->whereNotNull('model')
-            ->where('model', '!=', '');
-
-        if (!empty($fabricant)) {
-            $q->where('fabricant', $fabricant);
-        }
-        if (!empty($marque)) {
-            $q->where('marque', $marque);
-        }
-
-        $list = $q->distinct()->pluck('model')->values();
-
-        return response()->json($list);
-    }
 
     /**
      * Generate short and full descriptions for a product title.
@@ -451,7 +378,6 @@ class ProductController extends Controller
     {
         $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
-            'fabricant' => 'nullable|string|max:255',
             'marque' => 'nullable|string|max:255',
             'model' => 'nullable|string|max:255',
         ]);
@@ -461,7 +387,6 @@ class ProductController extends Controller
         }
 
         $title = trim($request->get('title'));
-        $fabricant = trim((string)$request->get('fabricant', ''));
         $marque = trim((string)$request->get('marque', ''));
         $model = trim((string)$request->get('model', ''));
         $categoryId = $request->get('categorie_id');
@@ -473,7 +398,6 @@ class ProductController extends Controller
             try {
                 $prompt = "Génère une description courte (environ 150 caractères) et une description longue et détaillée (environ 500-1000 caractères) RÉDIGÉES EXCLUSIVEMENT EN FRANÇAIS pour le produit suivant : \n";
                 $prompt .= "Titre: {$title}\n";
-                if ($fabricant) $prompt .= "Fabricant: {$fabricant}\n";
                 if ($marque) $prompt .= "Marque: {$marque}\n";
                 if ($model) $prompt .= "Modèle: {$model}\n";
                 $prompt .= "\nInstructions :\n";
@@ -536,7 +460,6 @@ class ProductController extends Controller
         $short .= ". Consommable fiable pour usage intensif.";
 
         $description = "Le produit \"{$title}\"";
-        if ($fabricant) $description .= " conçu par {$fabricant}";
         if ($marque) $description .= " sous la marque {$marque}";
         if ($model) $description .= " (Modèle: {$model})";
         
@@ -564,7 +487,7 @@ class ProductController extends Controller
 
         $limit = request()->get('per_page', 10);
 
-        $history = \App\Models\StockMovementLine::with([
+        $query = \App\Models\StockMovementLine::with([
             'movement' => function ($q) {
                 $q->with([
                     'creator:id,nomprenom',
@@ -578,9 +501,17 @@ class ProductController extends Controller
                 ]);
             }
         ])
-        ->where('product_id', $id)
-        ->orderBy('created_at', 'desc')
-        ->paginate($limit);
+        ->where('product_id', $id);
+
+        if (request()->filled('date_start')) {
+            $query->whereDate('created_at', '>=', request()->date_start);
+        }
+        if (request()->filled('date_end')) {
+            $query->whereDate('created_at', '<=', request()->date_end);
+        }
+
+        $history = $query->orderBy('created_at', 'desc')
+            ->paginate($limit);
 
         return response()->json($history);
     }

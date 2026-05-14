@@ -111,18 +111,18 @@ class DocumentController extends Controller
 
         $supplierCandidate = null;
         if (!$supplierId && $supplierEmail) {
-            $emailMatchId = Supplier::whereRaw('LOWER(email) = ?', [Str::lower($supplierEmail)])->value('id');
-            if ($emailMatchId) {
-                $emailMatch = Supplier::select(['id', 'name', 'email'])->find($emailMatchId);
-                if ($emailMatch) {
-                    $supplierCandidate = [
-                        'id' => (int) $emailMatch->id,
-                        'name' => $emailMatch->name,
-                        'email' => $emailMatch->email,
-                        'score' => 100,
-                        'status' => 'exact',
-                    ];
-                }
+            $emailMatch = Supplier::where('email', $supplierEmail)
+                ->orWhereRaw('LOWER(email) = ?', [Str::lower($supplierEmail)])
+                ->first(['id', 'name', 'email']);
+            
+            if ($emailMatch) {
+                $supplierCandidate = [
+                    'id' => (int) $emailMatch->id,
+                    'name' => $emailMatch->name,
+                    'email' => $emailMatch->email,
+                    'score' => 100,
+                    'status' => 'exact',
+                ];
             }
         }
         if (!$supplierCandidate && !$supplierId && $supplierName) {
@@ -149,12 +149,13 @@ class DocumentController extends Controller
 
         if (
             $supplierCandidate
+            && $supplierCandidate['status'] !== 'exact'
             && !$request->boolean('confirm_supplier_match', false)
             && !$request->filled('supplier_id')
             && $supplierNameOverride === ''
         ) {
             return response()->json([
-                'message' => 'Nous avons trouve un fournisseur. Confirmez d abord si c est le bon fournisseur.',
+                'message' => 'Nous avons trouve un fournisseur potentiel. Confirmez s\'il s\'agit du bon.',
                 'suggested_supplier' => [
                     'name' => $supplierName,
                     'email' => $supplierEmail,
@@ -166,6 +167,10 @@ class DocumentController extends Controller
                     'score' => $supplierCandidate['score'],
                 ],
             ], 409);
+        }
+
+        if (!$supplierId && $supplierCandidate && $supplierCandidate['status'] === 'exact') {
+            $supplierId = (int) $supplierCandidate['id'];
         }
 
         if (!$supplierId && $request->boolean('confirm_supplier_match', false) && $request->filled('supplier_id')) {
@@ -458,17 +463,35 @@ class DocumentController extends Controller
             }
             $document->save();
 
+            // Extract the first location to set as the movement's destination
+            $firstLocId = null;
+            $firstCabId = null;
+            foreach ($prepareActions as $a) {
+                if (!empty($a['warehouse_location_id'])) {
+                    $firstLocId = $a['warehouse_location_id'];
+                    break;
+                } elseif (!empty($a['cabinet_id'])) {
+                    $firstCabId = $a['cabinet_id'];
+                    break;
+                }
+            }
+
             // Create stock movement
             $movementType = in_array($document->direction, ['in', 'out']) ? $document->direction : 'in';
             $movement = StockMovement::create([
                 'movement_type' => $movementType,
                 'reference' => 'DOC-' . $document->id,
                 'created_by' => $user?->id,
+                'depot_id' => $document->warehouse_id, // Save the depot_id from the document
                 'status' => $isManager ? 'executed' : 'pending_validation',
                 'supplier_id' => $document->supplier_id,
                 'document_id' => $document->id,
                 'in_image_path' => $movementType === 'in' ? $document->path : null,
                 'out_image_path' => $movementType === 'out' ? $document->path : null,
+                'destination_warehouse_location_id' => $movementType === 'in' ? $firstLocId : null,
+                'source_warehouse_location_id' => $movementType === 'out' ? $firstLocId : null,
+                'destination_cabinet_id' => $movementType === 'in' ? $firstCabId : null,
+                'source_cabinet_id' => $movementType === 'out' ? $firstCabId : null,
                 'notes' => 'Généré par OCR Document: ' . $document->title
             ]);
 
@@ -478,35 +501,40 @@ class DocumentController extends Controller
                         'stock_movement_id' => $movement->id,
                         'product_id' => $action['product']->id,
                         'quantity' => (int)$action['quantity'],
+                        'warehouse_location_id' => $action['warehouse_location_id'] ?? null,
+                        'cabinet_id' => $action['cabinet_id'] ?? null,
                     ]);
                 }
             }
 
             // Notify if pending - Filter by depot for agents
-            if (!$isManager) {
+            if (!$isManager && $user) {
                 try {
-                    $query = User::whereHas('roles', function ($q) {
-                        $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
-                    })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+                    // Use document's warehouse_id (depot) for filtering notifications
+                    $documentDepotId = $document->warehouse_id ?: $user->depot_id;
 
-                    // If the creator is an agent (not admin), only notify responsables of the same depot
-                    if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['administrateur'])) {
-                        // Filter responsables by depot (same depot as user or no depot restriction for admins)
-                        $query->where(function ($q) use ($user) {
-                            $q->where('depot_id', $user->depot_id)
-                              ->orWhereNull('depot_id'); // Include admins without depot restriction
-                        });
-                    }
+                    // Get responsables of the same depot only
+                    $query = User::where(function ($q) {
+                        $q->whereHas('roles', function ($qr) {
+                            $qr->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+                        })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+                    });
+
+                    // Filter by depot: only notify responsables of the same depot or admins without depot restriction
+                    $query->where(function ($q) use ($documentDepotId) {
+                        $q->where('depot_id', $documentDepotId)
+                          ->orWhereNull('depot_id');
+                    });
 
                     $responsables = $query->get();
 
                     foreach ($responsables as $resp) {
-                        if ($user && $resp->id !== $user->id) {
+                        if ($resp->id !== $user->id) {
                             $resp->notify(new StockMovementNotification($movement));
                         }
                     }
                 } catch (\Throwable $e) {
-                    Log::error('OCR Approval Notification failed', ['err' => $e->getMessage()]);
+                    Log::error('OCR Approval Notification failed', ['err' => $e->getMessage(), 'document_id' => $document->id, 'depot_id' => $documentDepotId ?? null]);
                 }
             }
         });

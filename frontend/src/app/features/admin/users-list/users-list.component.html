@@ -264,8 +264,9 @@
                 [(ngModel)]="form.siege"
                 name="siege"
                 class="form-control"
+                [attr.disabled]="isDirecteurRestricted ? true : null"
               >
-                <option value="">-- Selectionner un siege --</option>
+                <option value="" *ngIf="!isDirecteurRestricted">-- Selectionner un siege --</option>
                 <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
               </select>
             </div>
@@ -292,7 +293,7 @@
         </div>
 
         <!-- Pour les autres rôles : Service, Poste, Siege -->
-        <div *ngIf="form.roles !== 'Administrateur' && form.roles !== 'Responsable' && form.roles !== 'Agent' && form.roles !== ''">
+        <div *ngIf="form.roles !== 'Administrateur' && form.roles !== 'Directeur' && form.roles !== 'Responsable' && form.roles !== 'Agent' && form.roles !== ''">
           <div class="form-group">
             <label>Service</label>
             <div class="select-wrapper">
@@ -331,8 +332,43 @@
                 [(ngModel)]="form.siege"
                 name="siege"
                 class="form-control"
+                [attr.disabled]="isDirecteurRestricted ? true : null"
               >
-                <option value="">-- Selectionner un siege --</option>
+                <option value="" *ngIf="!isDirecteurRestricted">-- Selectionner un siege --</option>
+                <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Cas spécial pour Directeur : on veut le siège et le service, mais pas le poste -->
+        <div *ngIf="form.roles === 'Directeur'">
+          <div class="form-group">
+            <label>Service</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.service"
+                name="service"
+                class="form-control"
+              >
+                <option value="">-- Selectionner un service --</option>
+                <option *ngFor="let service of serviceOptions" [value]="service">
+                  {{ service }}
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Siege *</label>
+            <div class="select-wrapper">
+              <select
+                [(ngModel)]="form.siege"
+                name="siege"
+                class="form-control"
+                [attr.disabled]="isDirecteurRestricted ? true : null"
+              >
+                <option value="" *ngIf="!isDirecteurRestricted">-- Selectionner un siege --</option>
                 <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
               </select>
             </div>

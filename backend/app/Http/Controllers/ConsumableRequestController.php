@@ -34,99 +34,73 @@ class ConsumableRequestController extends Controller
             $query->whereDate('created_at', '<=', $request->input('end_date'));
         }
 
-        if ($this->isDirectorUser($user) || $this->isStockManager($user)) {
+        if ($request->boolean('own')) {
+            $query->where('user_id', $user->id);
+        } elseif ($this->isDirectorUser($user) || $this->isStockManager($user)) {
             if ($this->isDirectorUser($user)) {
                 $query->whereHas('user', function ($q) use ($user) {
                     $q->where('service', $user->service)
                       ->where('siege', $user->siege);
                 });
             } elseif ($this->isStockManager($user)) {
-                // Les responsables/agents ne voient QUE les demandes assignées à leur dépôt
                 if ($user->depot_id) {
                     $query->where('depot_id', $user->depot_id);
                 } else {
                     $query->whereRaw('1 = 0');
                 }
-                // Si pas de depot_id assigné à l'utilisateur, voir toutes les demandes
             }
-
-            $requests = $query->get()
-                ->map(function (ConsumableRequest $request) {
-                    $availableStock = $this->getAvailableStock($request);
-                    $suggestion     = $this->computeSuggestedQuantity($request, $availableStock);
-                    $productThreshold = optional($request->product)->seuil_min ?? null;
-
-                    $request->setAttribute('requester_name',    $this->getRequesterName($request->user));
-                    $request->setAttribute('requester_service', $this->getRequesterService($request->user));
-                    $request->setAttribute('requester_poste',   $this->getRequesterPoste($request->user));
-                    $request->setAttribute('available_stock',   $availableStock);
-                    $request->setAttribute('suggested_approved_quantity', $suggestion['quantity']);
-                    $request->setAttribute('suggestion_reason', $suggestion['reason']);
-                    $request->setAttribute('product_threshold', $productThreshold);
-                    $request->setAttribute('requester_siege',   $request->user?->siege);
-                    $request->setAttribute('stock_alert',       $this->isStockBelowThreshold($availableStock, $productThreshold, $request->requested_quantity));
-
-                    return $request;
-                })
-                ->groupBy(fn($req) => $req->batch_code ?: $req->id)
-                ->map(function ($group) {
-                    $first  = $group->first();
-                    $items  = $group->values();
-
-                    return [
-                        'id'               => $first->id,
-                        'batch_code'       => $first->batch_code,
-                        'item_name'        => count($items) > 1 ? count($items) . ' produits' : $first->item_name,
-                        'requested_quantity' => $group->sum('requested_quantity'),
-                        'approved_quantity'  => $group->sum('approved_quantity') ?: null,
-                        'status'           => $this->computeGroupStatus($group),
-                        'created_at'       => $first->created_at,
-                        'user'             => $first->user,
-                        'requester_name'   => $first->getAttribute('requester_name'),
-                        'requester_service'=> $first->getAttribute('requester_service'),
-                        'requester_poste'  => $first->getAttribute('requester_poste'),
-                        'available_stock'  => $first->getAttribute('available_stock'),
-                        'suggested_approved_quantity' => $first->getAttribute('suggested_approved_quantity'),
-                        'suggestion_reason'=> $first->getAttribute('suggestion_reason'),
-                        'product_threshold'=> $first->getAttribute('product_threshold'),
-                        'requester_siege'  => $first->getAttribute('requester_siege'),
-                        'stock_alert'      => $first->getAttribute('stock_alert'),
-                        'pdf_path'         => $first->pdf_path,
-                        // Paths des 2 PDFs pour l'approbation partielle
-                        'pdf_path_approved' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_approved'))?->pdf_path,
-                        'pdf_path_rejected' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_rejected'))?->pdf_path,
-                        'items'            => $items,
-                    ];
-                })
-                ->values();
         } else {
-            $requests = $query->where('user_id', $user->id)
-                ->get()
-                ->groupBy(fn($req) => $req->batch_code ?: $req->id)
-                ->map(function ($group) {
-                    $first = $group->first();
-                    $items = $group->values();
-
-                    return [
-                        'id'               => $first->id,
-                        'batch_code'       => $first->batch_code,
-                        'item_name'        => count($items) > 1 ? count($items) . ' produits' : $first->item_name,
-                        'requested_quantity' => $group->sum('requested_quantity'),
-                        'approved_quantity'  => $group->sum('approved_quantity') ?: null,
-                        'status'           => $this->computeGroupStatus($group),
-                        'created_at'       => $first->created_at,
-                        'user'             => $first->user,
-                        'requester_name'   => $this->getRequesterName($first->user),
-                        'requester_service'=> $this->getRequesterService($first->user),
-                        'requester_poste'  => $this->getRequesterPoste($first->user),
-                        'pdf_path'         => $first->pdf_path,
-                        'pdf_path_approved' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_approved'))?->pdf_path,
-                        'pdf_path_rejected' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_rejected'))?->pdf_path,
-                        'items'            => $items,
-                    ];
-                })
-                ->values();
+            $query->where('user_id', $user->id);
         }
+
+        $requests = $query->get()
+            ->map(function (ConsumableRequest $request) {
+                $availableStock = $this->getAvailableStock($request);
+                $suggestion     = $this->computeSuggestedQuantity($request, $availableStock);
+                $productThreshold = optional($request->product)->seuil_min ?? null;
+
+                $request->setAttribute('requester_name',    $this->getRequesterName($request->user));
+                $request->setAttribute('requester_service', $this->getRequesterService($request->user));
+                $request->setAttribute('requester_poste',   $this->getRequesterPoste($request->user));
+                $request->setAttribute('available_stock',   $availableStock);
+                $request->setAttribute('suggested_approved_quantity', $suggestion['quantity']);
+                $request->setAttribute('suggestion_reason', $suggestion['reason']);
+                $request->setAttribute('product_threshold', $productThreshold);
+                $request->setAttribute('requester_siege',   $request->user?->siege);
+                $request->setAttribute('stock_alert',       $this->isStockBelowThreshold($availableStock, $productThreshold, $request->requested_quantity));
+
+                return $request;
+            })
+            ->groupBy(fn($req) => $req->batch_code ?: $req->id)
+            ->map(function ($group) {
+                $first  = $group->first();
+                $items  = $group->values();
+
+                return [
+                    'id'               => $first->id,
+                    'batch_code'       => $first->batch_code,
+                    'item_name'        => count($items) > 1 ? count($items) . ' produits' : $first->item_name,
+                    'requested_quantity' => $group->sum('requested_quantity'),
+                    'approved_quantity'  => $group->sum('approved_quantity') ?: null,
+                    'status'           => $this->computeGroupStatus($group),
+                    'created_at'       => $first->created_at,
+                    'user'             => $first->user,
+                    'requester_name'   => $first->getAttribute('requester_name'),
+                    'requester_service'=> $first->getAttribute('requester_service'),
+                    'requester_poste'  => $first->getAttribute('requester_poste'),
+                    'available_stock'  => $first->getAttribute('available_stock'),
+                    'suggested_approved_quantity' => $first->getAttribute('suggested_approved_quantity'),
+                    'suggestion_reason'=> $first->getAttribute('suggestion_reason'),
+                    'product_threshold'=> $first->getAttribute('product_threshold'),
+                    'requester_siege'  => $first->getAttribute('requester_siege'),
+                    'stock_alert'      => $first->getAttribute('stock_alert'),
+                    'pdf_path'         => $first->pdf_path,
+                    'pdf_path_approved' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_approved'))?->pdf_path,
+                    'pdf_path_rejected' => $group->first(fn($r) => $r->pdf_path && str_contains((string)$r->pdf_path, '_rejected'))?->pdf_path,
+                    'items'            => $items,
+                ];
+            })
+            ->values();
 
         return response()->json($requests);
     }
@@ -136,7 +110,7 @@ class ConsumableRequestController extends Controller
     {
         $user = Auth::user();
 
-        if (!$this->userHasAnyRole($user, ['utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'pdg'])) {
+        if (!$this->userHasAnyRole($user, ['utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employé', 'directeur', 'pdg'])) {
             return response()->json(['message' => 'Seuls les utilisateurs metier peuvent creer une demande.'], 403);
         }
 
@@ -152,6 +126,8 @@ class ConsumableRequestController extends Controller
                     ->delete();
             }
 
+            $isDirector = $user->hasRole('Directeur') || Str::lower($user->role) === 'directeur';
+
             foreach ($payloads as $payload) {
                 $initialStatus = isset($payload['status']) ? $payload['status'] : 'draft';
                 if (!in_array($initialStatus, ['draft', 'pending', 'approved', 'rejected'], true)) {
@@ -159,6 +135,9 @@ class ConsumableRequestController extends Controller
                 }
 
                 if ($this->isStockManager($user) && $initialStatus === 'pending') {
+                    $initialStatus = 'approved_pending_exit';
+                    $payload['approved_quantity'] = $payload['requested_quantity'];
+                } elseif ($isDirector && $initialStatus === 'pending') {
                     $initialStatus = 'approved_pending_exit';
                     $payload['approved_quantity'] = $payload['requested_quantity'];
                 }
@@ -172,9 +151,13 @@ class ConsumableRequestController extends Controller
         });
 
         $firstStatus = collect($createdRequests)->first()?->status ?? null;
+        $isDirector = $user->hasRole('Directeur') || Str::lower($user->role) === 'directeur';
+
         if ($firstStatus === 'pending' && count($createdRequests) > 0) {
             $this->notifyDirectors(collect($createdRequests));
         } elseif ($firstStatus === 'approved_pending_exit' && count($createdRequests) > 0) {
+            // If it's a director, we already auto-approved it.
+            // We notify stock managers so they can prepare the exit.
             $this->notifyStockManagers(collect($createdRequests));
         }
 
@@ -215,18 +198,59 @@ class ConsumableRequestController extends Controller
             }
 
             $oldStatus = $consumableRequest->status;
-            $consumableRequest->update(['status' => $requestedStatus]);
+            $newStatus = $requestedStatus;
+            $isDirector = $editor->hasRole('Directeur') || Str::lower($editor->role) === 'directeur';
+            
+            if ($newStatus === 'pending') {
+                if ($this->isStockManager($editor) || $isDirector) {
+                    $newStatus = 'approved_pending_exit';
+                    // For single item update, we might need to set approved_quantity
+                    if (!$consumableRequest->approved_quantity) {
+                        $consumableRequest->approved_quantity = $consumableRequest->requested_quantity;
+                    }
+                }
+            }
+
+            $consumableRequest->update(['status' => $newStatus]);
 
             if ($consumableRequest->batch_code) {
                 ConsumableRequest::where('batch_code', $consumableRequest->batch_code)
-                    ->update(['status' => $requestedStatus]);
+                    ->update([
+                        'status' => $newStatus,
+                        'approved_quantity' => DB::raw('requested_quantity')
+                    ]);
+            }
+
+            // Regenerate PDF if status changed to approved
+            if ($newStatus === 'approved_pending_exit') {
+                try {
+                    $batch = $consumableRequest->batch_code
+                        ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
+                        : collect([$consumableRequest]);
+                    
+                    $pdfPath = $this->generateAndSavePdf($consumableRequest->user, $batch->all(), $consumableRequest->batch_code);
+                    if ($pdfPath) {
+                        if ($consumableRequest->batch_code) {
+                            ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->update(['pdf_path' => $pdfPath]);
+                        } else {
+                            $consumableRequest->update(['pdf_path' => $pdfPath]);
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    Log::error('PDF Regeneration failed in update', ['error' => $e->getMessage()]);
+                }
             }
 
             if (Str::lower($oldStatus) !== 'pending' && $requestedStatus === 'pending') {
                 $batch = $consumableRequest->batch_code
                     ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
                     : collect([$consumableRequest]);
-                $this->notifyDirectors($batch);
+                
+                if ($newStatus === 'approved_pending_exit') {
+                    $this->notifyStockManagers($batch);
+                } else {
+                    $this->notifyDirectors($batch);
+                }
             }
 
             return response()->json([
@@ -1144,10 +1168,10 @@ class ConsumableRequestController extends Controller
 
     private function canRequesterEditOrDelete(?User $user, ConsumableRequest $consumableRequest): bool
     {
-        if (!$user || $this->isDirectorUser($user)) return false;
+        if (!$user) return false;
 
         $isBusinessRequester = $this->userHasAnyRole($user, [
-            'utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'pdg',
+            'utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employé', 'directeur', 'pdg',
         ]);
 
         return $isBusinessRequester && (int) $consumableRequest->user_id === (int) $user->id;
@@ -1215,7 +1239,7 @@ class ConsumableRequestController extends Controller
                 $titlePrefix = match ($indStatus) {
                     'approved'              => 'Bon de sortie',
                     'rejected'              => 'Refus de demande',
-                    'approved_pending_exit' => 'Demande approuvee',
+                    'approved_pending_exit' => 'Bon de demande approuvee',
                     default                 => 'Demande de consommables',
                 };
 

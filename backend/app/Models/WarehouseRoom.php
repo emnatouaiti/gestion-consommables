@@ -14,14 +14,8 @@ class WarehouseRoom extends Model
     protected $fillable = [
         'warehouse_id',
         'name',
-        'description',
-        'type',
-        'capacity_volume',
-        'capacity_units',
-        'current_units',
         'max_locations',
         'max_cabinets',
-        'status',
     ];
 
     public function warehouse(): BelongsTo

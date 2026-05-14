@@ -12,18 +12,11 @@ class Warehouse extends Model
 
     protected $fillable = [
         'name',
-        'kind',
-        'description',
         'address',
-        'city',
-        'governorate',
         'latitude',
         'longitude',
         'phone',
-        'status',
         'max_rooms',
-        'capacity_units',
-        'current_units',
     ];
 
     public function rooms(): HasMany

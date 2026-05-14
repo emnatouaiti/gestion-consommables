@@ -23,10 +23,6 @@ class WarehouseLocationController extends Controller
                 ->orWhere('name', 'like', "%{$search}%");
         }
 
-        $status = $request->get('status', 'active');
-        if ($status) {
-            $query->where('status', $status);
-        }
 
         return $query->orderBy('code')->paginate($request->get('per_page', 20));
     }
@@ -37,10 +33,7 @@ class WarehouseLocationController extends Controller
             'room_id' => 'required|exists:warehouse_rooms,id',
             'code' => 'nullable|string|unique:warehouse_locations,code',
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
             'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         $room = WarehouseRoom::findOrFail($validated['room_id']);
@@ -64,10 +57,7 @@ class WarehouseLocationController extends Controller
             'room_id' => 'required|exists:warehouse_rooms,id',
             'code' => 'nullable|string|unique:warehouse_locations,code,' . $location->id,
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
             'capacity_units' => 'nullable|numeric',
-            'status' => 'in:active,inactive',
         ]);
 
         $location->update($validated);

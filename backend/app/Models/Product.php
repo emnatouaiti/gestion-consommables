@@ -18,6 +18,25 @@ class Product extends Model
                 $count = static::count() + 1;
                 $product->reference = 'PRD-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
             }
+
+            if (empty($product->num_inventaire)) {
+                $invCount = static::count() + 1;
+                $product->num_inventaire = 'INV-' . str_pad($invCount, 4, '0', STR_PAD_LEFT);
+            }
+        });
+
+        static::saving(function ($product) {
+            $category = $product->category;
+            $categoryName = $category ? $category->title : '';
+            
+            $parts = array_filter([
+                $product->title,
+                $categoryName,
+                $product->marque,
+                $product->model
+            ]);
+            
+            $product->description = implode(', ', $parts);
         });
     }
 
@@ -27,7 +46,6 @@ class Product extends Model
         'short_description',
         'description',
         'commentaire',
-        'fabricant',
         'num_serie',
         'num_inventaire',
         'model',
@@ -38,12 +56,8 @@ class Product extends Model
         'categorie_id',
         'stock_quantity',
         'purchase_price',
-        'sale_price',
         'unit_id',
-        'unit',
-        'location',
         'photo',
-        'warehouse_location_id',
         'has_expiration',
     ];
 
@@ -61,10 +75,6 @@ class Product extends Model
         return $this->belongsToMany(Supplier::class , 'product_supplier');
     }
 
-    public function warehouseLocation(): BelongsTo
-    {
-        return $this->belongsTo(WarehouseLocation::class , 'warehouse_location_id');
-    }
 
     public function stocks(): HasMany
     {
@@ -90,16 +100,4 @@ class Product extends Model
     }
 
     // Easy access to warehouse through warehouseLocation
-    public function warehouse()
-    {
-        return $this->hasManyThrough(
-            Warehouse::class ,
-            WarehouseLocation::class ,
-            'id',
-            'id',
-            'warehouse_location_id',
-            'warehouse_room_id'
-        )->join('warehouse_rooms', 'warehouses.id', '=', 'warehouse_rooms.warehouse_id')
-            ->select('warehouses.*');
-    }
 }

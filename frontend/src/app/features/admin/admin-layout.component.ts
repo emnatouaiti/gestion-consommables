@@ -153,6 +153,7 @@ get userInitials(): string {
       items: [
         { label: 'Tableau de bord', route: '/admin/dashboard' },
         { label: 'Valider demandes', route: '/admin/validation-demandes', badge: 'Action' },
+        { label: 'Mes Demandes', route: '/admin/demandes-consommables', exact: true },
         { label: 'Prévisions (IA)', route: '/admin/previsions' },
         { label: 'Anomalies', route: '/admin/anomalies-critiques' }
       ]

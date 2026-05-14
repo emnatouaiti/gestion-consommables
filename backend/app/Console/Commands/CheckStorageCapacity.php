@@ -28,34 +28,6 @@ class CheckStorageCapacity extends Command
         $alerts = [];
         $threshold = 0.90; // 90%
 
-        // Check Warehouses
-        $warehouses = \App\Models\Warehouse::whereNotNull('capacity_units')->where('capacity_units', '>', 0)->get();
-        foreach ($warehouses as $wh) {
-            if ($wh->current_units >= ($wh->capacity_units * $threshold)) {
-                $alerts[] = [
-                    'type' => 'Dépôt',
-                    'name' => $wh->name,
-                    'current' => $wh->current_units,
-                    'capacity' => $wh->capacity_units,
-                    'percentage' => round(($wh->current_units / $wh->capacity_units) * 100, 1)
-                ];
-            }
-        }
-
-        // Check Rooms
-        $rooms = \App\Models\WarehouseRoom::with('warehouse')->whereNotNull('capacity_units')->where('capacity_units', '>', 0)->get();
-        foreach ($rooms as $room) {
-            if ($room->current_units >= ($room->capacity_units * $threshold)) {
-                $path = ($room->warehouse->name ?? 'Dépôt inconnu') . ' > ' . $room->name;
-                $alerts[] = [
-                    'type' => 'Salle',
-                    'name' => $path,
-                    'current' => $room->current_units,
-                    'capacity' => $room->capacity_units,
-                    'percentage' => round(($room->current_units / $room->capacity_units) * 100, 1)
-                ];
-            }
-        }
 
         // Check Cabinets
         $cabinets = \App\Models\WarehouseCabinet::with('room.warehouse')->whereNotNull('capacity_units')->where('capacity_units', '>', 0)->get();

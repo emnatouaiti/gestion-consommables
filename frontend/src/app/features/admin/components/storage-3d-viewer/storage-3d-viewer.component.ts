@@ -1495,7 +1495,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     }
 
     list.forEach((product, idx) => {
-      if (idx >= this.capacityUnits) return;
+      if (this.capacityUnits > 0 && idx >= this.capacityUnits) return;
       const shelf = Math.floor(idx / (cols * rows));
       if (shelf >= N) return;
       const pos = idx % (cols * rows);
@@ -1612,7 +1612,9 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       for (let i = 0; i < Math.min(q, 15); i++) list.push(p);
     }
     list.forEach((product, idx) => {
-      if (idx >= this.capacityUnits) return;
+      if (this.capacityUnits > 0 && idx >= this.capacityUnits) return;
+
+      const layer = Math.floor(idx / (cols * rows));
       const r = Math.floor(idx / cols);
       const c = idx % cols;
       if (r >= rows) return;

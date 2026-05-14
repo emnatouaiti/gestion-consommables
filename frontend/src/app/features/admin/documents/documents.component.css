@@ -349,8 +349,8 @@
 ══════════════════════════════════════════════════════════════ */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; animation: fadeIn .2s ease both; }
 
-.modal-panel { background: white; border-radius: var(--radius-lg); width: 90%; max-width: 520px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); animation: modalZoom .3s var(--ease-out) both; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
-.modal-panel.wide { max-width: 680px; }
+.modal-panel { background: white; border-radius: var(--radius-lg); width: 90%; max-width: 800px; /* enlarged from 520px */ max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); animation: modalZoom .3s var(--ease-out) both; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
+.modal-panel.wide { max-width: 800px; }
 .modal-panel::-webkit-scrollbar { width: 4px; }
 .modal-panel::-webkit-scrollbar-thumb { background: var(--etap-200); border-radius: 4px; }
 

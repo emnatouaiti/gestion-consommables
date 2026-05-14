@@ -12,10 +12,9 @@ export class AdminWarehouseService {
 
   /* ─── Warehouses ─── */
 
-  listWarehouses(search: string | null = null, perPage = 20, status = 'active'): Observable<any> {
+  listWarehouses(search: string | null = null, perPage = 20): Observable<any> {
     let params = new HttpParams()
-      .set('per_page', perPage.toString())
-      .set('status', status);
+      .set('per_page', perPage.toString());
 
     if (search) {
       params = params.set('q', search);
@@ -42,10 +41,9 @@ export class AdminWarehouseService {
 
   /* ─── Warehouse Rooms ─── */
 
-  listRooms(warehouseId: number | null = null, search: string | null = null, perPage = 20, status = 'active'): Observable<any> {
+  listRooms(warehouseId: number | null = null, search: string | null = null, perPage = 20): Observable<any> {
     let params = new HttpParams()
-      .set('per_page', perPage.toString())
-      .set('status', status);
+      .set('per_page', perPage.toString());
 
     if (warehouseId) {
       params = params.set('warehouse_id', warehouseId.toString());
@@ -76,10 +74,9 @@ export class AdminWarehouseService {
 
   /* ─── Warehouse Locations ─── */
 
-  listLocations(roomId: number | null = null, search: string | null = null, perPage = 20, status = 'active'): Observable<any> {
+  listLocations(roomId: number | null = null, search: string | null = null, perPage = 20): Observable<any> {
     let params = new HttpParams()
-      .set('per_page', perPage.toString())
-      .set('status', status);
+      .set('per_page', perPage.toString());
 
     if (roomId) {
       params = params.set('room_id', roomId.toString());
@@ -120,10 +117,9 @@ export class AdminWarehouseService {
 
   /* ─── Warehouse Cabinets (Armoires) ─── */
 
-  listCabinets(roomId: number | null = null, search: string | null = null, perPage = 20, status = 'active'): Observable<any> {
+  listCabinets(roomId: number | null = null, search: string | null = null, perPage = 20): Observable<any> {
     let params = new HttpParams()
-      .set('per_page', perPage.toString())
-      .set('status', status);
+      .set('per_page', perPage.toString());
 
     if (roomId) {
       params = params.set('room_id', roomId.toString());

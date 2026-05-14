@@ -24,10 +24,6 @@ class WarehouseRoomController extends Controller
             $query->where('name', 'like', "%{$search}%");
         }
 
-        $status = $request->get('status', 'active');
-        if ($status) {
-            $query->where('status', $status);
-        }
 
         return $query->orderBy('name')->paginate($request->get('per_page', 20));
     }
@@ -37,13 +33,8 @@ class WarehouseRoomController extends Controller
         $validated = $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
-            'capacity_volume' => 'nullable|numeric',
-            'capacity_units' => 'nullable|numeric',
             'max_locations' => 'nullable|integer|min:1',
             'max_cabinets' => 'nullable|integer|min:1',
-            'status' => 'in:active,inactive',
         ]);
 
         $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
@@ -66,13 +57,8 @@ class WarehouseRoomController extends Controller
         $validated = $request->validate([
             'warehouse_id' => 'required|exists:warehouses,id',
             'name' => 'required|string',
-            'description' => 'nullable|string',
-            'type' => 'nullable|string',
-            'capacity_volume' => 'nullable|numeric',
-            'capacity_units' => 'nullable|numeric',
             'max_locations' => 'nullable|integer|min:1',
             'max_cabinets' => 'nullable|integer|min:1',
-            'status' => 'in:active,inactive',
         ]);
 
         $room->update($validated);
@@ -159,8 +145,8 @@ class WarehouseRoomController extends Controller
         }
 
         return response()->json([
-            'room' => $room->only('id', 'name', 'type'),
-            'warehouse' => $room->warehouse ? $room->warehouse->only('id', 'name', 'city') : null,
+            'room' => $room->only('id', 'name'),
+            'warehouse' => $room->warehouse ? $room->warehouse->only('id', 'name') : null,
             'products' => $merged->values(),
         ]);
     }

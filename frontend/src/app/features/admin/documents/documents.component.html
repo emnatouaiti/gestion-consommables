@@ -64,45 +64,6 @@
       </div>
     </div>
 
-    <div class="stat-card clickable" (click)="filterByStatus('error')" [class.active-filter]="statusFilter === 'error'">
-      <div class="stat-icon error">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="8" x2="12" y2="12"/>
-          <line x1="12" y1="16" x2="12.01" y2="16"/>
-        </svg>
-      </div>
-      <div class="stat-body">
-        <span class="stat-value error">{{ countByStatus('error') }}</span>
-        <span class="stat-label">Erreurs</span>
-      </div>
-    </div>
-
-    <div class="stat-card clickable" (click)="filterByDirection('in')" [class.active-filter]="directionFilter === 'in'">
-      <div class="stat-icon in">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="19" x2="12" y2="5"/>
-          <polyline points="5 12 12 19 19 12"/>
-        </svg>
-      </div>
-      <div class="stat-body">
-        <span class="stat-value in">{{ countByDirection('in') }}</span>
-        <span class="stat-label">Entrées</span>
-      </div>
-    </div>
-
-    <div class="stat-card clickable" (click)="filterByDirection('out')" [class.active-filter]="directionFilter === 'out'">
-      <div class="stat-icon out">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="5" x2="12" y2="19"/>
-          <polyline points="19 12 12 5 5 12"/>
-        </svg>
-      </div>
-      <div class="stat-body">
-        <span class="stat-value out">{{ countByDirection('out') }}</span>
-        <span class="stat-label">Sorties</span>
-      </div>
-    </div>
   </div>
 
   <!-- ══════════════════════════════════════════════════════════
@@ -139,7 +100,7 @@
         <div class="location-grid">
           <div class="field">
             <label>Dépôt</label>
-            <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)">
+            <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)" [disabled]="currentUserDepotId !== null">
               <option [ngValue]="null">Sélectionner un dépôt</option>
               <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
             </select>

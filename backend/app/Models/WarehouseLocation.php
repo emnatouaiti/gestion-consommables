@@ -24,11 +24,8 @@ class WarehouseLocation extends Model
         'room_id',
         'code',
         'name',
-        'description',
-        'type',
         'capacity_units',
         'current_units',
-        'status',
     ];
 
     public function room(): BelongsTo
@@ -36,8 +33,4 @@ class WarehouseLocation extends Model
         return $this->belongsTo(WarehouseRoom::class, 'room_id');
     }
 
-    public function products()
-    {
-        return $this->hasMany(Product::class, 'warehouse_location_id');
-    }
 }

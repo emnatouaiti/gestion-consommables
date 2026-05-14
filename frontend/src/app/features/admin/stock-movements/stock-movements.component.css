@@ -600,8 +600,8 @@ td {
   max-height: 92vh;
 }
 
-.creation-modal    { width: min(760px, 96vw); }
-.details-view      { width: min(640px, 96vw); }
+.creation-modal    { width: min(800px, 96vw); }
+.details-view      { width: min(800px, 96vw); }
 .decision-modal    { width: min(480px, 96vw); }
 .confirmation-modal { width: min(460px, 96vw); }
 

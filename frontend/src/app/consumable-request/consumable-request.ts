@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core';
+import { ChangeDetectorRef, Component, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core'; // Refresh
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -39,6 +39,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   canCreateRequest = true;
   canEditDeleteOwnRequests = false;
   isResponsable = false;
+  isDirector = false;
 
   // Filters
   statusFilter = 'all';
@@ -193,6 +194,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     if (this.startDateFilter) params.start_date = this.startDateFilter;
     if (this.endDateFilter) params.end_date = this.endDateFilter;
 
+    if (this.viewMode === 'request') params.own = 1;
     this.consumableRequestService.getRequests(params).subscribe({
       next: (data) => {
         this.requests = Array.isArray(data) ? data : [];
@@ -557,6 +559,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     request$.subscribe({
       next: () => {
         this.message = 'Demande traitee avec succes.';
+        this.cdr.detectChanges();
         this.closeRequestModal();
         this.currentBatchCode = null;
         this.loading = false;
@@ -1262,15 +1265,15 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   }
 
   private resolveAccessRights(user: any): void {
-    const isDirector = this.isDirectorUser(user);
+    this.isDirector = this.isDirectorUser(user);
     this.isResponsable = this.authService.userHasAnyRole(user, [
       'Responsable de stock', 'Responsable', 'Agent de stock', 'Agent', 'Administrateur'
     ]);
 
-    this.canApprove = (this.viewMode === 'validation') || isDirector || this.isResponsable;
+    this.canApprove = (this.viewMode === 'validation') || this.isDirector || this.isResponsable;
 
     if (this.isResponsable) {
-      this.canCreateRequest = this.viewMode === 'request' && !isDirector;
+      this.canCreateRequest = this.viewMode === 'request' && !this.isDirector;
       this.canEditDeleteOwnRequests = this.viewMode === 'request';
     } else {
       this.canCreateRequest = this.viewMode === 'request';

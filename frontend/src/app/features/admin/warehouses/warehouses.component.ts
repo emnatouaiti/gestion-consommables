@@ -51,53 +51,13 @@ export class WarehousesComponent implements OnInit {
 
   warehouseForm = {
     name: '',
-    kind: 'depot',
-    description: '',
     address: '',
-    city: '',
-    governorate: '',
     latitude: null as number | null,
     longitude: null as number | null,
     phone: '',
-    status: 'active',
     max_rooms: null as number | null,
-    capacity_units: null as number | null,
   };
 
-  governorates = [
-    'Tunis', 'Ariana', 'Ben Arous', 'Manouba', 'Nabeul', 'Zaghouan', 'Bizerte', 'Béja',
-    'Jendouba', 'Le Kef', 'Siliana', 'Kairouan', 'Kasserine', 'Sidi Bouzid', 'Sousse',
-    'Monastir', 'Mahdia', 'Sfax', 'Gafsa', 'Tozeur', 'Kebili', 'Gabès', 'Medenine', 'Tataouine'
-  ];
-
-  citiesMap: { [key: string]: string[] } = {
-    'Tunis': ['Tunis', 'La Marsa', 'Carthage', 'La Goulette', 'Le Kram', 'Sidi Bou Said'],
-    'Ariana': ['Ariana', 'Raoued', 'Kalaat el-Andalous', 'Soukra', 'Ettadhamen', 'Mnihla'],
-    'Ben Arous': ['Ben Arous', 'Boumhel', 'El Mourouj', 'Ezzahra', 'Hammam Lif', 'Megrine', 'Radès'],
-    'Manouba': ['Manouba', 'Den Den', 'Douar Hicher', 'Mornaguia', 'Oued Ellil'],
-    'Nabeul': ['Nabeul', 'Hammamet', 'Korba', 'Menzel Temime', 'Grombalia', 'Kelibia'],
-    'Zaghouan': ['Zaghouan', 'Bir Mcherga', 'El Fahs', 'Nadhour'],
-    'Bizerte': ['Bizerte', 'Menzel Bourguiba', 'Ras Jebel', 'Sejnane', 'Zarzouna'],
-    'Béja': ['Béja', 'Amdoun', 'Medjez el-Bab', 'Nefza', 'Teboursouk'],
-    'Jendouba': ['Jendouba', 'Ain Draham', 'Bou Salem', 'Tabarka'],
-    'Le Kef': ['Le Kef', 'Dahmani', 'Nebeur', 'Sakiet Sidi Youssef'],
-    'Siliana': ['Siliana', 'Bou Arada', 'Makthar', 'Gaafour'],
-    'Kairouan': ['Kairouan', 'Bou Hajla', 'Sbikha', 'Chebika'],
-    'Kasserine': ['Kasserine', 'Feriana', 'Sbeitla', 'Thala'],
-    'Sidi Bouzid': ['Sidi Bouzid', 'Jelma', 'Regueb', 'Menzel Bouzaiane'],
-    'Sousse': ['Sousse', 'Akouda', 'Hammam Sousse', 'Kalâa Kebira', 'Kalâa Seghira', 'Msaken'],
-    'Monastir': ['Monastir', 'Jemmel', 'Ksar Hellal', 'Moknine', 'Sahline'],
-    'Mahdia': ['Mahdia', 'Chebba', 'El Jem', 'Ksour Essef'],
-    'Sfax': ['Sfax', 'Agareb', 'Kerkennah', 'Mahres', 'Sakiet Ezzit'],
-    'Gafsa': ['Gafsa', 'El Ksar', 'Metlaoui', 'Redeyef'],
-    'Tozeur': ['Tozeur', 'Degache', 'Nefta', 'Tamaghza'],
-    'Kebili': ['Kebili', 'Douz', 'Souk Lahad'],
-    'Gabès': ['Gabès', 'El Hamma', 'Mareth', 'Matmata'],
-    'Medenine': ['Medenine', 'Houmt Souk', 'Midoun', 'Zarzis', 'Ben Guerdane'],
-    'Tataouine': ['Tataouine', 'Ghomrassen', 'Remada']
-  };
-
-  filteredCities: string[] = [];
   map: any;
   consultMap: any;
   marker: any;
@@ -106,29 +66,19 @@ export class WarehousesComponent implements OnInit {
 
   roomForm = {
     name: '',
-    description: '',
-    type: '',
-    capacity_volume: '',
-    capacity_units: null as number | null,
     max_locations: null as number | null,
-    max_cabinets: null as number | null,
-    status: 'active'
+    max_cabinets: null as number | null
   };
   locationForm = {
     code: '',
     name: '',
-    description: '',
-    type: '',
-    capacity_units: '',
-    status: 'active'
+    capacity_units: ''
   };
 
   cabinetForm = {
     code: '',
     name: '',
-    description: '',
-    capacity_units: null as number | null,
-    status: 'active'
+    capacity_units: null as number | null
   };
 
 
@@ -186,79 +136,52 @@ export class WarehousesComponent implements OnInit {
     this.editingWarehouseId = warehouse.id;
     this.warehouseForm = {
       name: warehouse.name || '',
-      kind: warehouse.kind || 'depot',
-      description: warehouse.description || '',
       address: warehouse.address || '',
-      city: warehouse.city || '',
-      governorate: warehouse.governorate || '',
       latitude: warehouse.latitude ? Number(warehouse.latitude) : null,
       longitude: warehouse.longitude ? Number(warehouse.longitude) : null,
       phone: warehouse.phone || '',
-      status: warehouse.status || 'active',
       max_rooms: warehouse.max_rooms || null,
-      capacity_units: warehouse.capacity_units || null,
     };
-    this.updateCities();
     this.showWarehouseModal = true;
     setTimeout(() => this.initMap(), 300);
   }
 
-  updateCities(): void {
-    const gov = this.warehouseForm.governorate;
-    this.filteredCities = gov ? (this.citiesMap[gov] || []) : [];
-    if (this.filteredCities.length > 0 && !this.filteredCities.includes(this.warehouseForm.city)) {
-      // Don't reset if it's already a valid city (for editing)
-      // but if we changed governorate, we might want to reset?
-      // Let's keep existing if valid, else empty
-    }
+  geocodeAddress(): void {
+    if (!this.warehouseForm.address) return;
+
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(this.warehouseForm.address)}`;
+
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data && data.length > 0) {
+          const lat = parseFloat(data[0].lat);
+          const lon = parseFloat(data[0].lon);
+          
+          this.warehouseForm.latitude = lat;
+          this.warehouseForm.longitude = lon;
+
+          if (this.map) {
+            this.map.setView([lat, lon], 15);
+            if (this.marker) {
+              this.marker.setLatLng([lat, lon]);
+            }
+          }
+          this.cdr.detectChanges();
+        } else {
+          console.warn('Adresse non trouvée sur la carte');
+        }
+      })
+      .catch(err => console.error('Erreur de géocodage:', err));
   }
 
-  onGovernorateChange(): void {
-    this.updateCities();
-    this.warehouseForm.city = ''; // Reset city when gov changes
-
-    // Center map on governorate (approximate coordinates)
-    const coordinatesMap: { [key: string]: [number, number] } = {
-      'Tunis': [36.8065, 10.1815],
-      'Ariana': [36.8625, 10.1956],
-      'Ben Arous': [36.7531, 10.2222],
-      'Manouba': [36.8078, 10.0864],
-      'Nabeul': [36.4561, 10.7335],
-      'Zaghouan': [36.4029, 10.1429],
-      'Bizerte': [37.2744, 9.8739],
-      'Béja': [36.7256, 9.1817],
-      'Jendouba': [36.5011, 8.7802],
-      'Le Kef': [36.1822, 8.7147],
-      'Siliana': [36.0847, 9.3708],
-      'Kairouan': [35.6781, 10.0963],
-      'Kasserine': [35.1675, 8.8317],
-      'Sidi Bouzid': [35.0382, 9.4849],
-      'Sousse': [35.8256, 10.6369],
-      'Monastir': [35.7833, 10.8333],
-      'Mahdia': [35.5047, 11.0622],
-      'Sfax': [34.7406, 10.7603],
-      'Gafsa': [34.4250, 8.7842],
-      'Tozeur': [33.9197, 8.1335],
-      'Kebili': [33.7043, 8.9690],
-      'Gabès': [33.8814, 10.0983],
-      'Medenine': [33.3549, 10.5055],
-      'Tataouine': [32.9297, 10.4518]
-    };
-
-    if (this.map && this.warehouseForm.governorate) {
-      const coords = coordinatesMap[this.warehouseForm.governorate];
-      if (coords) {
-        this.map.setView(coords, 10);
-        this.marker.setLatLng(coords);
-        this.warehouseForm.latitude = coords[0];
-        this.warehouseForm.longitude = coords[1];
-      }
-    }
-  }
-
-  initMap(lat = 36.8065, lng = 10.1815): void {
+  initMap(lat = 36.8065, lng = 10.1815, retryCount = 0): void {
     if (typeof L === 'undefined') {
-      console.error('Leaflet not loaded');
+      if (retryCount < 10) {
+        setTimeout(() => this.initMap(lat, lng, retryCount + 1), 200);
+      } else {
+        console.error('Leaflet not loaded after multiple retries');
+      }
       return;
     }
 
@@ -266,7 +189,6 @@ export class WarehousesComponent implements OnInit {
       this.map.remove();
     }
 
-    // Fix for default marker icons in Angular
     const iconRetinaUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png';
     const iconUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png';
     const shadowUrl = 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png';
@@ -307,7 +229,6 @@ export class WarehousesComponent implements OnInit {
         this.cdr.detectChanges();
       });
 
-      // Crucial: invalidateSize after initialization in a modal
       setTimeout(() => {
         if (this.map) this.map.invalidateSize();
       }, 200);
@@ -320,11 +241,7 @@ export class WarehousesComponent implements OnInit {
   openConsultMap(warehouse: any): void {
     this.viewingMapWarehouse = warehouse;
     this.showMapConsult = true;
-
-    // Force Change Detection to ensure the modal and its #consultMap are in the DOM
     this.cdr.detectChanges();
-
-    // Small delay to let browser finish rendering the new DOM element
     setTimeout(() => {
       this.retryInitConsultMap(warehouse, 0);
     }, 100);
@@ -333,10 +250,8 @@ export class WarehousesComponent implements OnInit {
   private retryInitConsultMap(warehouse: any, count: number): void {
     const container = document.getElementById('consultMap');
     if (!container) {
-      if (count < 10) { // Try for up to ~1 second
+      if (count < 10) {
         setTimeout(() => this.retryInitConsultMap(warehouse, count + 1), 100);
-      } else {
-        console.error('Map container #consultMap still not found after multiple retries.');
       }
       return;
     }
@@ -344,6 +259,10 @@ export class WarehousesComponent implements OnInit {
   }
 
   private initializeConsultMap(warehouse: any): void {
+    if (typeof L === 'undefined') {
+      console.error('Leaflet not loaded for consult map');
+      return;
+    }
     try {
       if (this.consultMap) {
         this.consultMap.remove();
@@ -360,7 +279,7 @@ export class WarehousesComponent implements OnInit {
 
       if (warehouse.latitude && warehouse.longitude) {
         L.marker([lat, lng]).addTo(this.consultMap)
-          .bindPopup(`<b>${warehouse.name}</b><br>${warehouse.governorate}, ${warehouse.city}`).openPopup();
+          .bindPopup(`<b>${warehouse.name}</b><br>${warehouse.address}`).openPopup();
       }
 
       setTimeout(() => {
@@ -433,17 +352,11 @@ export class WarehousesComponent implements OnInit {
   resetWarehouseForm(): void {
     this.warehouseForm = {
       name: '',
-      kind: 'depot',
-      description: '',
       address: '',
-      city: '',
-      governorate: '',
       latitude: null,
       longitude: null,
       phone: '',
-      status: 'active',
       max_rooms: null,
-      capacity_units: null,
     };
   }
 
@@ -491,13 +404,8 @@ export class WarehousesComponent implements OnInit {
     this.editingRoomId = room.id;
     this.roomForm = {
       name: room.name || '',
-      description: room.description || '',
-      type: room.type || '',
-      capacity_volume: room.capacity_volume || '',
-      capacity_units: room.capacity_units || null,
       max_locations: room.max_locations || null,
-      max_cabinets: room.max_cabinets || null,
-      status: room.status || 'active'
+      max_cabinets: room.max_cabinets || null
     };
     this.showRoomModal = true;
   }
@@ -564,13 +472,8 @@ export class WarehousesComponent implements OnInit {
   resetRoomForm(): void {
     this.roomForm = {
       name: '',
-      description: '',
-      type: '',
-      capacity_volume: '',
-      capacity_units: null,
       max_locations: null,
-      max_cabinets: null,
-      status: 'active'
+      max_cabinets: null
     };
   }
 
@@ -606,10 +509,7 @@ export class WarehousesComponent implements OnInit {
     this.locationForm = {
       code: location.code || '',
       name: location.name || '',
-      description: location.description || '',
-      type: location.type || '',
-      capacity_units: location.capacity_units || '',
-      status: location.status || 'active'
+      capacity_units: location.capacity_units || ''
     };
     this.showLocationModal = true;
   }
@@ -675,10 +575,7 @@ export class WarehousesComponent implements OnInit {
     this.locationForm = {
       code: '',
       name: '',
-      description: '',
-      type: '',
-      capacity_units: '',
-      status: 'active'
+      capacity_units: ''
     };
   }
 
@@ -714,9 +611,7 @@ export class WarehousesComponent implements OnInit {
     this.cabinetForm = {
       code: cabinet.code || '',
       name: cabinet.name || '',
-      description: cabinet.description || '',
-      capacity_units: cabinet.capacity_units || null,
-      status: cabinet.status || 'active'
+      capacity_units: cabinet.capacity_units || null
     };
     this.showCabinetModal = true;
   }
@@ -782,9 +677,7 @@ export class WarehousesComponent implements OnInit {
     this.cabinetForm = {
       code: '',
       name: '',
-      description: '',
-      capacity_units: null,
-      status: 'active'
+      capacity_units: null
     };
   }
 

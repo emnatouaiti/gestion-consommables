@@ -102,24 +102,14 @@ export class AdminStockService {
     return this.api.get(`admin/warehouse-cabinets/${cabinetId}/products`);
   }
 
-  getManufacturers(): Observable<any> {
-    return this.api.get('admin/manufacturers');
+
+  getBrands(): Observable<any> {
+    return this.api.get('admin/brands');
   }
 
-  getBrands(fabricant?: string): Observable<any> {
-    let path = 'admin/brands';
-    if (fabricant) {
-      path += `?fabricant=${encodeURIComponent(fabricant)}`;
-    }
-    return this.api.get(path);
-  }
-
-  getModels(fabricant?: string, marque?: string): Observable<any> {
+  getModels(marque?: string): Observable<any> {
     let path = 'admin/models';
-    const q: string[] = [];
-    if (fabricant) q.push(`fabricant=${encodeURIComponent(fabricant)}`);
-    if (marque) q.push(`marque=${encodeURIComponent(marque)}`);
-    if (q.length) path += `?${q.join('&')}`;
+    if (marque) path += `?marque=${encodeURIComponent(marque)}`;
     return this.api.get(path);
   }
 
@@ -144,12 +134,14 @@ export class AdminStockService {
     return this.api.put(`admin/products/${id}/activate`, {});
   }
 
-  getProductHistory(productId: number, params?: { page?: number; per_page?: number }): Observable<any> {
+  getProductHistory(productId: number, params?: { page?: number; per_page?: number; date_start?: string; date_end?: string }): Observable<any> {
     let path = `admin/products/${productId}/history`;
     if (params) {
       const q: string[] = [];
       if (params.page) q.push(`page=${params.page}`);
       if (params.per_page) q.push(`per_page=${params.per_page}`);
+      if (params.date_start) q.push(`date_start=${params.date_start}`);
+      if (params.date_end) q.push(`date_end=${params.date_end}`);
       if (q.length) path += `?${q.join('&')}`;
     }
     return this.api.get(path);

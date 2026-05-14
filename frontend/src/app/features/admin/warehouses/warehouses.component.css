@@ -524,7 +524,7 @@
   background: var(--bg-white);
   border-radius: var(--radius-lg);
   width: 90%;
-  max-width: 560px;
+  max-width: 800px; /* enlarged from 560px */
   max-height: 88vh;
   overflow: hidden;
   box-shadow: 0 24px 64px rgba(0,0,0,.28);
@@ -682,6 +682,29 @@ select.form-control {
   cursor: pointer;
 }
 
+/* ── Recherche d'adresse ────────────────────────────────────────────────── */
+.address-search-group .search-input-wrapper {
+  display: flex;
+  gap: 8px;
+}
+.address-search-group .search-input-wrapper .form-control {
+  flex: 1;
+}
+.address-search-group .btn.secondary.small {
+  padding: 0 16px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  background: var(--etap-50);
+  border: 1.5px solid var(--etap-100);
+  color: var(--etap-600);
+  font-size: 12px;
+}
+.address-search-group .btn.secondary.small:hover {
+  background: var(--etap-500);
+  border-color: var(--etap-500);
+  color: white;
+}
+
 /* ── Geo inputs ────────────────────────────────────────────────────────── */
 .geo-inputs {
   display: flex;
@@ -736,7 +759,8 @@ select.form-control {
     grid-template-columns: 1fr;
   }
   .modal-box, .modal-container {
-    max-width: 96%;
+    max-width: 800px;
+    width: 96%;
     max-height: 92vh;
   }
   .warehouse-info {

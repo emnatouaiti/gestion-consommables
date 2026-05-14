@@ -331,7 +331,7 @@ tbody tr:hover { background: var(--e-25); }
 
 .modal-panel {
   background: white; border-radius: 20px;
-  width: 90%; max-width: 520px;
+  width: 90%; max-width: 800px; /* enlarged from 520px */
   box-shadow: 0 24px 64px rgba(6,16,31,.28), 0 4px 16px rgba(6,16,31,.12);
   display: flex; flex-direction: column; overflow: hidden;
   max-height: 90vh;
@@ -369,7 +369,12 @@ tbody tr:hover { background: var(--e-25); }
   flex-shrink: 0;
 }
 
-/* ── Formulaire modal ─────────────────────────────────────── */
+.modal-panel form {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
 .field { display: flex; flex-direction: column; gap: 6px; }
 
 .field label {
@@ -388,7 +393,17 @@ tbody tr:hover { background: var(--e-25); }
   border-color: var(--e-300); background: white;
   box-shadow: 0 0 0 3px rgba(42,98,184,.1);
 }
-.field textarea { resize: vertical; }
+.field textarea {
+  resize: vertical;
+  min-height: 80px;
+  border: 1.5px solid var(--silver);
+  transition: all .2s var(--ease);
+}
+.field textarea:focus {
+  border-color: var(--e-300);
+  background: white;
+  box-shadow: 0 0 0 3px rgba(42,98,184,.1);
+}
 
 .form-row {
   display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
@@ -458,3 +473,5 @@ tbody tr:hover { background: var(--e-25); }
   .btn-cancel, .btn-save { width: 100%; justify-content: center; }
   .page-header { flex-direction: column; align-items: flex-start; }
 }
+
+.modal-footer .btn-save { width: 100%; justify-content: center; font-size: 14px; padding: 12px; }

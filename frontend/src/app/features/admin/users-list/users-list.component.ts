@@ -2,14 +2,17 @@ import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angu
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AdminUsersService } from '../services/admin-users.service';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-users-list',
   standalone: false,
   templateUrl: './users-list.component.html',
-  styleUrls: ['./users-list.component.css']
+  styleUrls: ['./users-list.component.css'],
+  providers: [AdminUsersService]
 })
 export class UsersListComponent implements OnInit {
+  // Liste des utilisateurs et gestion des rôles
   users: any[] = [];
   q: string = '';
   isLoading = false;
@@ -82,10 +85,11 @@ export class UsersListComponent implements OnInit {
   private readonly apiBase = '/api';
 
   constructor(
+    private usersService: AdminUsersService,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private usersService: AdminUsersService
+    private authService: AuthService
   ) {}
 
   ngOnInit(): void {
@@ -143,6 +147,18 @@ export class UsersListComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
+  get isDirecteurRestricted(): boolean {
+    const user = this.getCurrentUser();
+    const hasSiege = user?.siege && user.siege !== 'Non defini';
+    const roles = this.authService.getUserRoles(user);
+    const isRestrictedRole = roles.includes('directeur') || roles.includes('administrateur');
+    return isRestrictedRole && !!hasSiege;
+  }
+
+  get currentUserSiege(): string {
+    return this.getCurrentUser()?.siege || '';
+  }
+
   updateFieldVisibility(): void {
     // Pour Responsable et Agent, on masque service, poste, siege et on affiche depot
     // La logique d'affichage est gérée dans le template avec *ngIf
@@ -191,7 +207,15 @@ export class UsersListComponent implements OnInit {
   openAddModal(): void {
     this.resetForm();
     this.editingId = null;
+    
+    // Default to current user's siege
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.siege) {
+      this.form.siege = currentUser.siege;
+    }
+    
     this.showModal = true;
+    this.cdr.detectChanges(); // Force update to show pre-selected siege
   }
 
   openEditModal(user: any): void {
@@ -264,14 +288,17 @@ export class UsersListComponent implements OnInit {
     const userSiege = currentUser?.siege || '';
 
     return this.users.filter((u) => {
-      // Pour les Administrateurs : ne montrer que les users de son siège
-      // Et exclure les autres admins (car un siège n'a qu'un seul admin)
-      if (userRole === 'Administrateur') {
-        if (u.siege !== userSiege) {
+      // Pour les Administrateurs et Directeurs : ne montrer que les users de son siège
+      if (this.isDirecteurRestricted) {
+        const userSiege = this.currentUserSiege;
+        const isStorageRole = u.role === 'Responsable' || u.role === 'Agent';
+        
+        if (!isStorageRole && u.siege !== userSiege) {
           return false;
         }
-        // Exclure les autres admins
-        if (u.role === 'Administrateur' && u.id !== currentUser?.id) {
+        
+        // Exclure les autres de même niveau (un siège n'a qu'un seul responsable de ce type)
+        if (!isStorageRole && (u.role === 'Administrateur' || u.role === 'Directeur') && u.id !== currentUser?.id) {
           return false;
         }
       }
@@ -293,13 +320,7 @@ export class UsersListComponent implements OnInit {
   }
 
   private getCurrentUser(): any {
-    if (!isPlatformBrowser(this.platformId)) return null;
-    try {
-      const userJson = localStorage.getItem('current_user');
-      return userJson ? JSON.parse(userJson) : null;
-    } catch {
-      return null;
-    }
+    return this.authService.getCurrentUserSnapshot();
   }
 
   // Pagination

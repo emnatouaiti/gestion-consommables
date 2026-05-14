@@ -52,11 +52,31 @@ export class DocumentsComponent implements OnInit {
     private readonly cdr: ChangeDetectorRef
   ) {}
 
+  currentUserDepotId: number | null = null;
+
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
     this.load();
     this.loadWarehouses();
     this.loadProductsList();
+    this.loadCurrentUser();
+  }
+
+  loadCurrentUser(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    this.http.get('/api/user').subscribe({
+      next: (user: any) => {
+        this.currentUserDepotId = user?.depot_id || null;
+        // Auto-select the user's depot if available
+        if (this.currentUserDepotId) {
+          this.warehouse_id = this.currentUserDepotId;
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        // User not authenticated or error loading
+      }
+    });
   }
 
   loadProductsList(): void {
@@ -265,6 +285,12 @@ export class DocumentsComponent implements OnInit {
   }
 
   private executeApply(doc: any, items: any[], autoCreateProduct: boolean): void {
+    // Fermer les modaux immédiatement pour une meilleure UX
+    this.showEditLines = null;
+    this.locationConfirmation = null;
+    this.productConfirmation = null;
+    this.cdr.detectChanges();
+
     this.isLoading = true;
     this.http.post(`/api/admin/documents/${doc.id}/apply`, { items, auto_create_product: autoCreateProduct }).subscribe({
       next: (res: any) => {
@@ -274,9 +300,6 @@ export class DocumentsComponent implements OnInit {
           this.message += ' Vous pouvez suivre l\'état de vos mouvements dans l\'onglet "Mouvements".';
         }
         this.error = '';
-        this.showEditLines = null;
-        this.locationConfirmation = null;
-        this.productConfirmation = null;
         setTimeout(() => this.load(), 500);
         this.isLoading = false;
         this.cdr.detectChanges();
@@ -316,6 +339,8 @@ export class DocumentsComponent implements OnInit {
       autoCreateProduct,
       items: items.map((item: any) => ({
         ...item,
+        // Auto-select user's depot if not already set
+        warehouse_id: item.warehouse_id || this.currentUserDepotId,
         storage_target: item.warehouse_location_id ? 'location' : (item.cabinet_id ? 'cabinet' : 'location'),
         rooms: [],
         locations: [],
@@ -359,6 +384,10 @@ export class DocumentsComponent implements OnInit {
     this.warehouseService.listRooms(Number(item.warehouse_id), null, 200).subscribe({
       next: (res: any) => {
         item.rooms = Array.isArray(res?.data) ? res.data : (Array.isArray(res) ? res : []);
+        if (item.rooms.length > 0 && !item.room_id) {
+          item.room_id = item.rooms[0].id;
+          this.onRoomSelected(item, true);
+        }
         this.cdr.detectChanges();
       },
       error: () => {
@@ -386,6 +415,15 @@ export class DocumentsComponent implements OnInit {
           ...loc,
           isFull: loc.capacity_units > 0 && loc.current_units >= loc.capacity_units
         }));
+
+        if (!item.warehouse_location_id && !item.cabinet_id && item.locations.length > 0) {
+          const availableLoc = item.locations.find((l: any) => !l.isFull && (!l.capacity_units || l.current_units + (item.quantity || 0) <= l.capacity_units));
+          if (availableLoc) {
+            item.warehouse_location_id = availableLoc.id;
+            item.storage_target = 'location';
+          }
+        }
+
         this.cdr.detectChanges();
       },
       error: () => {
@@ -635,7 +673,7 @@ export class DocumentsComponent implements OnInit {
     const path = doc?.path;
     if (!path) return;
     const cleanPath = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
-    const url = `/api/docs/${cleanPath}`;
+    const url = `http://localhost:8000/api/docs/${cleanPath}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = doc?.title || 'document';

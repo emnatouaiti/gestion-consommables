@@ -63,6 +63,17 @@ class UserManagementController extends Controller
         });
     }
 
+    // 🔒 Restriction Directeur & Administrateur : ne voir que son siège + tous les Responsables/Agents
+    $currentUser = auth()->user();
+    if ($currentUser && ($currentUser->hasRole('Directeur') || $currentUser->hasRole('Administrateur'))) {
+        if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
+            $query->where(function($sub) use ($currentUser) {
+                $sub->where('siege', $currentUser->siege)
+                    ->orWhereIn('role', ['Responsable', 'Agent']);
+            });
+        }
+    }
+
     return response()->json($query->paginate($perPage));
 }
 
@@ -112,7 +123,19 @@ class UserManagementController extends Controller
         } else {
             $userData['service'] = $request->input('service', 'Non defini');
             $userData['poste'] = $request->input('poste', 'Non defini');
-            $userData['siege'] = $request->input('siege', 'Non defini');
+            
+            // 🔒 Restriction Directeur & Administrateur : forcer son siège
+            $currentUser = auth()->user();
+            if ($currentUser && ($currentUser->hasRole('Directeur') || $currentUser->hasRole('Administrateur'))) {
+                if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
+                    $userData['siege'] = $currentUser->siege;
+                } else {
+                    $userData['siege'] = $request->input('siege', 'Non defini');
+                }
+            } else {
+                $userData['siege'] = $request->input('siege', 'Non defini');
+            }
+            
             $userData['depot_id'] = null;
         }
 

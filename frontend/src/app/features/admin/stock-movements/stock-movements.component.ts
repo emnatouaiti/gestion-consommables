@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { StockMovementService } from '../../../services/stock-movement.service';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
 import { SupplierService } from '../../../core/services/supplier.service';
+import { AdminUsersService } from '../services/admin-users.service';
 import { AdminStockService } from '../services/admin-stock.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
@@ -38,14 +39,21 @@ export class StockMovementsComponent implements OnInit {
   suppliers: any[] = [];
   supplierContacts: any[] = [];
   warehouses: any[] = [];
+  allUsers: any[] = [];
+  filteredUsers: any[] = [];
+  siegeOptions: string[] = ['Charguia_II_Ariana', 'Mohamed_V_Tunis', 'Kheireddine_Pacha_Tunis'];
 
   /* ─── Source (cascading) ─── */
   sourceRooms: any[] = [];
   sourceLocations: any[] = [];
+  sourceCabinets: any[] = [];
+  mergedSourceOptions: any[] = [];
 
   /* ─── Destination (cascading) ─── */
   destRooms: any[] = [];
   destLocations: any[] = [];
+  destCabinets: any[] = [];
+  mergedDestOptions: any[] = [];
 
   /* ─── Motif options per type ─── */
   readonly motifsIn       = MOTIFS_IN;
@@ -76,6 +84,8 @@ export class StockMovementsComponent implements OnInit {
       reference: '',
       motif: '',
       destination_text: '',
+      destination_siege: '',
+      destination_user_id: null,
       notes: '',
       date: this.today,
       // Entrée fields
@@ -85,10 +95,12 @@ export class StockMovementsComponent implements OnInit {
       source_warehouse_id: null,
       source_room_id: null,
       source_warehouse_location_id: null,
+      source_cabinet_id: null,
       // Destination location (Entrée / Transfert)
       destination_warehouse_id: null,
       destination_room_id: null,
       destination_warehouse_location_id: null,
+      destination_cabinet_id: null,
       // Document
       document: null as File | null,
       // Lines
@@ -100,6 +112,7 @@ export class StockMovementsComponent implements OnInit {
     private svc: StockMovementService,
     private warehouseService: AdminWarehouseService,
     private supplierService: SupplierService,
+    private usersService: AdminUsersService,
     private stockService: AdminStockService,
     public auth: AuthService,
     private route: ActivatedRoute,
@@ -110,6 +123,10 @@ export class StockMovementsComponent implements OnInit {
   get isResponsible(): boolean {
     const user = this.auth.currentUser();
     return this.auth.userHasAnyRole(user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+  }
+
+  get isDepotLocked(): boolean {
+    return !!this.auth.currentUser()?.depot_id;
   }
 
   ngOnInit(): void {
@@ -123,6 +140,7 @@ export class StockMovementsComponent implements OnInit {
         this.openDetails({ id: params['id'] });
       }
       this.load();
+      this.loadUsers();
     });
 
     this.route.data.subscribe(data => {
@@ -156,6 +174,31 @@ export class StockMovementsComponent implements OnInit {
     });
   }
 
+  loadUsers(): void {
+    this.usersService.listAll().subscribe({
+      next: (res: any) => {
+        // Handle both direct array and paginated response
+        this.allUsers = Array.isArray(res) ? res : (res?.data ?? []);
+        console.log('Loaded users:', this.allUsers.length);
+        this.onSiegeChange();
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  onSiegeChange(): void {
+    const siege = (this.newMovement.destination_siege || '').trim();
+    if (siege) {
+      this.filteredUsers = this.allUsers.filter(u => 
+        (u.siege || '').trim().toLowerCase() === siege.toLowerCase()
+      );
+    } else {
+      this.filteredUsers = [...this.allUsers];
+    }
+    console.log('Filtered users for siege', siege, ':', this.filteredUsers.length);
+    this.cdr.detectChanges();
+  }
+
   applyFilters(): void { this.page = 1; this.load(); }
   prevPage(): void { if (this.page > 1) { this.page--; this.load(); } }
   nextPage(): void { if (this.page < this.lastPage) { this.page++; this.load(); } }
@@ -173,23 +216,19 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private executeValidate(m: any): void {
-    this.confirmationInProgress = true;
     m.executing = true;
+    this.confirmationModal = null;
+    this.selectedMovement = null;
     this.cdr.detectChanges();
 
     this.svc.validate(m.id).subscribe({
       next: () => {
         this.message = 'Stock mis à jour avec succès.';
-        this.selectedMovement = null;
         m.executing = false;
-        this.confirmationInProgress = false;
-        this.confirmationModal = null;
         this.load();
-        this.cdr.detectChanges();
       },
       error: (err) => {
         m.executing = false;
-        this.confirmationInProgress = false;
         alert(err?.error?.message || 'Erreur lors de l\'exécution.');
         this.cdr.detectChanges();
       }
@@ -221,22 +260,27 @@ export class StockMovementsComponent implements OnInit {
       return;
     }
 
-    this.submittingDecision = true;
+    const m = this.approvingMovement;
+    m.executing = true;
+
+    // Close modals immediately for better UX
+    this.approvingMovement = null;
+    this.selectedMovement = null;
+    this.cdr.detectChanges();
+
     const obs = this.rejectionMode
-      ? this.svc.reject(this.approvingMovement.id, this.responseNotes)
-      : this.svc.approve(this.approvingMovement.id, this.responseNotes);
+      ? this.svc.reject(m.id, this.responseNotes)
+      : this.svc.approve(m.id, this.responseNotes);
 
     obs.subscribe({
       next: () => {
         this.message = this.rejectionMode ? 'Mouvement rejeté.' : 'Mouvement approuvé et exécuté.';
-        this.approvingMovement = null;
-        this.submittingDecision = false;
+        m.executing = false;
         this.load();
-        this.cdr.detectChanges();
       },
       error: (err) => {
+        m.executing = false;
         alert(err?.error?.message || 'Erreur lors du traitement.');
-        this.submittingDecision = false;
         this.cdr.detectChanges();
       }
     });
@@ -277,20 +321,21 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private executeCancel(m: any): void {
-    this.confirmationInProgress = true;
+    const reason = this.confirmationModal?.reason || undefined;
+
+    m.executing = true;
+    this.confirmationModal = null;
+    this.selectedMovement = null;
     this.cdr.detectChanges();
 
-    const reason = this.confirmationModal?.reason || undefined;
     this.svc.cancel(m.id, reason).subscribe({
       next: () => {
         this.message = 'Mouvement annulé.';
-        this.confirmationInProgress = false;
-        this.confirmationModal = null;
+        m.executing = false;
         this.load();
-        this.cdr.detectChanges();
       },
       error: () => {
-        this.confirmationInProgress = false;
+        m.executing = false;
         alert('Erreur lors de l\'annulation.');
         this.cdr.detectChanges();
       }
@@ -317,13 +362,40 @@ export class StockMovementsComponent implements OnInit {
     this.today = new Date().toISOString().slice(0, 10);
     this.newMovement = this.emptyForm();
     // reset cascades
-    this.sourceRooms = []; this.sourceLocations = [];
-    this.destRooms   = []; this.destLocations   = [];
+    this.sourceRooms = []; this.sourceLocations = []; this.sourceCabinets = []; this.mergedSourceOptions = [];
+    this.destRooms   = []; this.destLocations   = []; this.destCabinets   = []; this.mergedDestOptions   = [];
     this.supplierContacts = [];
     // load reference data
     this.loadProducts();
     this.loadWarehouses();
     this.loadSuppliers();
+
+    // Auto-select depot
+    this.applyUserDepotSelection();
+  }
+
+  changeMovementType(type: string): void {
+    this.newMovement.movement_type = type;
+    this.applyUserDepotSelection();
+  }
+
+  private applyUserDepotSelection(): void {
+    const user = this.auth.currentUser();
+    if (!user?.depot_id) return;
+    
+    const depotId = user.depot_id;
+    const type = this.newMovement.movement_type;
+
+    if (type === 'in') {
+      this.newMovement.destination_warehouse_id = depotId;
+      this.onDestWarehouseChange();
+    } else if (type === 'out') {
+      this.newMovement.source_warehouse_id = depotId;
+      this.onSourceWarehouseChange();
+    } else if (type === 'transfer') {
+      this.newMovement.source_warehouse_id = depotId;
+      this.onSourceWarehouseChange();
+    }
   }
 
   closeCreate(): void { this.creating = false; this.cdr.detectChanges(); }
@@ -370,7 +442,8 @@ export class StockMovementsComponent implements OnInit {
   onSourceWarehouseChange(): void {
     this.newMovement.source_room_id = null;
     this.newMovement.source_warehouse_location_id = null;
-    this.sourceRooms = []; this.sourceLocations = [];
+    this.newMovement.source_cabinet_id = null;
+    this.sourceRooms = []; this.sourceLocations = []; this.sourceCabinets = []; this.mergedSourceOptions = [];
     const id = Number(this.newMovement.source_warehouse_id);
     if (!id) return;
     this.warehouseService.listRooms(id, null, 200, 'active').subscribe({
@@ -381,13 +454,54 @@ export class StockMovementsComponent implements OnInit {
 
   onSourceRoomChange(): void {
     this.newMovement.source_warehouse_location_id = null;
+    this.newMovement.source_cabinet_id = null;
     this.sourceLocations = [];
+    this.sourceCabinets = [];
+    this.mergedSourceOptions = [];
     const id = Number(this.newMovement.source_room_id);
     if (!id) return;
+
+    // Load Locations
     this.warehouseService.listLocations(id, null, 200, 'active').subscribe({
-      next: (r: any) => { this.sourceLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []); this.cdr.detectChanges(); },
-      error: () => this.sourceLocations = []
+      next: (r: any) => {
+        this.sourceLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        this.updateMergedSource();
+      }
     });
+
+    // Load Cabinets
+    this.warehouseService.listCabinets(id, null, 200, 'active').subscribe({
+      next: (r: any) => {
+        this.sourceCabinets = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        this.updateMergedSource();
+      }
+    });
+  }
+
+  private updateMergedSource(): void {
+    const locs = this.sourceLocations.map(l => ({ id: l.id, name: l.name, type: 'location', label: `📦 ${l.name}` }));
+    const cabs = this.sourceCabinets.map(c => ({ id: c.id, name: c.name, type: 'cabinet', label: `🗄️ ${c.name}` }));
+    
+    // Flattened for simple select, but we'll use optgroup in HTML by filtering
+    this.mergedSourceOptions = [...locs, ...cabs].sort((a, b) => a.name.localeCompare(b.name));
+    this.cdr.detectChanges();
+  }
+
+  onSourceSelectionChange(event: any): void {
+    const val = event.target.value;
+    if (!val) {
+      this.newMovement.source_warehouse_location_id = null;
+      this.newMovement.source_cabinet_id = null;
+      return;
+    }
+    const [type, id] = val.split(':');
+    if (type === 'location') {
+      this.newMovement.source_warehouse_location_id = Number(id);
+      this.newMovement.source_cabinet_id = null;
+    } else {
+      this.newMovement.source_cabinet_id = Number(id);
+      this.newMovement.source_warehouse_location_id = null;
+    }
   }
 
   /* ────────────────── CASCADING LOCATION: DESTINATION ────────────────── */
@@ -395,7 +509,8 @@ export class StockMovementsComponent implements OnInit {
   onDestWarehouseChange(): void {
     this.newMovement.destination_room_id = null;
     this.newMovement.destination_warehouse_location_id = null;
-    this.destRooms = []; this.destLocations = [];
+    this.newMovement.destination_cabinet_id = null;
+    this.destRooms = []; this.destLocations = []; this.destCabinets = []; this.mergedDestOptions = [];
     const id = Number(this.newMovement.destination_warehouse_id);
     if (!id) return;
     this.warehouseService.listRooms(id, null, 200, 'active').subscribe({
@@ -406,13 +521,53 @@ export class StockMovementsComponent implements OnInit {
 
   onDestRoomChange(): void {
     this.newMovement.destination_warehouse_location_id = null;
+    this.newMovement.destination_cabinet_id = null;
     this.destLocations = [];
+    this.destCabinets = [];
+    this.mergedDestOptions = [];
     const id = Number(this.newMovement.destination_room_id);
     if (!id) return;
+
+    // Load Locations
     this.warehouseService.listLocations(id, null, 200, 'active').subscribe({
-      next: (r: any) => { this.destLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []); this.cdr.detectChanges(); },
-      error: () => this.destLocations = []
+      next: (r: any) => {
+        this.destLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        this.updateMergedDest();
+      }
     });
+
+    // Load Cabinets
+    this.warehouseService.listCabinets(id, null, 200, 'active').subscribe({
+      next: (r: any) => {
+        this.destCabinets = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
+        this.updateMergedDest();
+      }
+    });
+  }
+
+  private updateMergedDest(): void {
+    const locs = this.destLocations.map(l => ({ id: l.id, name: l.name, type: 'location', label: `📦 ${l.name}` }));
+    const cabs = this.destCabinets.map(c => ({ id: c.id, name: c.name, type: 'cabinet', label: `🗄️ ${c.name}` }));
+    
+    this.mergedDestOptions = [...locs, ...cabs].sort((a, b) => a.name.localeCompare(b.name));
+    this.cdr.detectChanges();
+  }
+
+  onDestSelectionChange(event: any): void {
+    const val = event.target.value;
+    if (!val) {
+      this.newMovement.destination_warehouse_location_id = null;
+      this.newMovement.destination_cabinet_id = null;
+      return;
+    }
+    const [type, id] = val.split(':');
+    if (type === 'location') {
+      this.newMovement.destination_warehouse_location_id = Number(id);
+      this.newMovement.destination_cabinet_id = null;
+    } else {
+      this.newMovement.destination_cabinet_id = Number(id);
+      this.newMovement.destination_warehouse_location_id = null;
+    }
   }
 
   /* ────────────────── LINES ────────────────── */
@@ -457,17 +612,20 @@ export class StockMovementsComponent implements OnInit {
       this.loading = false;
       return;
     }
-    if ((type === 'out' || type === 'transfer') && !Number(this.newMovement.source_warehouse_location_id)) {
-      this.message = 'Sélectionnez l\'emplacement source (dépôt → salle → emplacement).';
+    if ((type === 'out' || type === 'transfer') && !Number(this.newMovement.source_warehouse_location_id) && !Number(this.newMovement.source_cabinet_id)) {
+      this.message = 'Sélectionnez l\'emplacement source (dépôt → salle → emplacement/armoire).';
       this.loading = false;
       return;
     }
-    if ((type === 'in' || type === 'transfer') && !Number(this.newMovement.destination_warehouse_location_id)) {
+    if ((type === 'in' || type === 'transfer') && !Number(this.newMovement.destination_warehouse_location_id) && !Number(this.newMovement.destination_cabinet_id)) {
       this.message = 'Sélectionnez l\'emplacement de destination.';
       this.loading = false;
       return;
     }
-    if (type === 'transfer' && Number(this.newMovement.source_warehouse_location_id) === Number(this.newMovement.destination_warehouse_location_id)) {
+    const sourceKey = this.newMovement.source_cabinet_id ? `cab:${this.newMovement.source_cabinet_id}` : `loc:${this.newMovement.source_warehouse_location_id}`;
+    const destKey = this.newMovement.destination_cabinet_id ? `cab:${this.newMovement.destination_cabinet_id}` : `loc:${this.newMovement.destination_warehouse_location_id}`;
+
+    if (type === 'transfer' && sourceKey === destKey) {
       this.message = 'La destination doit être différente de la source.';
       this.loading = false;
       return;
@@ -485,10 +643,21 @@ export class StockMovementsComponent implements OnInit {
       if (this.newMovement.supplier_contact_id) form.append('supplier_contact_id', String(this.newMovement.supplier_contact_id));
       if (this.newMovement.destination_warehouse_location_id)
         form.append('destination_warehouse_location_id', String(this.newMovement.destination_warehouse_location_id));
+      if (this.newMovement.destination_cabinet_id)
+        form.append('destination_cabinet_id', String(this.newMovement.destination_cabinet_id));
     }
     if (type === 'out' || type === 'transfer') {
       if (this.newMovement.source_warehouse_location_id)
         form.append('source_warehouse_location_id', String(this.newMovement.source_warehouse_location_id));
+      if (this.newMovement.source_cabinet_id)
+        form.append('source_cabinet_id', String(this.newMovement.source_cabinet_id));
+      
+      if (type === 'out') {
+        if (this.newMovement.destination_siege)
+          form.append('destination_siege', this.newMovement.destination_siege);
+        if (this.newMovement.destination_user_id)
+          form.append('destination_user_id', String(this.newMovement.destination_user_id));
+      }
     }
     if (type === 'out' && this.newMovement.destination_text) {
       // For sortie, destination is a free text field (external department or person)
@@ -569,7 +738,7 @@ export class StockMovementsComponent implements OnInit {
   getDocumentUrl(path: string): string {
     if (!path) return '#';
     const clean = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
-    return `/api/docs/${clean}`;
+    return `http://localhost:8000/api/docs/${clean}`;
   }
 
   getTotalQuantity(lines: any[]): number {

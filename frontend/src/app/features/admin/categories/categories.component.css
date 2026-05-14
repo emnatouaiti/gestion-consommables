@@ -541,7 +541,7 @@
   background: var(--bg-white);
   border-radius: var(--radius-lg);
   width: 90%;
-  max-width: 480px;
+  max-width: 800px; /* enlarged from 480px */
   box-shadow: 0 24px 64px rgba(0,0,0,.25);
   overflow: hidden;
   animation: modalZoom .3s var(--ease-out) both;
