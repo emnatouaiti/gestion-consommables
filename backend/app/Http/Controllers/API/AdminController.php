@@ -2,7 +2,6 @@
 namespace App\Http\Controllers\API;
 
 use App\Http\Controllers\Controller;
-use App\Models\AuditLog;
 use Illuminate\Http\Request;
 
 class AdminController extends Controller
@@ -18,10 +17,8 @@ class AdminController extends Controller
         $totalCategories = \App\Models\Category::count();
         $totalWarehouses = \App\Models\Warehouse::count();
 
-        // Estimated Stock Value
-        $totalStockValue = \App\Models\Product::join('product_stocks', 'products.id', '=', 'product_stocks.product_id')
-            ->select(\Illuminate\Support\Facades\DB::raw('SUM(product_stocks.quantity * products.purchase_price) as total_value'))
-            ->value('total_value') ?? 0;
+        // Estimated Stock Value calculation is disabled since purchase_price is removed
+        $totalStockValue = 0;
 
         // Stock alerts: Products where sum of quantities in all locations < product threshold
         $lowStockProducts = \App\Models\Product::withSum('stocks', 'quantity')
@@ -59,12 +56,13 @@ class AdminController extends Controller
             ];
         });
 
-        $roles = \App\Models\User::select('role', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
-            ->groupBy('role')
+        $roles = \App\Models\User::join('roles', 'users.role_id', '=', 'roles.id')
+            ->select('roles.name as role_name', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+            ->groupBy('roles.name')
             ->get()
             ->map(function ($r) use ($activeUsers) {
             return [
-            'name' => $r->role ?: 'Sans rôle',
+            'name' => $r->role_name ?: 'Sans rôle',
             'count' => $r->count,
             'percentage' => $activeUsers > 0 ? round(($r->count / $activeUsers) * 100) : 0
             ];

@@ -37,7 +37,7 @@ class CheckStockLevels extends Command
         }
 
         // Trouver les responsables (Robust search)
-        $responsables = User::whereHas('roles', function ($query) {
+        $responsables = User::whereHas('role', function ($query) {
             $query->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
                 'administrateur', 'responsable de stock', 'responsable', 'gestionnaire', 'validateur'
             ]);

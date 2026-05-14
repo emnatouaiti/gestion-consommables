@@ -44,11 +44,8 @@ class CapacityService
                 'percentage' => round($percentage * 100, 1)
             ];
 
-            $users = User::where(function($q) {
-                $q->where('role', 'admin')
-                  ->orWhere('role', 'responsable');
-            })->orWhereHas('roles', function($q) {
-                $q->whereIn('name', ['Administrateur', 'Responsable', 'Responsable de stock']);
+            $users = User::whereHas('role', function($q) {
+                $q->whereIn('name', ['Administrateur', 'Responsable', 'Responsable de stock', 'admin', 'responsable']);
             })->get();
 
             if ($users->count() > 0) {
@@ -60,8 +57,6 @@ class CapacityService
 
     private function getModelType($model): string
     {
-        if ($model instanceof Warehouse) return 'Dépôt';
-        if ($model instanceof WarehouseRoom) return 'Salle';
         if ($model instanceof WarehouseLocation) return 'Emplacement';
         if ($model instanceof WarehouseCabinet) return 'Armoire';
         return 'Espace de stockage';

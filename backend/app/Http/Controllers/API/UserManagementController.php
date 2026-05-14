@@ -10,33 +10,9 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
-use Spatie\Permission\Models\Role;
 
 class UserManagementController extends Controller
 {
-    private function normalizeRoleNames($rolesInput): array
-    {
-        if ($rolesInput === null || $rolesInput === '') {
-            return [];
-        }
-
-        $items = is_array($rolesInput) ? $rolesInput : [$rolesInput];
-
-        return collect($items)
-            ->map(function ($role) {
-                if (is_array($role) && isset($role['name'])) {
-                    return $role['name'];
-                }
-                if (is_object($role) && isset($role->name)) {
-                    return $role->name;
-                }
-                return is_string($role) ? trim($role) : null;
-            })
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-    }
 
     public function index(Request $request)
 {
@@ -44,7 +20,7 @@ class UserManagementController extends Controller
     $q = trim($request->get('q', ''));
     $status = $request->get('status', 'active');
 
-    $query = User::with('roles', 'depot');
+    $query = User::with('role', 'depot');
 
     // 🔥 filtrer explicitement les actifs
     if ($status === 'active') {
@@ -65,14 +41,12 @@ class UserManagementController extends Controller
 
     // 🔒 Restriction Directeur & Administrateur : ne voir que son siège + tous les Responsables/Agents
     $currentUser = auth()->user();
-    if ($currentUser && ($currentUser->hasRole('Directeur') || $currentUser->hasRole('Administrateur'))) {
-        if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
             $query->where(function($sub) use ($currentUser) {
                 $sub->where('siege', $currentUser->siege)
-                    ->orWhereIn('role', ['Responsable', 'Agent']);
+                    ->orWhereHas('role', function($q) {
+                        $q->whereIn('name', ['Responsable', 'Agent', 'Responsable de stock', 'Agent de stock']);
+                    });
             });
-        }
-    }
 
     return response()->json($query->paginate($perPage));
 }
@@ -94,26 +68,31 @@ class UserManagementController extends Controller
             return response()->json($validator->errors(), 422);
         }
 
-        $roleNames = $this->normalizeRoleNames($request->input('roles'));
-        if (empty($roleNames)) {
-            $roleNames = ['Utilisateur'];
-        }
-
-        $validRoleNames = Role::whereIn('name', $roleNames)->pluck('name')->toArray();
-        if (empty($validRoleNames)) {
-            $validRoleNames = ['Utilisateur'];
+        $rolesInput = $request->input('roles');
+        $roleName = 'Utilisateur';
+        
+        if ($rolesInput) {
+            if (is_array($rolesInput) && count($rolesInput) > 0) {
+                $roleName = is_array($rolesInput[0]) ? ($rolesInput[0]['name'] ?? 'Utilisateur') : $rolesInput[0];
+            } else if (is_string($rolesInput)) {
+                $roleName = $rolesInput;
+            }
         }
 
         $plain = bin2hex(random_bytes(4));
-        $primaryRole = strtolower($validRoleNames[0]);
-        $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent']);
+        $primaryRole = strtolower($roleName);
+        $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent', 'responsable de stock', 'agent de stock']);
 
         $userData = [
             'nomprenom' => $request->nomprenom,
             'email' => $request->email,
             'password' => Hash::make($plain),
-            'role' => $validRoleNames[0],
         ];
+
+        $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', [strtolower(trim($roleName))])->first();
+        if ($roleRecord) {
+            $userData['role_id'] = $roleRecord->id;
+        }
 
         if ($isResponsableOrAgent) {
             $userData['depot_id'] = $request->input('depot_id');
@@ -126,7 +105,7 @@ class UserManagementController extends Controller
             
             // 🔒 Restriction Directeur & Administrateur : forcer son siège
             $currentUser = auth()->user();
-            if ($currentUser && ($currentUser->hasRole('Directeur') || $currentUser->hasRole('Administrateur'))) {
+            if ($currentUser && (($currentUser->role?->name ?? '') === 'Directeur' || ($currentUser->role?->name ?? '') === 'Administrateur')) {
                 if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
                     $userData['siege'] = $currentUser->siege;
                 } else {
@@ -141,7 +120,6 @@ class UserManagementController extends Controller
 
         $user = User::create($userData);
 
-        $user->syncRoles($validRoleNames);
 
         try {
             Mail::to($user->email)->send(new NewUserCreated($user, $plain));
@@ -151,13 +129,13 @@ class UserManagementController extends Controller
 
         return response()->json([
             'message' => 'Utilisateur cree',
-            'user' => $user->load('roles', 'depot')
+            'user' => $user->load('depot')
         ]);
     }
 
     public function show($id)
     {
-        $user = User::with('roles', 'depot')->findOrFail($id);
+        $user = User::with('depot')->findOrFail($id);
         return response()->json($user);
     }
 
@@ -173,39 +151,24 @@ class UserManagementController extends Controller
 
         $user->update($data);
 
-        if ($request->has('roles')) {
-            $roleNames = $this->normalizeRoleNames($request->input('roles'));
-            if (empty($roleNames)) {
-                $roleNames = ['Utilisateur'];
+            $roleName = 'Utilisateur';
+            if (is_array($request->roles) && count($request->roles) > 0) {
+                $roleName = is_array($request->roles[0]) ? ($request->roles[0]['name'] ?? 'Utilisateur') : $request->roles[0];
+            } else if (is_string($request->roles)) {
+                $roleName = $request->roles;
             }
 
-            $validRoleNames = Role::whereIn('name', $roleNames)->pluck('name')->toArray();
-            if (empty($validRoleNames)) {
-                $validRoleNames = ['Utilisateur'];
+            $primaryRole = strtolower($roleName);
+            $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent', 'responsable de stock', 'agent de stock']);
+
+            $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', [strtolower(trim($roleName))])->first();
+            if ($roleRecord) {
+                $user->update(['role_id' => $roleRecord->id]);
             }
-
-            $primaryRole = strtolower($validRoleNames[0]);
-            $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent']);
-
-            if ($isResponsableOrAgent) {
-                $data['depot_id'] = $request->input('depot_id');
-                $data['service'] = null;
-                $data['poste'] = null;
-                $data['siege'] = null;
-            } else {
-                $data['service'] = $request->input('service', 'Non defini');
-                $data['poste'] = $request->input('poste', 'Non defini');
-                $data['siege'] = $request->input('siege', 'Non defini');
-                $data['depot_id'] = null;
-            }
-
-            $user->syncRoles($validRoleNames);
-            $user->update(['role' => $validRoleNames[0]]);
-        }
 
         return response()->json([
             'message' => 'Utilisateur mis a jour',
-            'user' => $user->load('roles', 'depot')
+            'user' => $user->load('depot')
         ]);
     }
 
@@ -220,7 +183,7 @@ class UserManagementController extends Controller
     {
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
-        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('roles', 'depot')]);
+        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('depot')]);
     }
 
     public function forceDestroy($id)
@@ -232,11 +195,34 @@ class UserManagementController extends Controller
 
     public function roles()
     {
-        return response()->json(
-            Role::query()
-                ->select(['id', 'name'])
-                ->orderBy('name')
-                ->get()
-        );
+        try {
+            $roles = \App\Models\Role::all(['id', 'name']);
+            if ($roles->isEmpty()) {
+                return response()->json([
+                    ['id' => 1, 'name' => 'Administrateur'],
+                    ['id' => 2, 'name' => 'Directeur'],
+                    ['id' => 3, 'name' => 'Responsable'],
+                    ['id' => 4, 'name' => 'Agent'],
+                    ['id' => 5, 'name' => 'Utilisateur'],
+                    ['id' => 6, 'name' => 'Responsable de stock'],
+                    ['id' => 7, 'name' => 'Agent de stock'],
+                    ['id' => 8, 'name' => 'Gestionnaire'],
+                    ['id' => 9, 'name' => 'Validateur'],
+                ]);
+            }
+            return response()->json($roles);
+        } catch (\Exception $e) {
+            return response()->json([
+                ['id' => 1, 'name' => 'Administrateur'],
+                ['id' => 2, 'name' => 'Directeur'],
+                ['id' => 3, 'name' => 'Responsable'],
+                ['id' => 4, 'name' => 'Agent'],
+                ['id' => 5, 'name' => 'Utilisateur'],
+                ['id' => 6, 'name' => 'Responsable de stock'],
+                ['id' => 7, 'name' => 'Agent de stock'],
+                ['id' => 8, 'name' => 'Gestionnaire'],
+                ['id' => 9, 'name' => 'Validateur'],
+            ]);
+        }
     }
 }

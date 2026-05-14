@@ -78,7 +78,6 @@ class ProductStockObserver
             $location->current_units = $sum;
             $location->save(); 
             $this->capacityService->checkAndNotify($location);
-            $this->updateRoomUsage($location->room_id);
         }
     }
 
@@ -90,33 +89,7 @@ class ProductStockObserver
             $cabinet->current_units = $sum;
             $cabinet->save();
             $this->capacityService->checkAndNotify($cabinet);
-            $this->updateRoomUsage($cabinet->room_id);
         }
     }
 
-    private function updateRoomUsage($roomId): void
-    {
-        if (!$roomId) return;
-        $room = WarehouseRoom::find($roomId);
-        if ($room) {
-            $locSum = WarehouseLocation::where('room_id', $roomId)->sum('current_units');
-            $cabSum = WarehouseCabinet::where('room_id', $roomId)->sum('current_units');
-            $room->current_units = $locSum + $cabSum;
-            $room->save();
-            $this->capacityService->checkAndNotify($room);
-            $this->updateWarehouseUsage($room->warehouse_id);
-        }
-    }
-
-    private function updateWarehouseUsage($warehouseId): void
-    {
-        if (!$warehouseId) return;
-        $warehouse = Warehouse::find($warehouseId);
-        if ($warehouse) {
-            $sum = WarehouseRoom::where('warehouse_id', $warehouseId)->sum('current_units');
-            $warehouse->current_units = $sum;
-            $warehouse->save();
-            $this->capacityService->checkAndNotify($warehouse);
-        }
-    }
 }

@@ -105,7 +105,6 @@ export class ProductsComponent implements OnInit {
       reference: [''],
       categorie_id: [null, Validators.required],
       has_expiration: [false],
-      purchase_price: [null, Validators.min(0)],
       unit_id: [null],
       supplier_id: [null]
     }, { validators: this.thresholdValidator });
@@ -358,7 +357,6 @@ export class ProductsComponent implements OnInit {
       reference: item.reference || '',
       categorie_id: item.categorie_id ?? null,
       has_expiration: item.has_expiration ?? false,
-      purchase_price: item.purchase_price ?? null,
       unit_id: item.unit_id ?? item.unit?.id ?? null,
       supplier_id: (item.suppliers && item.suppliers.length) ? item.suppliers[0].id : null
     });
@@ -432,7 +430,6 @@ export class ProductsComponent implements OnInit {
       seuil_max: val.seuil_max ? Number(val.seuil_max) : null,
       categorie_id: Number(val.categorie_id),
       has_expiration: val.has_expiration ? 1 : 0,
-      purchase_price: val.purchase_price === null ? null : Number(val.purchase_price),
       unit_id: unitId,
       supplier_ids: val.supplier_id ? [Number(val.supplier_id)] : [],
       photos: this.selectedPhotoFiles

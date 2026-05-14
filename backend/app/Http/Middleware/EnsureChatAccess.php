@@ -46,7 +46,7 @@ class EnsureChatAccess
         }
 
         if ($authRole === 'employee') {
-            return in_array($targetRole, ['manager', 'admin'], true);
+            return in_array($targetRole, ['employee', 'manager', 'admin'], true);
         }
 
         return false;
@@ -54,7 +54,7 @@ class EnsureChatAccess
 
     private function normalizeRole(User $user): string
     {
-        $role = strtolower((string) ($user->role ?? ''));
+        $role = strtolower((string) ($user->role?->name ?? ''));
         if (in_array($role, ['admin', 'administrateur'], true)) {
             return 'admin';
         }

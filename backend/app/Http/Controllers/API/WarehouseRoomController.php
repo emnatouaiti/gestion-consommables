@@ -73,81 +73,36 @@ class WarehouseRoomController extends Controller
 
     public function getProducts(WarehouseRoom $room)
     {
-        $room->load([
-            'warehouse',
-            'locations' => function ($l) {
-                $l->with(['products' => function ($p) {
-                    $p->where('status', 'active')->with('category');
-                }]);
-            },
-        ]);
-
-        // 1) Products directly assigned to locations (legacy)
-        $locationProducts = $room->locations->flatMap(function ($location) use ($room) {
-            return $location->products->map(function ($product) use ($location, $room) {
-                return array_merge($product->toArray(), [
-                    'location_id' => $location->id,
-                    'location_code' => $location->code,
-                    'location_name' => $location->name,
-                    'room_id' => $room->id,
-                    'room_name' => $room->name,
-                    'warehouse_id' => $room->warehouse_id,
-                    'warehouse_name' => $room->warehouse ? $room->warehouse->name : '',
-                ]);
-            });
-        })->values();
-
-        // 2) Products present in product_stocks tied to this room (locations or cabinets)
-        $stockEntries = ProductStock::with('product', 'warehouseLocation.room', 'warehouseCabinet.room')
+        $stockEntries = ProductStock::with(['product.category', 'warehouseLocation', 'warehouseCabinet'])
             ->whereHas('product', fn ($q) => $q->where('status', 'active'))
             ->get()
             ->filter(function ($s) use ($room) {
-                $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
-                return $roomRef && $roomRef->id === $room->id;
+                $roomRef = $s->warehouseLocation?->room_id ?? $s->warehouseCabinet?->room_id ?? null;
+                return $roomRef === $room->id;
             });
 
-        $stockProducts = $stockEntries->map(function ($s) use ($room) {
-            $product = $s->product;
-            $roomRef = $s->warehouseLocation?->room ?? $s->warehouseCabinet?->room ?? null;
-            $location = $s->warehouseLocation ?? $s->warehouseCabinet ?? null;
-
-            if (!$product) {
-                return null;
-            }
-
-            return array_merge($product->toArray(), [
-                'location_id' => $location?->id,
-                'location_code' => $location?->code,
-                'location_name' => $location?->name,
+        $products = $stockEntries->map(function ($s) use ($room) {
+            $loc = $s->warehouseLocation;
+            $cab = $s->warehouseCabinet;
+            
+            return array_merge($s->product->toArray(), [
+                'stock_quantity' => $s->quantity,
+                'location_id' => $loc?->id,
+                'location_code' => $loc?->code,
+                'location_name' => $loc?->name,
+                'cabinet_id' => $cab?->id,
+                'cabinet_name' => $cab?->name,
                 'room_id' => $room->id,
                 'room_name' => $room->name,
                 'warehouse_id' => $room->warehouse_id,
                 'warehouse_name' => $room->warehouse ? $room->warehouse->name : '',
-                'stock_quantity' => $s->quantity,
             ]);
-        })->filter()->values();
-
-        // Merge both lists keyed by product id to avoid duplicates
-        $merged = collect([]);
-        foreach ($locationProducts as $p) {
-            $merged->put($p['id'], $p);
-        }
-        foreach ($stockProducts as $p) {
-            if (!$merged->has($p['id'])) {
-                $merged->put($p['id'], $p);
-            } else {
-                $existing = $merged->get($p['id']);
-                if (empty($existing['stock_quantity']) && !empty($p['stock_quantity'])) {
-                    $existing['stock_quantity'] = $p['stock_quantity'];
-                    $merged->put($p['id'], $existing);
-                }
-            }
-        }
+        });
 
         return response()->json([
             'room' => $room->only('id', 'name'),
             'warehouse' => $room->warehouse ? $room->warehouse->only('id', 'name') : null,
-            'products' => $merged->values(),
+            'products' => $products->values(),
         ]);
     }
 }

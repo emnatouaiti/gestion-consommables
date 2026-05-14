@@ -13,6 +13,11 @@ class SendConsumableRequestReminders extends Command
     protected $signature = 'consumable-requests:send-reminders';
     protected $description = 'Envoie des rappels email pour les demandes en attente depuis plus de 2 jours';
 
+    private function normalizeRole(User $user): string
+    {
+        return strtolower((string) ($user->role?->name ?? ''));
+    }
+
     public function handle(): int
     {
         $threshold = Carbon::now()->subDays(2);
@@ -30,9 +35,8 @@ class SendConsumableRequestReminders extends Command
             [$service, $siege] = explode('|', (string) $groupKey);
             $directors = User::query()
                 ->where(function ($q) {
-                    $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']))
-                      ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
-                      ->orWhereRaw('LOWER(role) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
+                    $q->whereHas('role', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']))
+                      ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
                 })
                 ->where('service', $service)
                 ->where('siege', $siege)
@@ -59,8 +63,7 @@ class SendConsumableRequestReminders extends Command
             $managers = User::query()
                 ->where('depot_id', $depotId)
                 ->where(function ($q) {
-                    $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
-                      ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+                    $q->whereHas('role', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']));
                 })
                 ->get();
 

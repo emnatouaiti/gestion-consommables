@@ -7,14 +7,13 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable, HasRoles, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes;
 
-    protected $appends = ['name'];
+    protected $appends = ['name', 'roles'];
 
     /**
      * The attributes that are mass assignable.
@@ -32,7 +31,7 @@ class User extends Authenticatable
         'siege',
         'depot_id',
         'photo',
-        'role',
+        'role_id',
         'google_id',
         'avatar',
     ];
@@ -111,5 +110,47 @@ class User extends Authenticatable
     public function depot()
     {
         return $this->belongsTo(\App\Models\Warehouse::class, 'depot_id');
+    }
+
+    /**
+     * Check if user has a specific role (checks 'role' column).
+     */
+    public function hasRole(string|array $role): bool
+    {
+        // If an array is passed, delegate to hasAnyRole for safety
+        if (is_array($role)) {
+            return $this->hasAnyRole($role);
+        }
+        return \Illuminate\Support\Str::lower($this->role?->name ?? '') === \Illuminate\Support\Str::lower($role);
+    }
+
+    /**
+     * Check if user has any of the given roles.
+     */
+    public function hasAnyRole(array $roles): bool
+    {
+        $userRole = \Illuminate\Support\Str::lower($this->role?->name ?? '');
+        foreach ($roles as $role) {
+            if ($userRole === \Illuminate\Support\Str::lower($role)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Define the role relationship.
+     */
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'role_id');
+    }
+
+    /**
+     * Accessor for 'roles' array to keep compatibility with the frontend.
+     */
+    public function getRolesAttribute()
+    {
+        return $this->role ? [$this->role] : [];
     }
 }

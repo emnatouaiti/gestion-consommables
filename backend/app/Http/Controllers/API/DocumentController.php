@@ -28,20 +28,12 @@ class DocumentController extends Controller
     private function userHasAnyRole($user, array $roles): bool
     {
         if (!$user) return false;
-
-        // Check spatie roles
-        if (method_exists($user, 'hasRole')) {
-            foreach ($roles as $role) {
-                if ($user->hasRole($role)) return true;
+        $roleName = strtolower(trim($user->role?->name ?? ''));
+        foreach ($roles as $expected) {
+            if ($roleName === strtolower(trim($expected))) {
+                return true;
             }
         }
-
-        // Check direct role column (LOWER case)
-        $userRole = Str::lower($user->role ?? '');
-        foreach ($roles as $role) {
-            if ($userRole === Str::lower($role)) return true;
-        }
-
         return false;
     }
 
@@ -514,10 +506,8 @@ class DocumentController extends Controller
                     $documentDepotId = $document->warehouse_id ?: $user->depot_id;
 
                     // Get responsables of the same depot only
-                    $query = User::where(function ($q) {
-                        $q->whereHas('roles', function ($qr) {
-                            $qr->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
-                        })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+                    $query = User::whereHas('role', function($rq) {
+                        $rq->whereIn('name', ['Administrateur', 'Responsable', 'Responsable de stock', 'Gestionnaire', 'Validateur', 'administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
                     });
 
                     // Filter by depot: only notify responsables of the same depot or admins without depot restriction

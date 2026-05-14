@@ -316,7 +316,7 @@
 
               <!-- Directeur peut approuver/rejeter depuis historique si encore en attente -->
               <button
-                *ngIf="canApprove && (r.status === 'pending' || r.status === 'validated_by_manager' || r.status === 'partiellement_accepte')"
+                *ngIf="canApprove && (r.status === 'pending' || r.status === 'validated_by_manager')"
                 class="cr-btn cr-btn--approve"
                 (click)="openApproveModal(r)"
               >Approuver</button>

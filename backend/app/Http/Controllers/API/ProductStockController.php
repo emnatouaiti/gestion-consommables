@@ -20,8 +20,7 @@ class ProductStockController extends Controller
 
         // Filtrer par dépôt de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
-            $isStockManager = $user->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
-                || in_array(strtolower($user->role ?? ''), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+            $isStockManager = $user->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
             if ($isStockManager) {
                 $query->whereHas('warehouseLocation.room', function ($q) use ($user) {
@@ -312,8 +311,7 @@ class ProductStockController extends Controller
 
         // Filtrer par dépôt de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
-            $isStockManager = $user->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
-                || in_array(strtolower($user->role ?? ''), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+            $isStockManager = $user->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
             if ($isStockManager) {
                 $query->where(function($q) use ($user) {

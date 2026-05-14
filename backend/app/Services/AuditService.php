@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\AuditLog;
 use Illuminate\Support\Facades\Request;
 
 class AuditService
@@ -24,12 +23,6 @@ class AuditService
             $description .= ' ' . json_encode($metadata);
         }
 
-        return AuditLog::create([
-            'user_id' => $userId,
-            'action' => $action,
-            'description' => trim($description),
-            'ip_address' => Request::ip(),
-            'user_agent' => Request::userAgent(),
-        ]);
+        return true;
     }
 }

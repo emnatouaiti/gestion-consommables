@@ -28,6 +28,8 @@ class AuthController extends Controller
             return response()->json($validator->errors(), 400);
         }
 
+        $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', ['utilisateur'])->first();
+        
         $user = User::create([
             'nomprenom' => $request->name,
             'email' => $request->email,
@@ -35,6 +37,7 @@ class AuthController extends Controller
             'service' => $request->input('service', 'Non defini'),
             'poste' => $request->input('poste', 'Non defini'),
             'siege' => $request->input('siege', 'Non defini'),
+            'role_id' => $roleRecord ? $roleRecord->id : null,
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -60,14 +63,14 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Login success',
-            'user' => $user->load(['roles', 'permissions']),
+            'user' => $user->load('role'),
             'token' => $token,
         ]);
     }
 
     public function user(Request $request)
     {
-        return $request->user()->load(['roles', 'permissions']);
+        return $request->user()->load('role');
     }
 
     public function unreadNotificationsCount(Request $request)
@@ -151,7 +154,7 @@ class AuthController extends Controller
 
         return response()->json([
             'message' => 'Profile updated successfully',
-            'user' => $user->load(['roles', 'permissions'])
+            'user' => $user->load('role')
         ]);
     }
 

@@ -163,6 +163,8 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
+    // Correction NG0100 : forcer la détection de changements après modification des droits
+    this.cdr.detectChanges();
 
   }
 
@@ -268,8 +270,8 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     return this.sortedByDate.filter(r => {
       const s = r.status?.toLowerCase();
       if (isDirector) {
-        // Directors can see: pending (direct submissions), validated_by_manager, and partially accepted
-        return ['pending', 'validated_by_manager', 'partiellement_accepte'].includes(s);
+        // Directors can see: pending (direct submissions) and validated_by_manager
+        return ['pending', 'validated_by_manager'].includes(s);
       }
       if (isManager) {
         return s === 'pending';
@@ -581,21 +583,26 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   validateDraft(id: number): void {
     if (!this.canEditDeleteOwnRequests) return;
     this.loading = true;
+    this.cdr.detectChanges();
     this.consumableRequestService.updateRequest(id, { status: 'pending' }).subscribe({
       next: () => {
         this.message = 'Demande mise en attente.';
+        this.cdr.detectChanges();
         this.loadRequests();
         this.loading = false;
+        this.cdr.detectChanges();
         this.ngZone.runOutsideAngular(() => {
           setTimeout(() => {
-            this.ngZone.run(() => { this.message = ''; });
+            this.ngZone.run(() => { this.message = ''; this.cdr.detectChanges(); });
           }, 3000);
         });
       },
       error: (err: unknown) => {
         this.message = 'Erreur lors de la validation.';
+        this.cdr.detectChanges();
         console.error(err);
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -1282,11 +1289,8 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   }
 
   private isDirectorUser(user: any): boolean {
-    const byRole = this.authService.userHasAnyRole(user, ['Directeur', 'directeur', 'durecteur', 'director']);
-    const poste = String(user?.poste || '').trim().toLowerCase();
-    const legacyRole = String(user?.role || '').trim().toLowerCase();
-    const aliases = ['directeur', 'durecteur', 'director'];
-    return byRole || aliases.includes(poste) || aliases.includes(legacyRole);
+    // Only the role determines Director status — not the poste (job title)
+    return this.authService.userHasAnyRole(user, ['Directeur', 'directeur', 'durecteur', 'director']);
   }
 }
 

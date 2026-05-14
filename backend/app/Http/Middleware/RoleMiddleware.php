@@ -22,6 +22,11 @@ class RoleMiddleware
             ->values()
             ->all();
 
+        // Ensure the role relationship is loaded so hasAnyRole() can access role->name
+        if ($user && !$user->relationLoaded('role')) {
+            $user->loadMissing('role');
+        }
+
         if (!$user || (count($roles) > 0 && !$user->hasAnyRole($roles))) {
             return response()->json(['message' => 'Access denied'], 403);
         }

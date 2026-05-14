@@ -42,8 +42,7 @@ class ConsumableRequestNotification extends Notification
         $user = $firstRequest->user;
         $status = Str::lower($firstRequest->status);
         $isOwner = $notifiable->id === $firstRequest->user_id;
-        $isStockManagerRecipient = $notifiable->hasRole(['responsable de stock', 'responsable', 'agent de stock', 'agent'])
-            || in_array(strtolower((string) ($notifiable->role ?? '')), ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+        $isStockManagerRecipient = $notifiable->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
         // Detecter si c'est une approbation partielle (mélange d'approuvés et de rejetés)
         $approvedCount = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']))->count();
@@ -77,7 +76,7 @@ class ConsumableRequestNotification extends Notification
             if ($isOwner) {
                 if ($isPartialApproval) {
                     $mail->line("Votre demande de consommable a été traitée par le Directeur : certains articles ont été approuvés et d'autres refusés.");
-                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit']));
+                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']));
                     if ($approvedReqs->count() > 0) {
                         $mail->line("Articles approuvés :");
                         foreach ($approvedReqs as $req) {
@@ -104,7 +103,7 @@ class ConsumableRequestNotification extends Notification
                 if ($isPartialApproval) {
                     $mail->line("Une demande de consommable a été traitée par la Direction (approbation partielle) et attend votre confirmation de sortie pour les articles approuvés.")
                         ->line("Demandeur : {$user->nomprenom}");
-                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit']));
+                    $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']));
                     if ($approvedReqs->count() > 0) {
                         $mail->line("Articles à sortir :");
                         foreach ($approvedReqs as $req) {

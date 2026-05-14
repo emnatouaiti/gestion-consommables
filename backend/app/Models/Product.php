@@ -55,8 +55,8 @@ class Product extends Model
         'reference',
         'categorie_id',
         'stock_quantity',
-        'purchase_price',
         'unit_id',
+        'supplier_id',
         'photo',
         'has_expiration',
     ];

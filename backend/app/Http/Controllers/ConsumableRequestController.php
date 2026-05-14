@@ -6,7 +6,6 @@ use App\Models\Document;
 use App\Models\ConsumableRequest;
 use App\Models\Product;
 use App\Models\User;
-use App\Models\AuditLog;
 use App\Models\StockMovement;
 use App\Models\StockMovementLine;
 use Illuminate\Http\Request;
@@ -25,7 +24,7 @@ class ConsumableRequestController extends Controller
     {
         $user = Auth::user();
 
-        $query = ConsumableRequest::with('user.roles', 'product', 'depot')->latest();
+        $query = ConsumableRequest::with('user.role', 'product', 'depot')->latest();
 
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->input('start_date'));
@@ -126,7 +125,7 @@ class ConsumableRequestController extends Controller
                     ->delete();
             }
 
-            $isDirector = $user->hasRole('Directeur') || Str::lower($user->role) === 'directeur';
+            $isDirector = ($user->role?->name ?? '') === 'Directeur' || Str::lower($user->role?->name ?? '') === 'directeur';
 
             foreach ($payloads as $payload) {
                 $initialStatus = isset($payload['status']) ? $payload['status'] : 'draft';
@@ -150,17 +149,7 @@ class ConsumableRequestController extends Controller
             }
         });
 
-        $firstStatus = collect($createdRequests)->first()?->status ?? null;
-        $isDirector = $user->hasRole('Directeur') || Str::lower($user->role) === 'directeur';
-
-        if ($firstStatus === 'pending' && count($createdRequests) > 0) {
-            $this->notifyDirectors(collect($createdRequests));
-        } elseif ($firstStatus === 'approved_pending_exit' && count($createdRequests) > 0) {
-            // If it's a director, we already auto-approved it.
-            // We notify stock managers so they can prepare the exit.
-            $this->notifyStockManagers(collect($createdRequests));
-        }
-
+        // 1. Generate PDF first so it's available for notifications
         try {
             $pdfPath = $this->generateAndSavePdf($user, $createdRequests, $batchCode);
             if ($pdfPath) {
@@ -170,6 +159,14 @@ class ConsumableRequestController extends Controller
             }
         } catch (\Throwable $e) {
             Log::error('PDF Generation failed for consumable request', ['error' => $e->getMessage()]);
+        }
+
+        // 2. Then notify
+        $firstStatus = collect($createdRequests)->first()?->status ?? null;
+        if ($firstStatus === 'pending' && count($createdRequests) > 0) {
+            $this->notifyDirectors(collect($createdRequests));
+        } elseif ($firstStatus === 'approved_pending_exit' && count($createdRequests) > 0) {
+            $this->notifyStockManagers(collect($createdRequests));
         }
 
         return response()->json(['requests' => $createdRequests], 201);
@@ -199,7 +196,7 @@ class ConsumableRequestController extends Controller
 
             $oldStatus = $consumableRequest->status;
             $newStatus = $requestedStatus;
-            $isDirector = $editor->hasRole('Directeur') || Str::lower($editor->role) === 'directeur';
+            $isDirector = ($editor->role?->name ?? '') === 'Directeur' || Str::lower($editor->role?->name ?? '') === 'directeur';
             
             if ($newStatus === 'pending') {
                 if ($this->isStockManager($editor) || $isDirector) {
@@ -221,8 +218,8 @@ class ConsumableRequestController extends Controller
                     ]);
             }
 
-            // Regenerate PDF if status changed to approved
-            if ($newStatus === 'approved_pending_exit') {
+            // Regenerate PDF if status changed to pending or approved
+            if ($newStatus === 'approved_pending_exit' || $newStatus === 'pending') {
                 try {
                     $batch = $consumableRequest->batch_code
                         ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
@@ -255,7 +252,7 @@ class ConsumableRequestController extends Controller
 
             return response()->json([
                 'message' => 'Request updated successfully.',
-                'request' => $consumableRequest->fresh(['user.roles', 'product']),
+                'request' => $consumableRequest->fresh(['user.role', 'product']),
             ]);
         }
 
@@ -278,7 +275,7 @@ class ConsumableRequestController extends Controller
 
         return response()->json([
             'message' => 'Request updated successfully.',
-            'request' => $consumableRequest->fresh(['user.roles', 'product']),
+            'request' => $consumableRequest->fresh(['user.role', 'product']),
         ]);
     }
 
@@ -304,7 +301,7 @@ class ConsumableRequestController extends Controller
     // Approuver une demande (directeur / manager)
     public function approve($id, Request $request)
     {
-        $consumableRequest = ConsumableRequest::with('user.roles')->findOrFail($id);
+        $consumableRequest = ConsumableRequest::with('user')->findOrFail($id);
         $approver  = Auth::user();
         $isDirector = $this->isDirectorUser($approver);
         $isManager  = $this->isStockManager($approver);
@@ -321,7 +318,7 @@ class ConsumableRequestController extends Controller
 
         if ($isManager && $currentStatus === 'pending') {
             $nextStatus = 'validated_by_manager';
-        } elseif ($isDirector && in_array($currentStatus, ['pending', 'validated_by_manager', 'partiellement_accepte'])) {
+        } elseif ($isDirector && in_array($currentStatus, ['pending', 'validated_by_manager', 'partiellement_accepte', 'approved_pending_exit', 'rejected'])) {
             // Director can choose: 'accepte' (approved_pending_exit), 'approved_pending_exit', or 'rejected'
             if ($directorAction === 'reject') {
                 $nextStatus = 'rejected';
@@ -337,7 +334,7 @@ class ConsumableRequestController extends Controller
             return response()->json([
                 'message' => "Cannot approve request with status '{$currentStatus}'. Valid statuses for your role ({$role}): {$validStatuses}.",
                 'current_status' => $currentStatus,
-                'valid_statuses' => $isManager ? ['pending'] : ['pending', 'validated_by_manager', 'partiellement_accepte'],
+                'valid_statuses' => $isManager ? ['pending'] : ['pending', 'validated_by_manager', 'partiellement_accepte', 'approved_pending_exit'],
                 'your_role' => $role,
             ], 422);
         }
@@ -355,7 +352,7 @@ class ConsumableRequestController extends Controller
 
         $batchCode         = $consumableRequest->batch_code;
         $requestsToApprove = $batchCode
-            ? ConsumableRequest::where('batch_code', $batchCode)->where('status', $consumableRequest->status)->get()
+            ? ConsumableRequest::where('batch_code', $batchCode)->get()
             : collect([$consumableRequest]);
 
         // Variables for use after transaction
@@ -398,6 +395,7 @@ class ConsumableRequestController extends Controller
                 if ($isRejected) {
                     $req->approved_quantity = 0;
                     $req->status            = 'rejected';
+                    $req->reject_reason     = (string) $rejectionMap->get((string) $req->id);
                 } else {
                     $req->approved_quantity = max(0, $approvedQty);
                     $req->status            = $nextStatus;
@@ -490,7 +488,7 @@ class ConsumableRequestController extends Controller
                     }
                 }
 
-                if (!$req->wasRecentlyCreated && !$req->is($req->fresh())) {
+                if ($req->isDirty()) {
                     $req->save();
                 }
             }
@@ -563,21 +561,25 @@ class ConsumableRequestController extends Controller
         });
 
         // --- Notifications (hors transaction) ---
+        Log::info('Triggering notifications for approve', [
+            'nextStatus' => $nextStatus,
+            'approvedCount' => $approvedRequests->count(),
+            'rejectedCount' => $rejectedRequests->count(),
+            'isPartial' => ($approvedRequests->count() > 0 && $rejectedRequests->count() > 0)
+        ]);
+
         if ($nextStatus === 'validated_by_manager') {
             $this->notifyDirectors($requestsToApprove);
-        } elseif ($nextStatus === 'approved_pending_exit') {
-            // Notifier le demandeur avec les 2 collections séparées pour les 2 PDFs
-            $this->notifyRequesterPartial($approvedRequests, $rejectedRequests);
-
-            // Notifier le responsable stock UNIQUEMENT pour les items approuvés dans SON depot
-            // Each responsible only gets notified for products in their depot
+        } elseif (in_array($nextStatus, ['approved_pending_exit', 'rejected'])) {
+            // Case for Director approval (Full or Partial)
+            if ($approvedRequests->count() > 0 && $rejectedRequests->count() > 0) {
+                 $this->notifyRequesterPartial($approvedRequests, $rejectedRequests);
+            } else {
+                 $this->notifyRequester($requestsToApprove);
+            }
+            
             if ($approvedRequests->count() > 0) {
                 $this->notifyStockManagersByDepot($approvedRequests);
-            }
-
-            // If director approved and requests were split across depots, notify director about the split
-            if ($isDirector && !empty($depotWarnings)) {
-                // Director is already informed via the response, no need for separate notification
             }
         }
 
@@ -712,17 +714,6 @@ class ConsumableRequestController extends Controller
                     'quantity'          => $approvedQuantity,
                 ]);
 
-                try {
-                    AuditLog::create([
-                        'user_id'     => $user->id,
-                        'action'      => 'stock_movement.create',
-                        'description' => "Sortie confirmee. Mouvement {$movement->id} pour demande {$consumableRequest->id}. Destination: {$destinationText}",
-                        'ip_address'  => request()->ip(),
-                        'user_agent'  => request()->userAgent(),
-                    ]);
-                } catch (\Throwable $e) {
-                    Log::error('Failed to create audit log for confirmExit', ['err' => $e->getMessage()]);
-                }
 
                 try {
                     $consumableRequest->refresh();
@@ -748,7 +739,7 @@ class ConsumableRequestController extends Controller
 
         return response()->json([
             'message' => 'Sortie confirmée. Stock mis à jour.',
-            'request' => $consumableRequest->fresh(['user.roles', 'product', 'depot']),
+            'request' => $consumableRequest->fresh(['user', 'product', 'depot']),
             'depot_name' => $consumableRequest->depot?->name,
         ]);
     }
@@ -1124,21 +1115,18 @@ class ConsumableRequestController extends Controller
     private function isPdgUser(?User $user): bool
     {
         return Str::lower((string) ($user?->poste ?? '')) === 'pdg'
-            || $this->userHasAnyRole($user, ['pdg'])
-            || Str::lower((string) ($user?->role ?? '')) === 'pdg';
+            || $this->userHasAnyRole($user, ['pdg']);
     }
 
     private function isDirectorUser(?User $user): bool
     {
-        return $this->userHasAnyRole($user, ['directeur', 'durecteur', 'director'])
-            || in_array(Str::lower((string) ($user?->poste ?? '')), ['directeur', 'durecteur', 'director'], true)
-            || in_array(Str::lower((string) ($user?->role ?? '')), ['directeur', 'durecteur', 'director'], true);
+        // Only check the role - the 'poste' field is a job description and should NOT determine access level
+        return $this->userHasAnyRole($user, ['directeur', 'durecteur', 'director']);
     }
 
     private function isStockManager(?User $user): bool
     {
-        return $this->userHasAnyRole($user, ['responsable de stock', 'responsable', 'agent de stock', 'agent'])
-            || in_array(Str::lower((string) ($user?->role ?? '')), ['responsable de stock', 'responsable', 'agent de stock', 'agent'], true);
+        return $this->userHasAnyRole($user, ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
     }
 
     private function isStockBelowThreshold(?int $availableStock, ?int $threshold, int $requested): bool
@@ -1181,16 +1169,18 @@ class ConsumableRequestController extends Controller
     {
         if (!$user) return false;
 
-        $normalizedExpected = collect($expectedRoles)
-            ->map(fn($r) => Str::lower((string) $r))
-            ->filter()->unique()->values();
+        // Ensure role relationship is loaded
+        if (!$user->relationLoaded('role')) {
+            $user->loadMissing('role');
+        }
 
-        $currentRoles = $user->getRoleNames()->map(fn($r) => Str::lower((string) $r));
-
-        $fallbackRole = Str::lower((string) ($user->role ?? ''));
-        if ($fallbackRole !== '') $currentRoles->push($fallbackRole);
-
-        return $currentRoles->unique()->intersect($normalizedExpected)->isNotEmpty();
+        $roleName = strtolower(trim($user->role?->name ?? ''));
+        foreach ($expectedRoles as $expected) {
+            if ($roleName === strtolower(trim($expected))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -1277,9 +1267,10 @@ class ConsumableRequestController extends Controller
 
         $directors = User::query()
             ->where(function ($q) {
-                $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']))
-                  ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director'])
-                  ->orWhereRaw('LOWER(role) IN (?, ?, ?)',  ['directeur', 'durecteur', 'director']);
+                $q->whereHas('role', function($rq) {
+                    $rq->whereIn('name', ['Administrateur', 'Directeur', 'directeur', 'durecteur', 'director', 'Administrateur']);
+                })
+                  ->orWhereRaw('LOWER(poste) IN (?, ?, ?)', ['directeur', 'durecteur', 'director']);
             })
             ->where('id', '!=', Auth::id())
             ->where('service', $first->user?->service)
@@ -1326,9 +1317,8 @@ class ConsumableRequestController extends Controller
         $depotIds = $stockInDepots->pluck('depot_id')->unique()->toArray();
         $responsables = User::query()
             ->whereIn('depot_id', $depotIds)
-            ->where(function ($q) {
-                $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
-                  ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+            ->whereHas('role', function($rq) {
+                $rq->whereIn('name', ['Responsable de stock', 'Responsable', 'Agent de stock', 'Agent', 'responsable de stock', 'responsable', 'agent de stock', 'agent']);
             })
             ->where('id', '!=', Auth::id())
             ->get();
@@ -1401,9 +1391,8 @@ class ConsumableRequestController extends Controller
             // Find responsables assigned to this depot
             $responsables = User::query()
                 ->where('depot_id', $depotId)
-                ->where(function ($q) {
-                    $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
-                      ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+                ->whereHas('role', function($rq) {
+                    $rq->whereIn('name', ['Responsable de stock', 'Responsable', 'Agent de stock', 'Agent', 'responsable de stock', 'responsable', 'agent de stock', 'agent']);
                 })
                 ->where('id', '!=', Auth::id())
                 ->get();
@@ -1455,9 +1444,8 @@ class ConsumableRequestController extends Controller
         if (!$first) return 0;
 
         $managers = User::query()
-            ->where(function ($q) {
-                $q->whereHas('roles', fn($r) => $r->whereRaw('LOWER(name) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']))
-                  ->orWhereRaw('LOWER(role) IN (?, ?, ?, ?)', ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
+            ->whereHas('role', function($rq) {
+                $rq->whereIn('name', ['Responsable de stock', 'Responsable', 'Agent de stock', 'Agent', 'responsable de stock', 'responsable', 'agent de stock', 'agent']);
             })
             ->where('id', '!=', Auth::id())
             ->get();
@@ -1505,6 +1493,7 @@ class ConsumableRequestController extends Controller
         if (!$first || !$first->user) return 0;
 
         try {
+            Log::info('Sending partial notification to user', ['email' => $first->user->email, 'items' => $allRequests->count()]);
             $first->user->notify(new \App\Notifications\ConsumableRequestNotification($allRequests));
             return 1;
         } catch (\Throwable $e) {

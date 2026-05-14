@@ -60,7 +60,7 @@ class CheckStorageCapacity extends Command
         }
 
         if (count($alerts) > 0) {
-            $users = \App\Models\User::whereHas('roles', function($q) {
+            $users = \App\Models\User::whereHas('role', function($q) {
                 $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
                     'administrateur', 
                     'responsable de stock', 
@@ -68,13 +68,7 @@ class CheckStorageCapacity extends Command
                     'gestionnaire', 
                     'validateur'
                 ]);
-            })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", [
-                'administrateur', 
-                'responsable de stock', 
-                'responsable', 
-                'gestionnaire', 
-                'validateur'
-            ])->get();
+            })->get();
 
             if ($users->isEmpty()) {
                 $this->error("Aucun utilisateur responsable trouvé.");

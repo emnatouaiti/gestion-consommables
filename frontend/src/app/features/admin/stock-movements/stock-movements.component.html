@@ -292,11 +292,15 @@
                   <option [value]="null">Choisir...</option>
                   <optgroup label="Emplacements" *ngIf="sourceLocations.length > 0">
                     <option *ngFor="let l of sourceLocations" [value]="'location:' + l.id" 
-                            [selected]="l.id === newMovement.source_warehouse_location_id">📦 {{ l.name }}</option>
+                            [selected]="l.id === newMovement.source_warehouse_location_id">
+                      📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
+                    </option>
                   </optgroup>
                   <optgroup label="Armoires" *ngIf="sourceCabinets.length > 0">
                     <option *ngFor="let c of sourceCabinets" [value]="'cabinet:' + c.id"
-                            [selected]="c.id === newMovement.source_cabinet_id">🗄️ {{ c.name }}</option>
+                            [selected]="c.id === newMovement.source_cabinet_id">
+                      🗄️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
+                    </option>
                   </optgroup>
                 </select>
               </div>
@@ -311,7 +315,7 @@
                 <label>Dépôt</label>
                 <select [(ngModel)]="newMovement.destination_warehouse_id" name="dwh" (change)="onDestWarehouseChange()" [disabled]="isDepotLocked">
                   <option [value]="null">Choisir...</option>
-                  <option *ngFor="let w of warehouses" [value]="w.id">{{ w.name }}</option>
+                  <option *ngFor="let w of destinationWarehouses" [value]="w.id">{{ w.name }}</option>
                 </select>
               </div>
               <div class="field">
@@ -327,11 +331,17 @@
                   <option [value]="null">Choisir...</option>
                   <optgroup label="Emplacements" *ngIf="destLocations.length > 0">
                     <option *ngFor="let l of destLocations" [value]="'location:' + l.id" 
-                            [selected]="l.id === newMovement.destination_warehouse_location_id">📦 {{ l.name }}</option>
+                            [selected]="l.id === newMovement.destination_warehouse_location_id"
+                            [disabled]="l.capacity_units > 0 && l.current_units >= l.capacity_units">
+                      📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
+                    </option>
                   </optgroup>
                   <optgroup label="Armoires" *ngIf="destCabinets.length > 0">
                     <option *ngFor="let c of destCabinets" [value]="'cabinet:' + c.id"
-                            [selected]="c.id === newMovement.destination_cabinet_id">🗄️ {{ c.name }}</option>
+                            [selected]="c.id === newMovement.destination_cabinet_id"
+                            [disabled]="c.capacity_units > 0 && c.current_units >= c.capacity_units">
+                      🗄️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
+                    </option>
                   </optgroup>
                 </select>
               </div>
@@ -356,10 +366,6 @@
                   <option *ngFor="let u of filteredUsers" [value]="u.id">{{ u.nomprenom }} ({{ u.email }})</option>
                 </select>
               </div>
-            </div>
-            <div class="field mt-1">
-              <label>Destination précise (Service, Chantier...)</label>
-              <input type="text" [(ngModel)]="newMovement.destination_text" name="dest_text" placeholder="Ex: Service Maintenance / Mr. Foulen">
             </div>
           </div>
         </div>

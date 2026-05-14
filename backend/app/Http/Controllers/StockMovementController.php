@@ -11,7 +11,6 @@ use App\Notifications\StockMovementNotification;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Models\ProductStock;
-use App\Models\AuditLog;
 use App\Models\Product;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Http\Request;
@@ -172,16 +171,6 @@ class StockMovementController extends Controller
                 $movement->creator->notify(new StockMovementResponseNotification($movement));
             }
 
-            // Audit log
-            try {
-                AuditLog::create([
-                    'user_id' => $user->id,
-                    'action' => 'stock_movement.approve',
-                    'description' => "Mouvement {$movement->reference} approuvé et exécuté",
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ]);
-            } catch (\Throwable $e) {}
         });
 
         return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
@@ -221,16 +210,6 @@ class StockMovementController extends Controller
                 $movement->creator->notify(new StockMovementResponseNotification($movement));
             }
 
-            // Audit log
-            try {
-                AuditLog::create([
-                    'user_id' => $user->id,
-                    'action' => 'stock_movement.reject',
-                    'description' => "Mouvement {$movement->reference} rejeté : " . $request->input('notes'),
-                    'ip_address' => $request->ip(),
-                    'user_agent' => $request->userAgent(),
-                ]);
-            } catch (\Throwable $e) {}
         });
 
         return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
@@ -258,18 +237,12 @@ class StockMovementController extends Controller
     private function userHasAnyRole($user, array $roles): bool
     {
         if (!$user) return false;
-
-        // Check spatie roles
-        foreach ($roles as $role) {
-            if ($user->hasRole($role)) return true;
+        $roleName = strtolower(trim($user->role?->name ?? ''));
+        foreach ($roles as $expected) {
+            if ($roleName === strtolower(trim($expected))) {
+                return true;
+            }
         }
-
-        // Check direct role column (LOWER case)
-        $userRole = Str::lower($user->role);
-        foreach ($roles as $role) {
-            if ($userRole === Str::lower($role)) return true;
-        }
-
         return false;
     }
 
@@ -412,7 +385,9 @@ class StockMovementController extends Controller
 
             $linesData = collect($request->input('lines'))->map(fn ($line) => [
                 'product_id' => (int) $line['product_id'],
-                'quantity' => (int) $line['quantity'],
+                'quantity'   => (int) $line['quantity'],
+                'warehouse_location_id' => $request->input('source_warehouse_location_id') ?: $request->input('destination_warehouse_location_id'),
+                'cabinet_id'            => $request->input('source_cabinet_id') ?: $request->input('destination_cabinet_id'),
             ])->all();
 
             $movement->lines()->createMany($linesData);
@@ -440,28 +415,18 @@ class StockMovementController extends Controller
                 if (Schema::hasColumn('stock_movements', 'executed_at')) $updateData['executed_at'] = now();
                 if (!empty($updateData)) $movement->update($updateData);
 
-                $this->applyStockChanges($movement);
+                $this->executeMovementInternal($movement, $user);
             }
 
             return $movement;
         });
 
-        // Audit Log
-        try {
-            AuditLog::create([
-                'user_id' => $user?->id,
-                'action' => 'stock_movement.create',
-                'description' => "Flux {$movement->reference} créé ({$movement->status})",
-                'ip_address' => $request->ip(),
-                'user_agent' => $request->userAgent(),
-            ]);
-        } catch (\Throwable $e) {}
 
         // Notifications - Filter by depot for agents, notify all responsables for admins
         try {
-            $query = User::whereHas('roles', function ($q) {
-                $q->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
-            })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+            $query = User::whereHas('role', function($rq) {
+                $rq->whereIn('name', ['Administrateur', 'Responsable', 'Responsable de stock', 'Gestionnaire', 'Validateur', 'administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
+            });
 
             // Notify responsables of the movement's depot, and admins (who may have null depot_id)
             $movementDepotId = $movement->depot_id;

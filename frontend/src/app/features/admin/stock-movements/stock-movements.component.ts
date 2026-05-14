@@ -10,7 +10,7 @@ import { AuthService } from '../../../core/services/auth.service';
 import { environment } from '../../../../environments/environment';
 import { ActivatedRoute } from '@angular/router';
 
-const MOTIFS_IN  = ['Achat', 'Retour fournisseur', 'Don', 'Inventaire (ajustement)', 'Transfert entrant', 'Autre'];
+const MOTIFS_IN  = ['Achat', 'Don', 'Inventaire (ajustement)', 'Transfert entrant', 'Autre'];
 const MOTIFS_OUT = ['Consommation interne', 'Livraison client', 'Retour client', 'Transfert sortant', 'Perte/Casse', 'Inventaire (ajustement)', 'Autre'];
 const MOTIFS_TRANSFER = ['Réorganisation dépôt', 'Transfert inter-sites', 'Optimisation stock', 'Autre'];
 
@@ -149,6 +149,15 @@ export class StockMovementsComponent implements OnInit {
         this.load();
       }
     });
+  }
+
+  get destinationWarehouses(): any[] {
+    const user = this.auth.currentUser();
+    const myDepotId = user?.depot_id;
+    if (this.newMovement.movement_type === 'transfer' && myDepotId) {
+      return this.warehouses.filter(w => Number(w.id) !== Number(myDepotId));
+    }
+    return this.warehouses;
   }
 
   /* ────────────────── LIST ────────────────── */
@@ -479,10 +488,27 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private updateMergedSource(): void {
-    const locs = this.sourceLocations.map(l => ({ id: l.id, name: l.name, type: 'location', label: `📦 ${l.name}` }));
-    const cabs = this.sourceCabinets.map(c => ({ id: c.id, name: c.name, type: 'cabinet', label: `🗄️ ${c.name}` }));
+    const locs = this.sourceLocations.map(l => {
+      const isFull = l.capacity_units > 0 && l.current_units >= l.capacity_units;
+      return { 
+        id: l.id, 
+        name: l.name, 
+        type: 'location', 
+        label: isFull ? `📦 ${l.name} (PLEIN)` : `📦 ${l.name}`,
+        disabled: false // Never disable source, even if full
+      };
+    });
+    const cabs = this.sourceCabinets.map(c => {
+      const isFull = c.capacity_units > 0 && c.current_units >= c.capacity_units;
+      return { 
+        id: c.id, 
+        name: c.name, 
+        type: 'cabinet', 
+        label: isFull ? `🗄️ ${c.name} (PLEIN)` : `🗄️ ${c.name}`,
+        disabled: false
+      };
+    });
     
-    // Flattened for simple select, but we'll use optgroup in HTML by filtering
     this.mergedSourceOptions = [...locs, ...cabs].sort((a, b) => a.name.localeCompare(b.name));
     this.cdr.detectChanges();
   }
@@ -546,8 +572,26 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private updateMergedDest(): void {
-    const locs = this.destLocations.map(l => ({ id: l.id, name: l.name, type: 'location', label: `📦 ${l.name}` }));
-    const cabs = this.destCabinets.map(c => ({ id: c.id, name: c.name, type: 'cabinet', label: `🗄️ ${c.name}` }));
+    const locs = this.destLocations.map(l => {
+      const isFull = l.capacity_units > 0 && l.current_units >= l.capacity_units;
+      return { 
+        id: l.id, 
+        name: l.name, 
+        type: 'location', 
+        label: isFull ? `📦 ${l.name} (PLEIN)` : `📦 ${l.name}`,
+        disabled: isFull 
+      };
+    });
+    const cabs = this.destCabinets.map(c => {
+      const isFull = c.capacity_units > 0 && c.current_units >= c.capacity_units;
+      return { 
+        id: c.id, 
+        name: c.name, 
+        type: 'cabinet', 
+        label: isFull ? `🗄️ ${c.name} (PLEIN)` : `🗄️ ${c.name}`,
+        disabled: isFull 
+      };
+    });
     
     this.mergedDestOptions = [...locs, ...cabs].sort((a, b) => a.name.localeCompare(b.name));
     this.cdr.detectChanges();
@@ -598,7 +642,28 @@ export class StockMovementsComponent implements OnInit {
   /* ────────────────── SUBMIT ────────────────── */
 
   submitCreate(): void {
+    if (this.loading) return;
     this.message = '';
+
+    // Frontend validation for Out / Transfer
+    if (this.newMovement.movement_type !== 'in') {
+      for (const line of this.newMovement.lines) {
+        const product = this.products.find(p => Number(p?.id) === Number(line?.product_id));
+        if (product) {
+          const available = Number(product.stock_quantity ?? 0);
+          if (Number(line.quantity) > available) {
+            this.message = `Stock insuffisant pour ${product.title}. (Dispo: ${available})`;
+            return;
+          }
+        }
+      }
+    }
+
+    if (this.newMovement.movement_type === 'in' && !this.newMovement.supplier_id) {
+      this.message = 'Veuillez sélectionner un fournisseur.';
+      return;
+    }
+
     const validLines = (this.newMovement.lines || []).filter((l: any) => Number(l.product_id) > 0 && Number(l.quantity) >= 1);
     if (validLines.length === 0) { this.message = 'Ajoutez au moins un produit valide.'; return; }
 

@@ -18,9 +18,6 @@ use App\Http\Controllers\API\WarehouseCabinetController;
 use App\Http\Controllers\API\WarehouseController;
 use App\Http\Controllers\API\WarehouseLocationController;
 use App\Http\Controllers\API\WarehouseRoomController;
-use App\Http\Controllers\API\SiteController;
-use App\Http\Controllers\API\SiteFloorController;
-use App\Http\Controllers\API\SiteRoomController;
 use App\Http\Controllers\ConsumableRequestController;
 use Illuminate\Support\Facades\Route;
 
@@ -215,24 +212,6 @@ Route::prefix('api')->group(function () {
             Route::put('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'update']);
             Route::delete('admin/warehouse-cabinets/{cabinet}', [WarehouseCabinetController::class, 'destroy']);
             Route::get('admin/warehouse-cabinets/{cabinet}/products', [WarehouseCabinetController::class, 'products']);
-
-            Route::get('admin/sites', [SiteController::class, 'index']);
-            Route::post('admin/sites', [SiteController::class, 'store']);
-            Route::get('admin/sites/{site}', [SiteController::class, 'show']);
-            Route::put('admin/sites/{site}', [SiteController::class, 'update']);
-            Route::delete('admin/sites/{site}', [SiteController::class, 'destroy']);
-
-            Route::get('admin/site-floors', [SiteFloorController::class, 'index']);
-            Route::post('admin/site-floors', [SiteFloorController::class, 'store']);
-            Route::get('admin/site-floors/{floor}', [SiteFloorController::class, 'show']);
-            Route::put('admin/site-floors/{floor}', [SiteFloorController::class, 'update']);
-            Route::delete('admin/site-floors/{floor}', [SiteFloorController::class, 'destroy']);
-
-            Route::get('admin/site-rooms', [SiteRoomController::class, 'index']);
-            Route::post('admin/site-rooms', [SiteRoomController::class, 'store']);
-            Route::get('admin/site-rooms/{room}', [SiteRoomController::class, 'show']);
-            Route::put('admin/site-rooms/{room}', [SiteRoomController::class, 'update']);
-            Route::delete('admin/site-rooms/{room}', [SiteRoomController::class, 'destroy']);
 
             Route::get('admin/products/{product}/stocks', [ProductStockController::class, 'getProductStocks']);
             Route::get('admin/products/{product}/total-stock', [ProductStockController::class, 'getTotalStock']);

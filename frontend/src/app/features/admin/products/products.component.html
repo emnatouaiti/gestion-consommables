@@ -262,10 +262,6 @@
               <span class="info-label">Unité</span>
               <span>{{ selectedProductDetails.unit?.name || selectedProductDetails.unit || '—' }}</span>
             </div>
-            <div class="info-row">
-              <span class="info-label">Prix achat</span>
-              <span>{{ selectedProductDetails.purchase_price ? (selectedProductDetails.purchase_price | number:'1.2-2') + ' DT' : '—' }}</span>
-            </div>
             <div class="info-row" *ngIf="selectedProductDetails.marque">
               <span class="info-label">Marque</span>
               <span>{{ selectedProductDetails.marque }}</span>

@@ -133,7 +133,7 @@ class MessageController extends Controller
                 'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
-                    'role' => $user->role ?? null,
+                    'role' => $user->role?->name ?? null,
                     'last_seen_at' => $user->last_seen_at,
                 ],
                 'last_message' => $preview,
@@ -159,7 +159,7 @@ class MessageController extends Controller
             ->map(fn ($u) => [
                 'id' => $u->id,
                 'name' => $u->name,
-                'role' => $u->role ?? null,
+                'role' => $u->role?->name ?? null,
                 'last_seen_at' => $u->last_seen_at,
                 'online' => $u->last_seen_at && now()->parse($u->last_seen_at)->gt(now()->subMinutes(5)),
             ]);
@@ -197,7 +197,7 @@ class MessageController extends Controller
 
     private function normalizeRole(User $user): string
     {
-        $role = strtolower((string) ($user->role ?? ''));
+        $role = strtolower((string) ($user->role?->name ?? ''));
 
         if (in_array($role, ['admin', 'administrateur'], true)) {
             return 'admin';

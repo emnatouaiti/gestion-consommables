@@ -42,10 +42,12 @@ class ProductController extends Controller
 
         // Filtrage par dépôt pour les responsables/agents
         $user = auth()->user();
-        if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
-            // Note: Since warehouse_location_id is removed from products,
-            // we should probably filter products based on product_stocks.
-            // But for now, let's just remove the broken query.
+        if ($user && (($user->role?->name ?? '') === 'responsable' || ($user->role?->name ?? '') === 'agent') && $user->depot_id) {
+            $depotId = $user->depot_id;
+            $query->whereHas('productStocks', function($q) use ($depotId) {
+                $q->whereHas('warehouseLocation.room', fn($r) => $r->where('warehouse_id', $depotId))
+                  ->orWhereHas('warehouseCabinet.room', fn($r) => $r->where('warehouse_id', $depotId));
+            });
         }
         $perPage = max(1, min(100, (int) $request->get('per_page', 20)));
 
@@ -95,7 +97,7 @@ class ProductController extends Controller
         $outOfStock = Product::where('stock_quantity', '<=', 0)->count();
         $lowStock = Product::whereColumn('stock_quantity', '<=', 'seuil_min')->count();
         $totalUnits = (int) Product::sum('stock_quantity');
-        $inventoryValue = (float) Product::selectRaw('COALESCE(SUM(stock_quantity * COALESCE(purchase_price, 0)), 0) as total')->value('total');
+        $inventoryValue = 0;
 
         $topLowStock = Product::with('category:id,title')
             ->where('status', 'active')
@@ -133,7 +135,6 @@ class ProductController extends Controller
             'categorie_id' => 'required|exists:categories,id',
             'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
-            'purchase_price' => 'nullable|numeric|min:0',
             'unit_id' => 'nullable|exists:units,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
@@ -178,6 +179,35 @@ class ProductController extends Controller
             }
         }
 
+        // 1) Duplication check by title + marque + model (Strict)
+        if (!empty($data['title'])) {
+            $query = Product::where('title', $data['title']);
+            
+            if (empty($data['marque'])) {
+                $query->whereNull('marque');
+            } else {
+                $query->where('marque', $data['marque']);
+            }
+            
+            if (empty($data['model'])) {
+                $query->whereNull('model');
+            } else {
+                $query->where('model', $data['model']);
+            }
+
+            $existingDuplicate = $query->first();
+
+            if ($existingDuplicate) {
+                return response()->json([
+                    'message' => 'Ce produit (Titre + Marque + Modèle) existe déjà.',
+                    'errors' => [
+                        'title' => ['Un produit identique est déjà enregistré.'],
+                    ],
+                    'existing_product' => $existingDuplicate,
+                ], 422);
+            }
+        }
+
         if (!empty($data['reference'])) {
             $incomingRef = trim((string) $data['reference']);
             $existingRef = Product::query()
@@ -209,6 +239,11 @@ class ProductController extends Controller
         }
 
         $supplierIds = $data['supplier_ids'] ?? [];
+        if (!empty($supplierIds)) {
+            $data['supplier_id'] = $supplierIds[0];
+        } else {
+            $data['supplier_id'] = null;
+        }
         unset($data['supplier_ids']);
 
         if (!empty($data['unit_id']) && empty($data['unit'])) {
@@ -278,7 +313,6 @@ class ProductController extends Controller
             'categorie_id' => 'required|exists:categories,id',
             'has_expiration' => 'nullable|boolean',
             'stock_quantity' => 'nullable|integer|min:0',
-            'purchase_price' => 'nullable|numeric|min:0',
             'unit_id' => 'nullable|exists:units,id',
             'supplier_ids' => 'nullable|array',
             'supplier_ids.*' => 'integer|exists:suppliers,id',
@@ -293,6 +327,11 @@ class ProductController extends Controller
 
         $data = $validator->validated();
         $supplierIds = $data['supplier_ids'] ?? [];
+        if (!empty($supplierIds)) {
+            $data['supplier_id'] = $supplierIds[0];
+        } else {
+            $data['supplier_id'] = null;
+        }
         unset($data['supplier_ids']);
 
         if (!empty($data['unit_id']) && empty($data['unit'])) {

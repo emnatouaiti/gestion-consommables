@@ -31,7 +31,6 @@ class ReportController extends Controller
                 'Quantite en Stock',
                 'Seuil Min',
                 'Seuil Max',
-                'Prix Achat',
                 'Status'
             ], ';');
 
@@ -52,7 +51,6 @@ class ReportController extends Controller
                     $product->stock_quantity,
                     $product->seuil_min,
                     $product->seuil_max,
-                    $product->purchase_price,
                     $status
                 ], ';');
             }

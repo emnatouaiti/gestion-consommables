@@ -17,7 +17,6 @@ class ExpirationEvent extends Model
         'event_type',
         'status',
         'action_details',
-        'notes',
         'created_by',
         'acknowledged_by',
         'acknowledged_at',

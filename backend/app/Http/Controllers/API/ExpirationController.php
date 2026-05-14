@@ -162,12 +162,10 @@ class ExpirationController extends Controller
 
         $validated = $request->validate([
             'status' => 'required|in:acknowledged,resolved,ignored',
-            'notes' => 'nullable|string',
         ]);
 
         $alert->update([
             'status' => $validated['status'],
-            'notes' => $validated['notes'] ?? $alert->notes,
             'acknowledged_by' => auth()->id(),
             'acknowledged_at' => now(),
         ]);
@@ -524,7 +522,7 @@ class ExpirationController extends Controller
      */
     public function getEvents(int $productId): JsonResponse
     {
-        $query = ExpirationEvent::with('document')
+        $query = ExpirationEvent::with(['document', 'acknowledgedBy', 'createdBy'])
             ->where('product_id', $productId);
 
         // Filtrage par dépôt pour les responsables/agents

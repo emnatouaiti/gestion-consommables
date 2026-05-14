@@ -9,15 +9,10 @@ class Modele extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'marque_id', 'fabricant_id'];
+    protected $fillable = ['name', 'marque_id'];
 
     public function marque()
     {
         return $this->belongsTo(Marque::class);
-    }
-
-    public function fabricant()
-    {
-        return $this->belongsTo(Fabricant::class);
     }
 }

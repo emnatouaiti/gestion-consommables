@@ -359,7 +359,7 @@ class ExpirationManagementService
     public function getPendingAlerts(int $perPage = 15): LengthAwarePaginator
     {
         return ExpirationEvent::where('status', 'pending')
-            ->with('product', 'productStock', 'createdBy')
+            ->with(['product', 'productStock', 'createdBy', 'acknowledgedBy'])
             ->orderBy('created_at', 'desc')
             ->paginate($perPage);
     }

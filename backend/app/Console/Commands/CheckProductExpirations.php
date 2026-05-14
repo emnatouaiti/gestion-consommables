@@ -74,7 +74,7 @@ class CheckProductExpirations extends Command
         }
 
         // Notify Responsables and Administrateurs (Robust search)
-        $responsables = User::whereHas('roles', function ($query) {
+        $responsables = User::whereHas('role', function ($query) {
             $query->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
                 'administrateur', 
                 'responsable de stock', 
