@@ -410,7 +410,7 @@ export class StockMovementsComponent implements OnInit {
   }
 
   private loadWarehouses(): void {
-    this.warehouseService.listWarehouses(null, 200, 'active').subscribe({
+    this.warehouseService.listWarehouses(null, 200).subscribe({
       next: (r: any) => { this.warehouses = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []); this.cdr.detectChanges(); },
       error: () => this.warehouses = []
     });
@@ -446,7 +446,7 @@ export class StockMovementsComponent implements OnInit {
     this.sourceRooms = []; this.sourceLocations = []; this.sourceCabinets = []; this.mergedSourceOptions = [];
     const id = Number(this.newMovement.source_warehouse_id);
     if (!id) return;
-    this.warehouseService.listRooms(id, null, 200, 'active').subscribe({
+    this.warehouseService.listRooms(id, null, 200).subscribe({
       next: (r: any) => { this.sourceRooms = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []); this.cdr.detectChanges(); },
       error: () => this.sourceRooms = []
     });
@@ -462,7 +462,7 @@ export class StockMovementsComponent implements OnInit {
     if (!id) return;
 
     // Load Locations
-    this.warehouseService.listLocations(id, null, 200, 'active').subscribe({
+    this.warehouseService.listLocations(id, null, 200).subscribe({
       next: (r: any) => {
         this.sourceLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
         this.updateMergedSource();
@@ -470,7 +470,7 @@ export class StockMovementsComponent implements OnInit {
     });
 
     // Load Cabinets
-    this.warehouseService.listCabinets(id, null, 200, 'active').subscribe({
+    this.warehouseService.listCabinets(id, null, 200).subscribe({
       next: (r: any) => {
         this.sourceCabinets = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
         this.updateMergedSource();
@@ -513,7 +513,7 @@ export class StockMovementsComponent implements OnInit {
     this.destRooms = []; this.destLocations = []; this.destCabinets = []; this.mergedDestOptions = [];
     const id = Number(this.newMovement.destination_warehouse_id);
     if (!id) return;
-    this.warehouseService.listRooms(id, null, 200, 'active').subscribe({
+    this.warehouseService.listRooms(id, null, 200).subscribe({
       next: (r: any) => { this.destRooms = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []); this.cdr.detectChanges(); },
       error: () => this.destRooms = []
     });
@@ -529,7 +529,7 @@ export class StockMovementsComponent implements OnInit {
     if (!id) return;
 
     // Load Locations
-    this.warehouseService.listLocations(id, null, 200, 'active').subscribe({
+    this.warehouseService.listLocations(id, null, 200).subscribe({
       next: (r: any) => {
         this.destLocations = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
         this.updateMergedDest();
@@ -537,7 +537,7 @@ export class StockMovementsComponent implements OnInit {
     });
 
     // Load Cabinets
-    this.warehouseService.listCabinets(id, null, 200, 'active').subscribe({
+    this.warehouseService.listCabinets(id, null, 200).subscribe({
       next: (r: any) => {
         this.destCabinets = Array.isArray(r?.data) ? r.data : (Array.isArray(r) ? r : []);
         this.updateMergedDest();
