@@ -100,10 +100,14 @@
         <div class="location-grid">
           <div class="field">
             <label>Dépôt</label>
-            <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)" [disabled]="currentUserDepotId !== null">
+            <select [(ngModel)]="item.warehouse_id"
+                    (ngModelChange)="onWarehouseSelected(item)"
+                    [disabled]="item.depot_locked"
+                    [class.locked-select]="item.depot_locked">
               <option [ngValue]="null">Sélectionner un dépôt</option>
               <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
             </select>
+            <small *ngIf="item.depot_locked" class="locked-hint">Dépôt verrouillé selon votre profil (agent/responsable).</small>
           </div>
 
           <div class="field">
@@ -215,11 +219,25 @@
         <div class="suggested-fields">
           <div class="field">
             <label>Produit</label>
-            <input type="text" [value]="s.title" readonly />
+            <input type="text" [(ngModel)]="s.title" placeholder="Nom du produit" />
           </div>
           <div class="field">
             <label>Référence</label>
-            <input type="text" [value]="s.reference || 'N/A'" readonly />
+            <input type="text" [(ngModel)]="s.reference" placeholder="Ex: INV-0006" />
+          </div>
+          <div class="field">
+            <label>Unité</label>
+            <input type="text" [(ngModel)]="s.unit" placeholder="Ex: pièce, boite, litre..." />
+          </div>
+          <div class="field">
+            <label>Seuil min</label>
+            <input type="number" min="0" [(ngModel)]="s.seuil_min" />
+          </div>
+          <div class="field full">
+            <label style="text-transform:none; letter-spacing:0; font-weight:600;">
+              <input type="checkbox" [(ngModel)]="s.has_expiration" style="margin-right:8px; width:auto;" />
+              Produit avec date d'expiration
+            </label>
           </div>
           <div class="field full">
             <label>Catégorie *</label>

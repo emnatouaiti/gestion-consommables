@@ -249,6 +249,11 @@
                   <option value="all">Tous</option>
                   <option *ngFor="let type of availableDocTypes" [value]="type">{{ getDocTypeLabel(type) }}</option>
                 </select>
+                <label for="docStatusFilter">Statut :</label>
+                <select id="docStatusFilter" [(ngModel)]="docStatusFilter">
+                  <option value="all">Tous</option>
+                  <option *ngFor="let st of availableDocStatuses" [value]="st">{{ getDocStatusLabel(st) }}</option>
+                </select>
               </div>
             </div>
           </div>
@@ -274,8 +279,10 @@
                 <div class="doc-title">{{ doc.title || 'Document sans titre' }}</div>
                 <div class="doc-meta">
                   <span class="meta-tag type">{{ getDocTypeLabel(doc.type) }}</span>
-                  <span class="meta-tag status" [class.pending]="doc.status==='pending'" [class.applied]="doc.status==='applied'">
-                    {{ doc.status==='applied' ? 'Appliqué' : 'En attente' }}
+                  <span class="meta-tag status"
+                        [class.pending]="normalizeDocStatus(doc.status)==='pending' || normalizeDocStatus(doc.status)==='pending_validation'"
+                        [class.applied]="normalizeDocStatus(doc.status)==='applied' || normalizeDocStatus(doc.status)==='executed' || normalizeDocStatus(doc.status)==='approved'">
+                    {{ getDocStatusLabel(normalizeDocStatus(doc.status)) }}
                   </span>
                   <span class="meta-tag dir" [class.in]="doc.direction==='in'" [class.out]="doc.direction==='out'">
                     {{ doc.direction==='in' ? 'Entrée' : (doc.direction==='out' ? 'Sortie' : 'Inconnu') }}
@@ -775,8 +782,8 @@
                 </thead>
                 <tbody>
                   <tr *ngFor="let h of productHistory"
-                      [class.entry]="h.movement?.movement_type==='entry'"
-                      [class.exit]="h.movement?.movement_type==='exit'">
+                      [class.entry]="h.movement?.movement_type==='entry' || h.movement?.movement_type==='in'"
+                      [class.exit]="h.movement?.movement_type==='exit' || h.movement?.movement_type==='out'">
                     <td class="date-cell">{{ h.created_at | date:'dd/MM/yyyy HH:mm' }}</td>
                     <td class="prod-cell">
                       <div class="p-name" style="font-weight: 600; font-size: 13px;">{{ h.product?.title || product?.title }}</div>
@@ -784,14 +791,14 @@
                     </td>
                     <td>
                       <span class="type-tag"
-                            [class.entry]="h.movement?.movement_type==='entry'"
-                            [class.exit]="h.movement?.movement_type==='exit'"
+                            [class.entry]="h.movement?.movement_type==='entry' || h.movement?.movement_type==='in'"
+                            [class.exit]="h.movement?.movement_type==='exit' || h.movement?.movement_type==='out'"
                             [class.transfer]="h.movement?.movement_type==='transfer'">
-                        <svg *ngIf="h.movement?.movement_type==='entry'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 11 12 16 7 11"/><line x1="12" y1="16" x2="12" y2="2"/></svg>
-                        <svg *ngIf="h.movement?.movement_type==='exit'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 13 12 8 17 13"/><line x1="12" y1="8" x2="12" y2="22"/></svg>
+                        <svg *ngIf="h.movement?.movement_type==='entry' || h.movement?.movement_type==='in'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="17 11 12 16 7 11"/><line x1="12" y1="16" x2="12" y2="2"/></svg>
+                        <svg *ngIf="h.movement?.movement_type==='exit' || h.movement?.movement_type==='out'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="7 13 12 8 17 13"/><line x1="12" y1="8" x2="12" y2="22"/></svg>
                         <svg *ngIf="h.movement?.movement_type==='transfer'" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 8 16 13"/><line x1="21" y1="8" x2="9" y2="8"/><path d="M21 8v10a2 2 0 0 1-2 2H5"/></svg>
-                        {{ h.movement?.movement_type==='entry' ? 'Entrée' :
-                           h.movement?.movement_type==='exit'  ? 'Sortie' :
+                        {{ (h.movement?.movement_type==='entry' || h.movement?.movement_type==='in') ? 'Entrée' :
+                           (h.movement?.movement_type==='exit' || h.movement?.movement_type==='out')  ? 'Sortie' :
                            h.movement?.movement_type==='transfer' ? 'Transfert' : h.movement?.movement_type }}
                       </span>
                     </td>
@@ -826,7 +833,14 @@
                         </svg>
                         PDF Sortie
                       </button>
-                      <span *ngIf="!h.movement?.document && !h.movement?.related_request?.pdf_path" class="empty-cell">—</span>
+                      <button *ngIf="h.movement?.response_pdf_path" class="btn ghost sm doc-btn" (click)="downloadDoc({path: h.movement.response_pdf_path, title: 'Decision_' + h.movement.id})">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v4"/>
+                          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                        </svg>
+                        PDF Décision
+                      </button>
+                      <span *ngIf="!h.movement?.document && !h.movement?.related_request?.pdf_path && !h.movement?.response_pdf_path" class="empty-cell">—</span>
                     </td>
                   </tr>
                 </tbody>

@@ -20,11 +20,14 @@ use App\Http\Controllers\API\WarehouseLocationController;
 use App\Http\Controllers\API\WarehouseRoomController;
 use App\Http\Controllers\ConsumableRequestController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Sanctum\Http\Controllers\CsrfCookieController;
 
 Route::prefix('api')->group(function () {
     Route::get('ping', function () {
         return response()->json(['pong' => true]);
     });
+
+    Route::get('sanctum/csrf-cookie', [CsrfCookieController::class, 'show']);
 
     Route::get('test/status', function () {
         return response()->json([
@@ -231,11 +234,12 @@ Route::prefix('api')->group(function () {
         });
 
         // OCR specific to Agent & Responsable
-        Route::middleware('role:Agent de stock|Agent|Responsable de stock|Responsable|Gestionnaire')->group(function () {
+        Route::middleware('role:Agent de stock|Agent|Responsable de stock|Responsable|Gestionnaire|Directeur')->group(function () {
             Route::get('admin/documents', [DocumentController::class, 'index']);
             Route::post('admin/documents', [DocumentController::class, 'store']);
             Route::put('admin/documents/{id}', [DocumentController::class, 'update']);
             Route::post('admin/documents/{id}/apply', [DocumentController::class, 'apply']);
+            Route::get('admin/documents/{id}/download', [DocumentController::class, 'download']);
             Route::post('admin/documents/diagnostic', [DocumentController::class, 'diagnostic']);
 
             // Available location endpoints for auto-selection
@@ -276,6 +280,7 @@ Route::prefix('api')->group(function () {
             'photos/'     . $filename,        // dans photos/
             'stock-movements/in/' . $filename, // Images Entrées
             'stock-movements/out/' . $filename, // Images Sorties
+            'responses/' . $filename,           // PDF décision responsable
             'documents/eliminations/' . $filename, // PV d'élimination
             'documents/returns/' . $filename,      // Bons de retour
             'documents/retours/' . $filename,      // retours PDF (ancien)

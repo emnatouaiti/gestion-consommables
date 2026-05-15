@@ -39,10 +39,12 @@ class StockMovementController extends Controller
             ])
             ->latest();
 
-        // By default, hide legacy "static" movements that don't have lines.
-        // Those rows come from an older schema (product_id/quantity_delta/stock_before/stock_after/reason).
+        // By default, hide legacy static movements without lines, but keep OCR/document movements.
         if (!$request->boolean('include_legacy')) {
-            $query->whereHas('lines');
+            $query->where(function ($q) {
+                $q->whereHas('lines')
+                  ->orWhereNotNull('document_id');
+            });
         }
 
         if ($request->filled('status')) {
@@ -51,7 +53,13 @@ class StockMovementController extends Controller
         
         $user = Auth::user();
         if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['Administrateur'])) {
-            $query->where('depot_id', $user->depot_id);
+            $query->where(function ($q) use ($user) {
+                $q->where('depot_id', $user->depot_id)
+                  ->orWhere(function ($q2) use ($user) {
+                      $q2->whereNull('depot_id')
+                         ->where('created_by', $user->id);
+                  });
+            });
         }
         if ($request->filled('movement_type')) {
             $query->where('movement_type', $request->input('movement_type'));

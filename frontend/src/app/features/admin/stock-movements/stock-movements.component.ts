@@ -125,8 +125,18 @@ export class StockMovementsComponent implements OnInit {
     return this.auth.userHasAnyRole(user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
   }
 
-  get isDepotLocked(): boolean {
-    return !!this.auth.currentUser()?.depot_id;
+  get isSourceDepotLocked(): boolean {
+    const user = this.auth.currentUser();
+    if (!user?.depot_id) return false;
+    const type = this.newMovement.movement_type;
+    return type === 'out' || type === 'transfer';
+  }
+
+  get isDestDepotLocked(): boolean {
+    const user = this.auth.currentUser();
+    if (!user?.depot_id) return false;
+    const type = this.newMovement.movement_type;
+    return type === 'in';
   }
 
   ngOnInit(): void {

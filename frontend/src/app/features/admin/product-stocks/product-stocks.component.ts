@@ -77,8 +77,10 @@ export class ProductStocksComponent implements OnInit {
   photoUploadInProgress = false;
   productDocuments: any[] = [];
   docTypeFilter = 'all';
+  docStatusFilter = 'all';
   docUploadInProgress = false;
   availableDocTypes: string[] = [];
+  availableDocStatuses: string[] = [];
   docPagination = { page: 1, perPage: 5 };
 
   // ── Expiration & Lots ──────────────────────────────────
@@ -272,14 +274,89 @@ export class ProductStocksComponent implements OnInit {
           const lines = Array.isArray(d.ocr_lines) ? d.ocr_lines : [];
           return lines.some((l: any) => matches(l.title, title) || matches(l.reference, reference));
         });
-        this.productDocuments.sort((a: any, b: any) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-        const typesSet = new Set<string>();
-        this.productDocuments.forEach(d => { if (d.type) typesSet.add(d.type); });
-        this.availableDocTypes = Array.from(typesSet);
-        this.cdr.detectChanges();
+        this.mergeMovementAndRequestDocuments();
       },
       error: () => {}
+    });
+  }
+
+  private mergeMovementAndRequestDocuments(): void {
+    if (!this.productId) return;
+
+    this.adminStockService.getProductHistory(this.productId, { page: 1, per_page: 300 }).subscribe({
+      next: (res: any) => {
+        const historyRows = Array.isArray(res?.data) ? res.data : [];
+        const extraDocs: any[] = [];
+
+        historyRows.forEach((h: any) => {
+          const movement = h?.movement;
+          if (!movement) return;
+
+          if (movement.response_pdf_path) {
+            extraDocs.push({
+              id: `movement-response-${movement.id}`,
+              title: `Décision Responsable - ${movement.reference || ('MVT-' + movement.id)}`,
+              type: 'bon_mouvement',
+              status: movement.status || 'executed',
+              direction: movement.movement_type,
+              path: movement.response_pdf_path,
+              created_at: movement.updated_at || movement.created_at,
+            });
+          }
+
+          if (movement.related_request?.pdf_path) {
+            extraDocs.push({
+              id: `request-pdf-${movement.related_request.id}`,
+              title: `Demande Livrée - #${movement.related_request.id}`,
+              type: 'bon_sortie',
+              status: movement.status || movement.related_request.status || 'approved',
+              direction: movement.movement_type,
+              path: movement.related_request.pdf_path,
+              created_at: movement.related_request.updated_at || movement.related_request.created_at || movement.created_at,
+            });
+          }
+        });
+
+        this.productDocuments = [...this.productDocuments, ...extraDocs];
+        this.productDocuments = this.productDocuments.map((d: any) => {
+          if (d.type === 'demande_livree') return { ...d, type: 'bon_sortie' };
+          if (d.type === 'decision_responsable') return { ...d, type: 'bon_mouvement' };
+          return d;
+        });
+        this.productDocuments = this.productDocuments.filter((d: any) =>
+          ['bon_livraison', 'bon_sortie', 'bon_mouvement'].includes((d.type || '').toLowerCase())
+        );
+        this.productDocuments = this.productDocuments.map((d: any) => ({
+          ...d,
+          status: this.normalizeDocStatus(d.status)
+        }));
+        this.productDocuments = this.productDocuments.filter((d, i, arr) => {
+          const key = `${d.path || ''}|${d.type || ''}|${d.title || ''}`;
+          return arr.findIndex(x => `${x.path || ''}|${x.type || ''}|${x.title || ''}` === key) === i;
+        });
+        this.productDocuments.sort((a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+        const orderedTypes = ['bon_livraison', 'bon_sortie', 'bon_mouvement'];
+        this.availableDocTypes = orderedTypes.filter(t => this.productDocuments.some((d: any) => d.type === t));
+        this.availableDocStatuses = this.extractAvailableStatuses(this.productDocuments);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.productDocuments = this.productDocuments.filter((d: any) =>
+          ['bon_livraison', 'bon_sortie', 'bon_mouvement'].includes((d.type || '').toLowerCase())
+        );
+        this.productDocuments = this.productDocuments.map((d: any) => ({
+          ...d,
+          status: this.normalizeDocStatus(d.status)
+        }));
+        this.productDocuments.sort((a: any, b: any) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        const orderedTypes = ['bon_livraison', 'bon_sortie', 'bon_mouvement'];
+        this.availableDocTypes = orderedTypes.filter(t => this.productDocuments.some((d: any) => d.type === t));
+        this.availableDocStatuses = this.extractAvailableStatuses(this.productDocuments);
+        this.cdr.detectChanges();
+      }
     });
   }
 
@@ -840,6 +917,9 @@ export class ProductStocksComponent implements OnInit {
     let docs = this.docTypeFilter === 'all'
       ? [...this.productDocuments]
       : this.productDocuments.filter(d => d.type === this.docTypeFilter);
+    if (this.docStatusFilter !== 'all') {
+      docs = docs.filter(d => this.normalizeDocStatus(d.status) === this.docStatusFilter);
+    }
     docs = docs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
     // Pagination
@@ -848,8 +928,43 @@ export class ProductStocksComponent implements OnInit {
   }
 
   getTotalFilteredDocuments(): number {
-    if (this.docTypeFilter === 'all') return this.productDocuments.length;
-    return this.productDocuments.filter(d => d.type === this.docTypeFilter).length;
+    let docs = this.docTypeFilter === 'all' ? [...this.productDocuments] : this.productDocuments.filter(d => d.type === this.docTypeFilter);
+    if (this.docStatusFilter !== 'all') {
+      docs = docs.filter(d => this.normalizeDocStatus(d.status) === this.docStatusFilter);
+    }
+    return docs.length;
+  }
+
+  private extractAvailableStatuses(docs: any[]): string[] {
+    const preferredOrder = ['pending', 'pending_validation', 'approved', 'executed', 'applied', 'rejected', 'cancelled'];
+    const found = new Set<string>();
+    docs.forEach((d: any) => {
+      const st = this.normalizeDocStatus(d?.status);
+      if (st && st !== 'all') found.add(st);
+    });
+    return preferredOrder.filter(s => found.has(s));
+  }
+
+  normalizeDocStatus(status: any): string {
+    const s = String(status || '').trim().toLowerCase();
+    if (!s) return 'pending';
+    if (s === 'validated') return 'approved';
+    if (s === 'canceled') return 'cancelled';
+    return s;
+  }
+
+  getDocStatusLabel(status: string): string {
+    const map: Record<string, string> = {
+      pending: 'En attente',
+      pending_validation: 'Attente validation',
+      approved: 'Approuvé',
+      executed: 'Exécuté',
+      applied: 'Appliqué',
+      rejected: 'Rejeté',
+      cancelled: 'Annulé',
+      all: 'Tous'
+    };
+    return map[status] || status;
   }
 
   getDocTotalPages(): number {
@@ -861,6 +976,7 @@ export class ProductStocksComponent implements OnInit {
       demande: 'Demande',
       bon_sortie: 'Bon de Sortie',
       bon_livraison: 'Bon de Livraison',
+      bon_mouvement: 'Bon de Mouvement',
       refus: 'Refus',
       all: 'Tous'
     };

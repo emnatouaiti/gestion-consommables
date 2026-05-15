@@ -12,8 +12,17 @@ class SocialAuthController extends Controller
 {
     public function redirectToGoogle()
     {
+        $url = Socialite::driver('google')->stateless()->redirect()->getTargetUrl();
+
+        // Add prompt=select_account to force account selection every time
+        // This ensures users can switch between Google accounts
+        $separator = strpos($url, '?') !== false ? '&' : '?';
+        $url .= $separator . http_build_query([
+            'prompt' => 'select_account',
+        ]);
+
         return response()->json([
-            'url' => Socialite::driver('google')->stateless()->redirect()->getTargetUrl(),
+            'url' => $url,
         ]);
     }
 

@@ -218,6 +218,17 @@
 }
 .field input:focus, .field select:focus { border-color: var(--etap-400); background: white; box-shadow: 0 0 0 3px rgba(26,95,168,.08); }
 .field input[readonly] { background: var(--bg-soft); color: var(--text-light); cursor: not-allowed; }
+.field .locked-select,
+.field select:disabled {
+  background: #e5e7eb;
+  color: #6b7280;
+  border-color: #cbd5e1;
+  cursor: not-allowed;
+}
+.locked-hint {
+  color: #64748b;
+  font-size: 11px;
+}
 .field.full { grid-column: 1 / -1; }
 
 /* ══════════════════════════════════════════════════════════════

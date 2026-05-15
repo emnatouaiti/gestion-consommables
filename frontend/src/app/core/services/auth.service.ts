@@ -1,6 +1,6 @@
 import { Injectable, signal, Inject, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, switchMap, of } from 'rxjs';
 import { ApiService } from './api.service';
 import { isPlatformBrowser } from '@angular/common';
 
@@ -40,7 +40,9 @@ export class AuthService {
     }
 
     login(credentials: { email: string; password: string }): Observable<any> {
-        return this.apiService.post('login', credentials).pipe(
+        // Pour Sanctum SPA : on récupère le cookie CSRF d'abord
+        return this.apiService.get('sanctum/csrf-cookie').pipe(
+            switchMap(() => this.apiService.post('login', credentials)),
             tap(response => {
                 this.setSession(response);
             })
@@ -73,15 +75,27 @@ export class AuthService {
 
     handleGoogleCallback(token: string) {
         if (isPlatformBrowser(this.platformId)) {
+            // Clear any existing token first to prevent session conflicts
+            const oldToken = localStorage.getItem(this.TOKEN_KEY);
+            if (oldToken && oldToken !== token) {
+                // Revoke old token if different
+                this.currentUser.set(null);
+            }
             localStorage.setItem(this.TOKEN_KEY, token);
             // fetch user immediately then navigate according to role
             this.apiService.get('user').subscribe({
                 next: (user) => {
+                    console.log('[AuthService] Google callback user:', user);
                     this.currentUser.set(user);
-                    this.router.navigate([this.resolvePostLoginRoute(user)]);
+                    const route = this.resolvePostLoginRoute(user);
+                    console.log('[AuthService] Google callback route:', route);
+                    this.router.navigate([route]);
                 },
-                error: () => {
-                    // if fetching user fails, fallback to admin root
+                error: (err) => {
+                    console.error('[AuthService] Google callback user fetch error:', err);
+                    // if fetching user fails, clear token and go to login
+                    localStorage.removeItem(this.TOKEN_KEY);
+                    this.currentUser.set(null);
                     this.router.navigate(['/login']);
                 }
             });
@@ -89,9 +103,12 @@ export class AuthService {
     }
 
     logout() {
+        // Navigate immediately to prevent being stuck on current page
+        this.purgeAuth();
+        // Then call the API to invalidate the session on the server
         this.apiService.post('logout').subscribe({
-            next: () => this.purgeAuth(),
-            error: () => this.purgeAuth()
+            next: () => {},
+            error: () => {}
         });
     }
 
@@ -150,9 +167,10 @@ export class AuthService {
     private purgeAuth() {
         if (isPlatformBrowser(this.platformId)) {
             localStorage.removeItem(this.TOKEN_KEY);
+            try { console.debug('[AuthService] purgeAuth called, navigating to /login'); } catch (e) {}
         }
         this.currentUser.set(null);
-        this.router.navigate(['/login']);
+        this.router.navigateByUrl('/login');
     }
 
     isAuthenticated(): boolean {

@@ -23,6 +23,15 @@ export class LoginComponent {
             email: ['', [Validators.required, Validators.email]],
             password: ['', [Validators.required, Validators.minLength(6)]]
         });
+
+        // Check for Google callback errors from sessionStorage
+        try {
+            const googleError = sessionStorage.getItem('google_login_error');
+            if (googleError) {
+                this.errorMessage = googleError;
+                sessionStorage.removeItem('google_login_error');
+            }
+        } catch (e) {}
     }
 
     onSubmit() {
@@ -45,12 +54,29 @@ export class LoginComponent {
     }
 
     loginWithGoogle() {
+        this.isLoading = true;
+        this.errorMessage = '';
+
+        // Clear local auth state before attempting Google login
+        // to prevent being logged in with a previous session
+        try {
+            localStorage.removeItem('auth_token');
+        } catch (e) {}
+        this.authService.currentUser.set(null);
+
         this.authService.loginWithGoogle().subscribe({
             next: (res: any) => {
-                window.location.href = res.url;
+                this.isLoading = false;
+                if (res && res.url) {
+                    window.location.href = res.url;
+                } else {
+                    this.errorMessage = 'Google login: invalid response';
+                }
             },
-            error: () => {
-                this.errorMessage = 'Google login failed';
+            error: (err) => {
+                this.isLoading = false;
+                console.error('Google login error:', err);
+                this.errorMessage = 'Google login failed: ' + (err.message || 'Unknown error');
             }
         });
     }

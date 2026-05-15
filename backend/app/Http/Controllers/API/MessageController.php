@@ -149,11 +149,18 @@ class MessageController extends Controller
     public function listUsers()
     {
         $auth = request()->user();
+        $authRole = $this->normalizeRole($auth);
 
-        $users = User::query()
+        $query = User::query()
             ->where('id', '<>', $auth->id)
-            ->orderBy('nomprenom')
-            ->get()
+            ->orderBy('nomprenom');
+
+        // For responsables/agents: only users from same depot.
+        if (in_array($authRole, ['manager', 'employee'], true) && !empty($auth->depot_id)) {
+            $query->where('depot_id', $auth->depot_id);
+        }
+
+        $users = $query->get()
             ->filter(fn ($u) => $this->canChat($auth, $u))
             ->values()
             ->map(fn ($u) => [
@@ -205,8 +212,11 @@ class MessageController extends Controller
         if (in_array($role, ['manager', 'responsable', 'gestionnaire', 'directeur', 'validateur'], true)) {
             return 'manager';
         }
-        if (in_array($role, ['employee', 'employe', 'agent', 'utilisateur'], true)) {
+        if (in_array($role, ['employee', 'employe', 'agent', 'utilisateur', 'agent de stock'], true)) {
             return 'employee';
+        }
+        if ($role === 'responsable de stock') {
+            return 'manager';
         }
 
         return $role;

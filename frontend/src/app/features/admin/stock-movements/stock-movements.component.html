@@ -111,6 +111,17 @@
                   <circle cx="12" cy="12" r="3"></circle>
                 </svg>
               </button>
+              <a *ngIf="m.response_pdf_path"
+                 class="btn-icon"
+                 [href]="getDocumentUrl(m.response_pdf_path)"
+                 target="_blank"
+                 (click)="$event.stopPropagation()"
+                 title="PDF décision">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+              </a>
               <button *ngIf="m.status === 'pending_validation' && isResponsible"
                       class="btn-icon success"
                       (click)="$event.stopPropagation(); approve(m)"
@@ -274,7 +285,7 @@
             <div class="grid-3">
               <div class="field">
                 <label>Dépôt</label>
-                <select [(ngModel)]="newMovement.source_warehouse_id" name="swh" (change)="onSourceWarehouseChange()" [disabled]="isDepotLocked">
+                <select [(ngModel)]="newMovement.source_warehouse_id" name="swh" (change)="onSourceWarehouseChange()" [disabled]="isSourceDepotLocked">
                   <option [value]="null">Choisir...</option>
                   <option *ngFor="let w of warehouses" [value]="w.id">{{ w.name }}</option>
                 </select>
@@ -313,7 +324,7 @@
             <div class="grid-3">
               <div class="field">
                 <label>Dépôt</label>
-                <select [(ngModel)]="newMovement.destination_warehouse_id" name="dwh" (change)="onDestWarehouseChange()" [disabled]="isDepotLocked">
+                <select [(ngModel)]="newMovement.destination_warehouse_id" name="dwh" (change)="onDestWarehouseChange()" [disabled]="isDestDepotLocked">
                   <option [value]="null">Choisir...</option>
                   <option *ngFor="let w of destinationWarehouses" [value]="w.id">{{ w.name }}</option>
                 </select>

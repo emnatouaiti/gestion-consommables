@@ -274,7 +274,7 @@
         </div>
 
         <!-- Pour Responsable/Agent : seulement Depot -->
-        <div *ngIf="form.roles === 'Responsable' || form.roles === 'Agent'">
+        <div *ngIf="isStorageRole(form.roles)">
           <div class="form-group">
             <label>Depot *</label>
             <div class="select-wrapper">
@@ -293,7 +293,7 @@
         </div>
 
         <!-- Pour les autres rôles : Service, Poste, Siege -->
-        <div *ngIf="form.roles !== 'Administrateur' && form.roles !== 'Directeur' && form.roles !== 'Responsable' && form.roles !== 'Agent' && form.roles !== ''">
+        <div *ngIf="!isStorageRole(form.roles) && form.roles !== 'Administrateur' && form.roles !== 'Directeur' && form.roles !== ''">
           <div class="form-group">
             <label>Service</label>
             <div class="select-wrapper">
@@ -400,8 +400,8 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeModal()">Annuler</button>
-          <button type="submit" class="btn primary">
-            {{ editingId ? 'Mettre a jour' : 'Creer' }}
+          <button type="submit" class="btn primary" [disabled]="isSaving">
+            {{ isSaving ? 'Enregistrement...' : (editingId ? 'Mettre a jour' : 'Creer') }}
           </button>
         </div>
       </form>

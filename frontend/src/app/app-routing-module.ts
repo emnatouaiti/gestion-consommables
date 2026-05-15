@@ -9,6 +9,7 @@ import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-
 
 const routes: Routes = [
   { path: 'login', component: LoginComponent },
+  { path: 'logout', redirectTo: 'login', pathMatch: 'full' },
   { path: 'auth/callback', component: GoogleCallbackComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'register', component: RegisterComponent },

@@ -39,14 +39,18 @@ class UserManagementController extends Controller
         });
     }
 
-    // 🔒 Restriction Directeur & Administrateur : ne voir que son siège + tous les Responsables/Agents
+    // 🔒 Restriction : Les Admins voient tout. Les Directeurs ne voient que leur siège + staff stock.
     $currentUser = auth()->user();
-            $query->where(function($sub) use ($currentUser) {
-                $sub->where('siege', $currentUser->siege)
-                    ->orWhereHas('role', function($q) {
-                        $q->whereIn('name', ['Responsable', 'Agent', 'Responsable de stock', 'Agent de stock']);
-                    });
-            });
+    $roleName = $currentUser->role?->name ?? '';
+
+    if ($roleName !== 'Administrateur') {
+        $query->where(function($sub) use ($currentUser) {
+            $sub->where('siege', $currentUser->siege)
+                ->orWhereHas('role', function($q) {
+                    $q->whereIn('name', ['Responsable', 'Agent', 'Responsable de stock', 'Agent de stock']);
+                });
+        });
+    }
 
     return response()->json($query->paginate($perPage));
 }

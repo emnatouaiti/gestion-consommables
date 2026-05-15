@@ -16,6 +16,7 @@ export class UsersListComponent implements OnInit {
   users: any[] = [];
   q: string = '';
   isLoading = false;
+  isSaving = false;
   errorMessage = '';
   successMessage = '';
 
@@ -151,7 +152,7 @@ export class UsersListComponent implements OnInit {
     const user = this.getCurrentUser();
     const hasSiege = user?.siege && user.siege !== 'Non defini';
     const roles = this.authService.getUserRoles(user);
-    const isRestrictedRole = roles.includes('directeur') || roles.includes('administrateur');
+    const isRestrictedRole = roles.includes('directeur');
     return isRestrictedRole && !!hasSiege;
   }
 
@@ -159,9 +160,18 @@ export class UsersListComponent implements OnInit {
     return this.getCurrentUser()?.siege || '';
   }
 
+  isStorageRole(role: any): boolean {
+    const r = String(role || '').toLowerCase();
+    return ['responsable', 'agent', 'responsable de stock', 'agent de stock'].includes(r);
+  }
+
+  isAdministrativeRole(role: any): boolean {
+    const r = String(role || '').toLowerCase();
+    return ['administrateur', 'directeur', 'validateur'].includes(r);
+  }
+
   updateFieldVisibility(): void {
-    // Pour Responsable et Agent, on masque service, poste, siege et on affiche depot
-    // La logique d'affichage est gérée dans le template avec *ngIf
+    // La logique d'affichage est gérée dans le template avec les helpers
   }
 
   photoUrl(path: string | null | undefined): string {
@@ -291,7 +301,7 @@ export class UsersListComponent implements OnInit {
       // Pour les Administrateurs et Directeurs : ne montrer que les users de son siège
       if (this.isDirecteurRestricted) {
         const userSiege = this.currentUserSiege;
-        const isStorageRole = u.role === 'Responsable' || u.role === 'Agent';
+        const isStorageRole = this.isStorageRole(u.role);
         
         if (!isStorageRole && u.siege !== userSiege) {
           return false;
@@ -365,13 +375,15 @@ export class UsersListComponent implements OnInit {
 
 
   save(): void {
+    if (this.isSaving) return;
+
     if (!this.form.nomprenom || !this.form.email || !this.form.roles) {
       this.errorMessage = 'Nom, email et role sont obligatoires.';
       return;
     }
 
     // Pour Responsable/Agent, depot_id est obligatoire
-    const needsDepot = this.form.roles === 'Responsable' || this.form.roles === 'Agent';
+    const needsDepot = this.isStorageRole(this.form.roles);
     if (needsDepot && !this.form.depot_id) {
       this.errorMessage = 'Le dépôt est obligatoire pour les responsables et agents.';
       return;
@@ -409,6 +421,7 @@ export class UsersListComponent implements OnInit {
     };
 
     this.errorMessage = '';
+    this.isSaving = true;
 
     const req$ = this.editingId
       ? this.usersService.update(this.editingId, payload)
@@ -416,12 +429,14 @@ export class UsersListComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
+        this.isSaving = false;
         this.successMessage = this.editingId ? 'Utilisateur mis a jour !' : 'Utilisateur cree !';
         this.closeModal();
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
+        this.isSaving = false;
         this.errorMessage = err?.error?.message || err?.message || 'Erreur de sauvegarde.';
         this.cdr.detectChanges();
       }

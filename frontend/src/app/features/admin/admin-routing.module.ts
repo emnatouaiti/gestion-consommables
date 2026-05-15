@@ -31,9 +31,9 @@ const agentRoles = ['Agent de stock', 'Agent'];
 const userRoles = ['Utilisateur', 'Employé', 'Directeur'];
 
 const adminAndDirector = [...adminRoles, ...directorRoles];
-const managerAndAgent = [...managerRoles, ...agentRoles];
+const managerAndAgent = [...managerRoles, ...agentRoles, ...directorRoles];
 const directorAndManager = [...directorRoles, ...managerRoles];
-const adminAndManagerAndAgent = [...adminRoles, ...managerRoles, ...agentRoles]; // Only for suppliers which is shared
+const adminAndManagerAndAgent = [...adminRoles, ...managerRoles, ...agentRoles, ...directorRoles];
 
 const routes: Routes = [
   {

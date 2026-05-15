@@ -19,13 +19,16 @@ export class AuthInterceptor implements HttpInterceptor {
         // debug log
         try { console.debug('[AuthInterceptor] token:', token); } catch (e) {}
 
+        const headers: any = {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        };
+
         if (token) {
-            request = request.clone({
-                setHeaders: {
-                    Authorization: `Bearer ${token}`
-                }
-            });
+            headers['Authorization'] = `Bearer ${token}`;
         }
+
+        request = request.clone({ setHeaders: headers });
 
         return next.handle(request);
     }

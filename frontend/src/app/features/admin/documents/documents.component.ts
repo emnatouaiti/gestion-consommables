@@ -53,6 +53,7 @@ export class DocumentsComponent implements OnInit {
   ) {}
 
   currentUserDepotId: number | null = null;
+  currentUserRoleName: string = '';
 
   ngOnInit(): void {
     if (!isPlatformBrowser(this.platformId)) return;
@@ -67,10 +68,8 @@ export class DocumentsComponent implements OnInit {
     this.http.get('/api/user').subscribe({
       next: (user: any) => {
         this.currentUserDepotId = user?.depot_id || null;
-        // Auto-select the user's depot if available
-        if (this.currentUserDepotId) {
-          this.warehouse_id = this.currentUserDepotId;
-        }
+        const roleName = user?.role?.name || user?.role_name || user?.role || '';
+        this.currentUserRoleName = String(roleName).toLowerCase();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -189,7 +188,6 @@ export class DocumentsComponent implements OnInit {
     if (this.direction) form.append('direction', this.direction);
     if (this.product_id) form.append('product_id', String(this.product_id));
     if (this.supplier_id) form.append('supplier_id', String(this.supplier_id));
-    if (this.warehouse_id) form.append('warehouse_id', String(this.warehouse_id));
     form.append('auto_create_supplier', 'false');
 
     this.isLoading = true;
@@ -206,6 +204,13 @@ export class DocumentsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
+        // Log complet pour debug 422
+        // eslint-disable-next-line no-console
+        console.error('Erreur backend:', err);
+        if (err?.error) {
+          // eslint-disable-next-line no-console
+          console.error('Détail err.error:', err.error);
+        }
         const suggested = err?.suggested_supplier || err?.error?.suggested_supplier;
         const suggestedExisting = err?.suggested_existing_supplier || err?.error?.suggested_existing_supplier;
         if (suggested) {
@@ -227,7 +232,21 @@ export class DocumentsComponent implements OnInit {
           return;
         }
 
-        this.error = err?.message || err?.error?.message || 'Upload impossible.';
+        // Affichage détaillé de l'erreur de validation
+        if (err?.error && typeof err.error === 'object') {
+          if (err.error.errors) {
+            // Laravel retourne souvent un objet errors { champ: [msg] }
+            this.error = Object.entries(err.error.errors)
+              .map(([field, msgs]: [string, any]) => `${field}: ${(Array.isArray(msgs) ? msgs.join(', ') : msgs)}`)
+              .join(' | ');
+          } else if (err.error.message) {
+            this.error = err.error.message;
+          } else {
+            this.error = JSON.stringify(err.error);
+          }
+        } else {
+          this.error = err?.message || err?.error?.message || 'Upload impossible.';
+        }
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -334,13 +353,14 @@ export class DocumentsComponent implements OnInit {
   }
 
   openLocationConfirmation(doc: any, items: any[], autoCreateProduct: boolean): void {
+    const lockDepot = this.shouldLockDepotSelection();
     this.locationConfirmation = {
       doc,
       autoCreateProduct,
       items: items.map((item: any) => ({
         ...item,
-        // Auto-select user's depot if not already set
-        warehouse_id: item.warehouse_id || this.currentUserDepotId,
+        warehouse_id: lockDepot ? this.currentUserDepotId : (item.warehouse_id || this.currentUserDepotId),
+        depot_locked: lockDepot,
         storage_target: item.warehouse_location_id ? 'location' : (item.cabinet_id ? 'cabinet' : 'location'),
         rooms: [],
         locations: [],
@@ -367,6 +387,10 @@ export class DocumentsComponent implements OnInit {
   }
 
   onWarehouseSelected(item: any, reset = true): void {
+    if (item?.depot_locked && this.currentUserDepotId) {
+      item.warehouse_id = this.currentUserDepotId;
+    }
+
     if (reset) {
       item.room_id = null;
       item.warehouse_location_id = null;
@@ -543,8 +567,13 @@ export class DocumentsComponent implements OnInit {
 
       return {
         ...item,
+        title: found.title || item.title,
+        reference: found.reference || item.reference,
         category_id: Number(found.category_id),
         categorie_id: Number(found.category_id),
+        unit: found.unit || null,
+        seuil_min: found.seuil_min ? Number(found.seuil_min) : 0,
+        has_expiration: !!found.has_expiration,
         warehouse_id: item.warehouse_id ? Number(item.warehouse_id) : null,
         room_id: item.room_id ? Number(item.room_id) : null,
         warehouse_location_id: item.warehouse_location_id ? Number(item.warehouse_location_id) : null,
@@ -555,6 +584,12 @@ export class DocumentsComponent implements OnInit {
     });
 
     this.executeApply(this.productConfirmation.doc, items, true);
+  }
+
+  shouldLockDepotSelection(): boolean {
+    if (!this.currentUserDepotId) return false;
+    const role = this.currentUserRoleName || '';
+    return role.includes('responsable') || role.includes('agent');
   }
 
   cancelProductCreation(): void {
@@ -623,7 +658,12 @@ export class DocumentsComponent implements OnInit {
     this.isLoading = true;
     this.http.post('/api/admin/documents/diagnostic', { path: doc.path }).subscribe({
       next: (res: any) => {
-        this.message = `OCR: ${res?.ocr_lines_count || 0} lignes trouvees. Tesseract: ${res?.tesseract_found ? 'OK' : 'NON TROUVE'}`;
+        this.message = `Diagnostic termine: ${res?.ocr_lines_count || 0} lignes trouvees.`;
+        if (res?.lines) {
+          doc.ocr_lines = res.lines;
+          doc.ocr_text = res.ocr_text; // Optionnel: mettre a jour le texte brut
+          this.saveDocumentOcrLines(doc); // Sauvegarder automatiquement les nouveaux resultats
+        }
         this.isLoading = false;
         this.cdr.detectChanges();
       },

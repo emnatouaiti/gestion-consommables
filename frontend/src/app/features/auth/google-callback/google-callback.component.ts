@@ -18,9 +18,25 @@ export class GoogleCallbackComponent implements OnInit {
   ngOnInit(): void {
     this.route.queryParams.subscribe(params => {
       const token = params['token'];
+      const error = params['error'];
+
+      if (error) {
+        console.error('Google callback error:', error);
+        // Store error message in sessionStorage to display on login page
+        try {
+          sessionStorage.setItem('google_login_error', error);
+        } catch (e) {}
+        this.router.navigate(['/login']);
+        return;
+      }
+
       if (token) {
         this.authService.handleGoogleCallback(token);
       } else {
+        // No token and no error - something went wrong
+        try {
+          sessionStorage.setItem('google_login_error', 'No authentication token received');
+        } catch (e) {}
         this.router.navigate(['/login']);
       }
     });

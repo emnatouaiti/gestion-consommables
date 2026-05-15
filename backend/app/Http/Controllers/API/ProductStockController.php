@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Warehouse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Schema;
 
 class ProductStockController extends Controller
 {
@@ -45,25 +46,6 @@ class ProductStockController extends Controller
             ]);
         });
 
-        if ($product->stock_quantity > 0 && $product->warehouse_location_id) {
-            $product->load(['warehouseLocation.room.warehouse']);
-            $loc = $product->warehouseLocation;
-            $room = $loc?->room;
-            $wh = $room?->warehouse ?: $loc?->warehouse; // Fallback to location's direct warehouse if room is missing
-
-            $formatted->push([
-                'id' => 999999 + $product->id,
-                'product_id' => $product->id,
-                'warehouse_location_id' => $product->warehouse_location_id,
-                'quantity' => (int)$product->stock_quantity,
-                'notes' => 'Stock principal',
-                'warehouse_id' => $wh?->id ?: $product->warehouse_id,
-                'warehouse_name' => $wh?->name ?: 'Dépôt principal',
-                'room_id' => $room?->id,
-                'room_name' => $room?->name ?: 'Salle principale',
-                'location_label' => $loc?->code ?: 'Principal'
-            ]);
-        }
 
         // Final filter to ensure we only return entries with valid warehouse info
         $final = $formatted->filter(function($item) {
@@ -162,14 +144,18 @@ class ProductStockController extends Controller
 
     public function getTotalStock(Product $product)
     {
-        $product->loadMissing('suppliers', 'warehouseLocation.room.warehouse');
+        $product->loadMissing('suppliers');
         $defaultSupplier = $product->suppliers->first();
 
         // --- 1. Stocks from product_stocks table ---
-        $stockEntries = $product->stocks()
-            ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
-            ->whereIn('batch_status', ['active', 'expired'])
-            ->get();
+        $stockQuery = $product->stocks()
+            ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier');
+
+        if (Schema::hasColumn('product_stocks', 'batch_status')) {
+            $stockQuery->whereIn('batch_status', ['active', 'expired']);
+        }
+
+        $stockEntries = $stockQuery->get();
 
         $stockDetails = $stockEntries->map(function ($stock) use ($defaultSupplier) {
             $room = $stock->warehouseLocation?->room ?? $stock->warehouseCabinet?->room;
@@ -238,42 +224,14 @@ class ProductStockController extends Controller
 
         $totalFromStocks = $stockEntries->sum('quantity');
 
-        // --- 2. Product's own location assignment ---
-        $ownLocation = $product->warehouseLocation;
-        $ownWarehouseId = null;
-
-        if ($ownLocation && $ownLocation->room && $ownLocation->room->warehouse) {
-            $ownWarehouseId = $ownLocation->room->warehouse->id;
-        }
-
-        $ownQty = $product->stock_quantity ?? 0;
-
-        // Add the product's own location as a detail entry
-        if ($ownLocation && $ownLocation->room && $ownLocation->room->warehouse && $ownQty > 0) {
-            $ownDetail = [
-                'id' => 'own',
-                'warehouse' => $ownLocation->room->warehouse->name,
-                'warehouse_id' => $ownLocation->room->warehouse->id,
-                'room' => $ownLocation->room->name,
-                'location_code' => $ownLocation->code,
-                'location_name' => $ownLocation->name,
-                'storage_type' => 'location',
-                'location_display' => trim(($ownLocation->code ?: '') . ' ' . ($ownLocation->name ?: '')),
-                'cabinet_display' => null,
-                'quantity' => $ownQty,
-                'notes' => 'Stock principal du produit',
-                'supplier_id' => $defaultSupplier?->id,
-                'supplier_name' => $defaultSupplier?->name,
-                'expiration_date' => null,
-                'batch_number' => null,
-            ];
-            $stockDetails = $stockDetails->concat([$ownDetail]);
-        }
-
-        $totalQuantity = $totalFromStocks + $ownQty;
+        $totalQuantity = $totalFromStocks;
 
         // --- 3. Build availability per warehouse ---
-        $allWarehouses = Warehouse::where('status', 'active')->orderBy('name')->get();
+        $warehouseQuery = Warehouse::query()->orderBy('name');
+        if (Schema::hasColumn('warehouses', 'status')) {
+            $warehouseQuery->where('status', 'active');
+        }
+        $allWarehouses = $warehouseQuery->get();
         $stockByWarehouse = $stockDetails->groupBy('warehouse_id');
 
         $warehousesAvailability = $allWarehouses->map(function ($wh) use ($stockByWarehouse) {
