@@ -6,12 +6,21 @@ use Illuminate\Http\Request;
 
 class AdminController extends Controller
 {
-    public function dashboard()
+    public function dashboard(Request $request)
     {
-        // Users stats using SoftDeletes
-        $totalUsers = \App\Models\User::withTrashed()->count();
-        $activeUsers = \App\Models\User::count(); // Default excludes soft deleted
-        $archivedUsers = \App\Models\User::onlyTrashed()->count();
+        $user = $request->user();
+        $userId = $user ? $user->id : null;
+        $userRole = $user ? strtolower($user->role?->name ?? '') : '';
+
+        // Check if user has admin-like roles for global stats
+        $isAdmin = in_array($userRole, ['administrateur', 'admin']);
+        $isDirector = in_array($userRole, ['directeur', 'directeur général', 'dg']);
+        $isManager = in_array($userRole, ['responsable', 'responsable de stock', 'gestionnaire']);
+
+        // Users stats using SoftDeletes (only for admins)
+        $totalUsers = $isAdmin ? \App\Models\User::withTrashed()->count() : 0;
+        $activeUsers = $isAdmin ? \App\Models\User::count() : 0;
+        $archivedUsers = $isAdmin ? \App\Models\User::onlyTrashed()->count() : 0;
 
         $totalProducts = \App\Models\Product::count();
         $totalCategories = \App\Models\Category::count();
@@ -28,20 +37,77 @@ class AdminController extends Controller
             return ($p->stocks_sum_quantity ?? 0) < $threshold;
         })->count();
 
-        // Recent users
-        $recentUsers = \App\Models\User::orderBy('created_at', 'desc')->take(5)->get()->map(function ($user) {
-            return [
-            'nomprenom' => $user->nomprenom,
-            'email' => $user->email,
-            'photo' => $user->photo,
-            'created_at' => $user->created_at,
-            ];
-        });
+        // User-specific stats
+        $myRequests = 0;
+        $myPendingRequests = 0;
+        $myApprovedRequests = 0;
+        $myRejectedRequests = 0;
+        $myMovements = 0;
+        $myPendingMovements = 0;
+        $myDocuments = 0;
 
-        // Real Recent activities (from ProductStock)
-        $recentActivities = \App\Models\ProductStock::with(['product', 'warehouseLocation'])
-            ->whereHas('product', fn ($q) => $q->where('status', 'active'))
-            ->orderBy('created_at', 'desc')
+        if ($userId) {
+            // Consumable requests for this user
+            $myRequests = \App\Models\ConsumableRequest::where('user_id', $userId)->count();
+            $myPendingRequests = \App\Models\ConsumableRequest::where('user_id', $userId)
+                ->whereIn('status', ['pending', 'validated_by_manager', 'approved_pending_exit'])
+                ->count();
+            $myApprovedRequests = \App\Models\ConsumableRequest::where('user_id', $userId)
+                ->where('status', 'approved')
+                ->count();
+            $myRejectedRequests = \App\Models\ConsumableRequest::where('user_id', $userId)
+                ->where('status', 'rejected')
+                ->count();
+
+            // Stock movements created by this user
+            $myMovements = \App\Models\StockMovement::where('created_by', $userId)->count();
+            $myPendingMovements = \App\Models\StockMovement::where('created_by', $userId)
+                ->where('status', 'pending_validation')
+                ->count();
+
+            // Documents OCR processed by this user
+            $myDocuments = \App\Models\Document::where('user_id', $userId)->count();
+        }
+
+        // Pending validations for directors/managers
+        $pendingValidations = 0;
+        if ($isDirector || $isManager) {
+            $pendingValidations = \App\Models\ConsumableRequest::whereIn('status', ['pending', 'validated_by_manager'])->count();
+        }
+
+        // Pending stock movements for managers
+        $pendingStockMovements = 0;
+        if ($isManager) {
+            $pendingStockMovements = \App\Models\StockMovement::where('status', 'pending_validation')->count();
+        }
+
+        // Recent users (only for admins)
+        $recentUsers = [];
+        if ($isAdmin) {
+            $recentUsers = \App\Models\User::orderBy('created_at', 'desc')->take(5)->get()->map(function ($user) {
+                return [
+                'nomprenom' => $user->nomprenom,
+                'email' => $user->email,
+                'photo' => $user->photo,
+                'created_at' => $user->created_at,
+                ];
+            });
+        }
+
+        // Real Recent activities (filtered by user if not admin)
+        $recentActivitiesQuery = \App\Models\ProductStock::with(['product', 'warehouseLocation'])
+            ->whereHas('product', fn ($q) => $q->where('status', 'active'));
+
+        if (!$isAdmin && $userId) {
+            // For non-admins, show only activities related to their depot or movements
+            $recentActivitiesQuery->whereHas('warehouseLocation', function($q) use ($user) {
+                if ($user && $user->depot_id) {
+                    $q->where('warehouse_id', $user->depot_id);
+                }
+            });
+        }
+
+        $recentActivities = $recentActivitiesQuery->orderBy('created_at', 'desc')
             ->take(8)
             ->get()
             ->map(function ($ps) {
@@ -56,17 +122,20 @@ class AdminController extends Controller
             ];
         });
 
-        $roles = \App\Models\User::join('roles', 'users.role_id', '=', 'roles.id')
-            ->select('roles.name as role_name', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
-            ->groupBy('roles.name')
-            ->get()
-            ->map(function ($r) use ($activeUsers) {
-            return [
-            'name' => $r->role_name ?: 'Sans rôle',
-            'count' => $r->count,
-            'percentage' => $activeUsers > 0 ? round(($r->count / $activeUsers) * 100) : 0
-            ];
-        });
+        $roles = [];
+        if ($isAdmin) {
+            $roles = \App\Models\User::join('roles', 'users.role_id', '=', 'roles.id')
+                ->select('roles.name as role_name', \Illuminate\Support\Facades\DB::raw('count(*) as count'))
+                ->groupBy('roles.name')
+                ->get()
+                ->map(function ($r) use ($activeUsers) {
+                return [
+                'name' => $r->role_name ?: 'Sans rôle',
+                'count' => $r->count,
+                'percentage' => $activeUsers > 0 ? round(($r->count / $activeUsers) * 100) : 0
+                ];
+            });
+        }
 
         // Stock distribution by category (creative: top categories)
         $categoryStock = \App\Models\Category::withCount('products')
@@ -101,6 +170,16 @@ class AdminController extends Controller
                 'totalWarehouses' => $totalWarehouses,
                 'lowStockAlerts' => $lowStockProducts,
                 'totalValue' => round($totalStockValue, 2),
+                // User-specific stats
+                'myRequests' => $myRequests,
+                'myPendingRequests' => $myPendingRequests,
+                'myApprovedRequests' => $myApprovedRequests,
+                'myRejectedRequests' => $myRejectedRequests,
+                'myMovements' => $myMovements,
+                'myPendingMovements' => $myPendingMovements,
+                'myDocuments' => $myDocuments,
+                'pendingValidations' => $pendingValidations,
+                'pendingStockMovements' => $pendingStockMovements,
             ],
             'recentUsers' => $recentUsers,
             'recentActivities' => $recentActivities,
@@ -125,7 +204,7 @@ class AdminController extends Controller
 
         foreach ($products as $product) {
             $totalStock = $product->stocks_sum_quantity ?? 0;
-            
+
             // Calculate outputs in the last 30 days
             // Type might be 'out' or action might be 'consume' (we use product_id in stock_movement_lines)
             // But stock movements can be complex. Let's get lines for this product where movement is 'out'.
@@ -135,13 +214,13 @@ class AdminController extends Controller
                 ->where('stock_movements.created_at', '>=', $thirtyDaysAgo)
                 ->whereIn('stock_movements.type', ['out', 'sortie'])
                 ->sum('stock_movement_lines.quantity');
-            
+
             $dailyRate = $outQuantity / 30;
 
             if ($dailyRate > 0) {
                 // How many days left?
                 $daysLeft = $totalStock / $dailyRate;
-                
+
                 if ($daysLeft < 14) {
                     $highRisk[] = $product;
                     $events[] = [

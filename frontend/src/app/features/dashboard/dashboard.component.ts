@@ -28,7 +28,17 @@ export class DashboardComponent implements OnInit {
     totalProducts: 0,
     totalCategories: 0,
     totalWarehouses: 0,
-    totalValue: 0
+    totalValue: 0,
+    // Statistiques personnelles de l'utilisateur
+    myRequests: 0,
+    myPendingRequests: 0,
+    myApprovedRequests: 0,
+    myRejectedRequests: 0,
+    myMovements: 0,
+    myPendingMovements: 0,
+    myDocuments: 0,
+    pendingValidations: 0,
+    pendingStockMovements: 0
   };
 
   categoryStock: any[] = [];
@@ -159,14 +169,14 @@ export class DashboardComponent implements OnInit {
 
     if (this.isDirector) {
       this.dashboardCards = [
-        { label: 'Alertes stock bas', value: this.stats.lowStockAlerts, icon: '⚠️', color: 'red', route: '/admin/dashboard', critical: this.stats.lowStockAlerts > 0 },
-        { label: 'Produits suivis', value: this.stats.totalProducts, icon: '📦', color: 'blue', route: '/admin/dashboard' },
-        { label: 'Depots observes', value: this.stats.totalWarehouses, icon: '🏬', color: 'purple' },
-        { label: 'Valeur du stock', value: `${this.stats.totalValue || 0} TND`, icon: '📈', color: 'yellow' },
+        { label: 'Demandes à valider', value: this.stats.pendingValidations, icon: '✅', color: 'blue', route: '/admin/validation-demandes', critical: this.stats.pendingValidations > 0 },
+        { label: 'Mes demandes', value: this.stats.myRequests, icon: '�', color: 'purple', route: '/admin/demandes-consommables' },
+        { label: 'Demandes en attente', value: this.stats.myPendingRequests, icon: '⏳', color: 'yellow', route: '/admin/demandes-consommables' },
+        { label: 'Alertes stock bas', value: this.stats.lowStockAlerts, icon: '⚠️', color: 'red', route: '/admin/gerer-produits', critical: this.stats.lowStockAlerts > 0 },
       ];
       this.quickLinks = [
         { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Demandes a valider', route: '/admin/validation-demandes', icon: '✅' },
+        { label: 'Demandes à valider', route: '/admin/validation-demandes', icon: '✅' },
         { label: 'Previsions', route: '/admin/previsions', icon: '📊' },
         { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
       ];
@@ -175,29 +185,30 @@ export class DashboardComponent implements OnInit {
 
     if (this.isManager) {
       this.dashboardCards = [
-        { label: 'Demandes en cours', value: this.stats.totalProducts, icon: '🗂️', color: 'blue', route: '/admin/demandes-consommables' },
-        { label: 'Mouvements stock', value: this.movementsTrend.reduce((sum, item) => sum + Number(item.count || 0), 0), icon: '🔄', color: 'purple', route: '/admin/mouvements-stock' },
-        { label: 'Depots utiles', value: this.stats.totalWarehouses, icon: '🏬', color: 'green' },
-        { label: 'Alertes a traiter', value: this.stats.lowStockAlerts, icon: '🚨', color: 'yellow', route: '/admin/gerer-produits' },
+        { label: 'Mouvements en attente', value: this.stats.pendingStockMovements, icon: '�', color: 'blue', route: '/admin/mouvements-stock', critical: this.stats.pendingStockMovements > 0 },
+        { label: 'Mes mouvements', value: this.stats.myMovements, icon: '�', color: 'purple', route: '/admin/mouvements-stock' },
+        { label: 'Documents OCR traités', value: this.stats.myDocuments, icon: '📄', color: 'green', route: '/admin/documents-ocr' },
+        { label: 'Alertes stock bas', value: this.stats.lowStockAlerts, icon: '⚠️', color: 'red', route: '/admin/gerer-produits', critical: this.stats.lowStockAlerts > 0 },
       ];
       this.quickLinks = [
         { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Demandes', route: '/admin/demandes-consommables', icon: '📥' },
-        { label: 'Produits', route: '/admin/gerer-produits', icon: '📦' },
+        { label: 'Mouvements stock', route: '/admin/mouvements-stock', icon: '�' },
+        { label: 'Documents OCR', route: '/admin/documents-ocr', icon: '�' },
         { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
       ];
       return;
     }
 
+    // Utilisateur standard (Employé)
     this.dashboardCards = [
-      { label: 'Produits disponibles', value: this.stats.totalProducts, icon: '📦', color: 'blue' },
-      { label: 'Depots accessibles', value: this.stats.totalWarehouses, icon: '🏬', color: 'purple' },
-      { label: 'Alertes stock', value: this.stats.lowStockAlerts, icon: '⚠️', color: 'yellow' },
-      { label: 'Mon compte', value: this.user?.email || 'Profil', icon: '👤', color: 'green', route: '/admin/profile' },
+      { label: 'Mes demandes', value: this.stats.myRequests, icon: '�', color: 'blue', route: '/admin/demandes-consommables' },
+      { label: 'Demandes en attente', value: this.stats.myPendingRequests, icon: '⏳', color: 'yellow', route: '/admin/demandes-consommables', critical: this.stats.myPendingRequests > 0 },
+      { label: 'Demandes approuvées', value: this.stats.myApprovedRequests, icon: '✅', color: 'green', route: '/admin/demandes-consommables' },
+      { label: 'Demandes rejetées', value: this.stats.myRejectedRequests, icon: '❌', color: 'red', route: '/admin/demandes-consommables' },
     ];
     this.quickLinks = [
       { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-      { label: 'Demandes consommables', route: '/admin/demandes-consommables', icon: '📥' },
+      { label: 'Nouvelle demande', route: '/admin/demandes-consommables', icon: '➕' },
       { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
     ];
   }
