@@ -141,11 +141,34 @@ class ConsumableRequestController extends Controller
                     $payload['approved_quantity'] = $payload['requested_quantity'];
                 }
 
-                $createdRequests[] = ConsumableRequest::create(array_merge($payload, [
+                $req = ConsumableRequest::create(array_merge($payload, [
                     'user_id'    => $user->id,
                     'batch_code' => $batchCode,
                     'status'     => $initialStatus,
                 ]));
+
+                if ($initialStatus === 'approved_pending_exit') {
+                    $productId = $this->resolveProductId($req->product_id, $req->item_name);
+                    if ($productId && $req->approved_quantity > 0) {
+                        $stockByDepot = $this->getStockByDepot($productId, $req->approved_quantity);
+                        if (!empty($stockByDepot)) {
+                            $eligibleDepots = collect($stockByDepot)
+                                ->filter(fn($depotInfo) => (int) ($depotInfo['total_quantity'] ?? 0) >= (int) $req->approved_quantity)
+                                ->sortByDesc(fn($depotInfo) => (int) ($depotInfo['total_quantity'] ?? 0));
+                            
+                            $assignedDepot = $eligibleDepots->isNotEmpty() 
+                                ? (int) $eligibleDepots->keys()->first()
+                                : (int) collect($stockByDepot)->sortByDesc('total_quantity')->keys()->first();
+                            
+                            if ($assignedDepot) {
+                                $req->depot_id = $assignedDepot;
+                                $req->save();
+                            }
+                        }
+                    }
+                }
+                
+                $createdRequests[] = $req;
             }
         });
 
@@ -617,123 +640,197 @@ class ConsumableRequestController extends Controller
         }
 
         $request->validate([
+            'items'                        => 'nullable|array',
+            'items.*.id'                   => 'required_with:items|exists:consumable_requests,id',
+            'items.*.source_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
+            'items.*.source_cabinet_id'            => 'nullable|exists:warehouse_cabinets,id',
             'source_warehouse_location_id' => 'nullable|exists:warehouse_locations,id',
             'source_cabinet_id'            => 'nullable|exists:warehouse_cabinets,id',
             'destination_text'             => 'nullable|string|max:255',
             'motif'                        => 'nullable|string|max:500',
         ]);
 
-        // Responsable/agent: sortie strictement dans leur depot
+        $batchRequests = $consumableRequest->batch_code
+            ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->whereIn('status', ['approved', 'approved_pending_exit'])->get()
+            : collect([$consumableRequest]);
+
         if ($user->depot_id) {
-            if ($consumableRequest->depot_id && (int) $consumableRequest->depot_id !== (int) $user->depot_id) {
+            $batchRequests = $batchRequests->filter(fn($r) => !$r->depot_id || (int) $r->depot_id === (int) $user->depot_id);
+            if ($batchRequests->isEmpty()) {
                 return response()->json(['message' => 'Cette demande est assignée à un autre dépôt.'], 403);
-            }
-
-            $sourceLocationId = $request->input('source_warehouse_location_id');
-            if ($sourceLocationId) {
-                $loc = \App\Models\WarehouseLocation::with('room')->find($sourceLocationId);
-                if (!$loc || !$loc->room || (int) $loc->room->warehouse_id !== (int) $user->depot_id) {
-                    return response()->json(['message' => 'Emplacement source hors de votre dépôt.'], 422);
-                }
-            }
-
-            $sourceCabinetId = $request->input('source_cabinet_id');
-            if ($sourceCabinetId) {
-                $cab = \App\Models\WarehouseCabinet::with('room')->find($sourceCabinetId);
-                if (!$cab || !$cab->room || (int) $cab->room->warehouse_id !== (int) $user->depot_id) {
-                    return response()->json(['message' => 'Armoire source hors de votre dépôt.'], 422);
-                }
             }
         }
 
+        $itemsPayload = $request->input('items', []);
+        $itemsMap = collect($itemsPayload)->keyBy('id');
+
         Log::info('confirmExit payload', $request->all());
 
-        DB::transaction(function () use ($consumableRequest, $user, $request) {
-            $sourceLocationId = $request->input('source_warehouse_location_id');
-            $sourceCabinetId  = $request->input('source_cabinet_id');
-            $destinationText  = $request->input('destination_text') ?: $this->getRequesterName($consumableRequest->user);
-            $motif            = $request->input('motif', 'Sortie confirmee suite validation Direction');
+        DB::transaction(function () use ($batchRequests, $itemsMap, $user, $request) {
+            $motif = $request->input('motif', 'Sortie confirmee suite validation Direction');
+            $destinationText = $request->input('destination_text') ?: $this->getRequesterName($batchRequests->first()->user);
 
-            $productId = $consumableRequest->product_id;
-            if (!$productId) {
-                $name = trim((string) $consumableRequest->item_name);
-                $productId = \App\Models\Product::where('title', 'like', $name)
-                    ->orWhereRaw('LOWER(title) = ?', [mb_strtolower($name, 'UTF-8')])
-                    ->value('id');
+            // 1. Create a single StockMovement for all items
+            $movement = StockMovement::create([
+                'movement_type'               => 'out',
+                'reference'                   => 'REQ-' . $batchRequests->first()->id,
+                'created_by'                  => $user->id,
+                'related_request_id'          => $batchRequests->first()->id,
+                'motif'                       => $motif,
+                'destination_text'            => $destinationText,
+                'status'                      => 'executed',
+                'executed_at'                 => now(),
+                'validated_by'                => $user->id,
+            ]);
+
+            foreach ($batchRequests as $req) {
+                // Determine locations
+                $sourceLocationId = null;
+                $sourceCabinetId = null;
+
+                if ($itemsMap->has($req->id)) {
+                    $itemData = $itemsMap->get($req->id);
+                    $sourceLocationId = $itemData['source_warehouse_location_id'] ?? null;
+                    $sourceCabinetId  = $itemData['source_cabinet_id'] ?? null;
+                } else {
+                    $sourceLocationId = $request->input('source_warehouse_location_id');
+                    $sourceCabinetId  = $request->input('source_cabinet_id');
+                }
+
+                // Responsable/agent: sortie strictement dans leur depot
+                if ($user->depot_id) {
+                    if ($sourceLocationId) {
+                        $loc = \App\Models\WarehouseLocation::with('room')->find($sourceLocationId);
+                        if (!$loc || !$loc->room || (int) $loc->room->warehouse_id !== (int) $user->depot_id) {
+                            throw ValidationException::withMessages(['message' => 'Emplacement source hors de votre dépôt pour le produit ' . $req->item_name]);
+                        }
+                    }
+                    if ($sourceCabinetId) {
+                        $cab = \App\Models\WarehouseCabinet::with('room')->find($sourceCabinetId);
+                        if (!$cab || !$cab->room || (int) $cab->room->warehouse_id !== (int) $user->depot_id) {
+                            throw ValidationException::withMessages(['message' => 'Armoire source hors de votre dépôt pour le produit ' . $req->item_name]);
+                        }
+                    }
+                }
+
+                $productId = $req->product_id;
+                if (!$productId) {
+                    $name = trim((string) $req->item_name);
+                    $productId = \App\Models\Product::where('title', 'like', $name)
+                        ->orWhereRaw('LOWER(title) = ?', [mb_strtolower($name, 'UTF-8')])
+                        ->value('id');
+                }
+
+                $approvedQuantity = (int) ($req->approved_quantity ?: $req->requested_quantity);
+
+                if ($productId && $approvedQuantity > 0 && Schema::hasColumn('consumable_requests', 'product_id') && !$req->product_id) {
+                    $req->update(['product_id' => $productId]);
+                }
+
+                $req->status = 'approved';
+                $req->save();
+
+                if ($productId && $approvedQuantity > 0) {
+                    StockMovementLine::create([
+                        'stock_movement_id' => $movement->id,
+                        'product_id'        => $productId,
+                        'quantity'          => $approvedQuantity,
+                        'warehouse_location_id' => $sourceLocationId,
+                        'cabinet_id'            => $sourceCabinetId,
+                    ]);
+
+                    // Deduct from ProductStock
+                    try {
+                        $stockQuery = \App\Models\ProductStock::where('product_id', $productId);
+                        if ($sourceLocationId) {
+                            $stockQuery->where('warehouse_location_id', $sourceLocationId);
+                        } elseif ($sourceCabinetId) {
+                            $stockQuery->where('cabinet_id', $sourceCabinetId);
+                        }
+
+                        $sourceStock = $stockQuery->lockForUpdate()->first();
+                        
+                        if ($sourceStock && $sourceStock->quantity >= $approvedQuantity) {
+                            $sourceStock->decrement('quantity', $approvedQuantity);
+                            $sourceStock->update(['last_updated' => now()]);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Failed to decrement ProductStock on confirmExit', ['err' => $e->getMessage()]);
+                    }
+
+                    // Deduct from global Product stock
+                    try {
+                        $prod = \App\Models\Product::find($productId);
+                        if ($prod) {
+                            $prod->decrement('stock_quantity', $approvedQuantity);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('Failed to decrement global product stock', ['err' => $e->getMessage()]);
+                    }
+                }
             }
 
-            $approvedQuantity = (int) ($consumableRequest->approved_quantity ?: $consumableRequest->requested_quantity);
-
-            if ($productId && $approvedQuantity > 0 && Schema::hasColumn('consumable_requests', 'product_id') && !$consumableRequest->product_id) {
-                $consumableRequest->update(['product_id' => $productId]);
-            }
-
-            $consumableRequest->status = 'approved';
-            $consumableRequest->save();
-
+            // Regenerate PDF and notify
             try {
-                $batchRequests = $consumableRequest->batch_code
-                    ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
-                    : collect([$consumableRequest]);
+                $first = $batchRequests->first();
+                // Get all requests in the batch to generate PDFs
+                $allBatchReqs = $first->batch_code ? ConsumableRequest::where('batch_code', $first->batch_code)->get() : collect([$first]);
+                $allBatchReqs->each->refresh();
 
-                $batchRequests->each->refresh();
+                $batchUser = $first->user;
+                $bc = $first->batch_code;
 
-                $pdfPath = $this->generateAndSavePdf(
-                    $consumableRequest->user,
-                    $batchRequests->all(),
-                    $consumableRequest->batch_code,
-                    null
-                );
-                if ($pdfPath) {
-                    foreach ($batchRequests as $req) {
-                        $req->update(['pdf_path' => $pdfPath]);
+                // Separate approved and rejected items
+                $approvedReqs = $allBatchReqs->filter(fn($r) => strtolower($r->status) === 'approved');
+                $rejectedReqs = $allBatchReqs->filter(fn($r) => strtolower($r->status) === 'rejected');
+                $hasPartial = $approvedReqs->count() > 0 && $rejectedReqs->count() > 0;
+
+                if ($hasPartial) {
+                    // --- PDF séparé pour les items LIVRÉS (bon de sortie) ---
+                    $approvedPdfPath = $this->generateAndSavePdf(
+                        $batchUser,
+                        $approvedReqs->values()->all(),
+                        $bc,
+                        '_approved'
+                    );
+                    if ($approvedPdfPath) {
+                        foreach ($approvedReqs as $r) {
+                            $r->update(['pdf_path' => $approvedPdfPath]);
+                        }
+                        $movement->update(['response_pdf_path' => $approvedPdfPath]);
+                    }
+
+                    // --- PDF séparé pour les items REJETÉS (bon de refus) ---
+                    $rejectedPdfPath = $this->generateAndSavePdf(
+                        $batchUser,
+                        $rejectedReqs->values()->all(),
+                        $bc,
+                        '_rejected'
+                    );
+                    if ($rejectedPdfPath) {
+                        foreach ($rejectedReqs as $r) {
+                            $r->update(['pdf_path' => $rejectedPdfPath]);
+                        }
+                    }
+                } else {
+                    // All same status: generate a single PDF
+                    $pdfPath = $this->generateAndSavePdf(
+                        $batchUser,
+                        $allBatchReqs->all(),
+                        $bc,
+                        null
+                    );
+                    if ($pdfPath) {
+                        foreach ($allBatchReqs as $r) {
+                            $r->update(['pdf_path' => $pdfPath]);
+                        }
+                        $movement->update(['response_pdf_path' => $pdfPath]);
                     }
                 }
+
+                $batchUser->notify(new \App\Notifications\ConsumableRequestNotification($allBatchReqs));
             } catch (\Throwable $e) {
-                Log::error('Failed to regenerate PDF on confirmExit', ['err' => $e->getMessage()]);
-            }
-
-            if ($approvedQuantity > 0) {
-                $movement = StockMovement::create([
-                    'movement_type'               => 'out',
-                    'reference'                   => 'REQ-' . $consumableRequest->id,
-                    'created_by'                  => $user->id,
-                    'related_request_id'          => $consumableRequest->id,
-                    'source_warehouse_location_id'=> $sourceLocationId,
-                    'source_cabinet_id'           => $sourceCabinetId,
-                    'motif'                       => $motif,
-                    'destination_text'            => $destinationText,
-                    'status'                      => 'executed',
-                    'executed_at'                 => now(),
-                    'validated_by'                => $user->id,
-                ]);
-
-                StockMovementLine::create([
-                    'stock_movement_id' => $movement->id,
-                    'product_id'        => $productId,
-                    'quantity'          => $approvedQuantity,
-                ]);
-
-
-                try {
-                    $consumableRequest->refresh();
-                    $batchRequests = $consumableRequest->batch_code
-                        ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
-                        : collect([$consumableRequest]);
-
-                    $consumableRequest->user->notify(new \App\Notifications\ConsumableRequestNotification($batchRequests));
-                } catch (\Throwable $e) {
-                    Log::error('Failed to notify owner on confirmExit', ['err' => $e->getMessage()]);
-                }
-
-                try {
-                    $prod = \App\Models\Product::find($productId);
-                    if ($prod) {
-                        $prod->decrement('stock_quantity', $approvedQuantity);
-                    }
-                } catch (\Throwable $e) {
-                    Log::error('Failed to decrement global product stock', ['err' => $e->getMessage()]);
-                }
+                Log::error('Failed to regenerate PDF or notify on confirmExit', ['err' => $e->getMessage()]);
             }
         });
 
@@ -1028,7 +1125,11 @@ class ConsumableRequestController extends Controller
 
                 if ($productTitle === '') continue;
 
-                $payload = ['item_name' => $productTitle, 'requested_quantity' => $qty];
+                $payload = [
+                    'item_name' => $productTitle, 
+                    'requested_quantity' => $qty,
+                    'status' => $item['status'] ?? $request->input('status', 'draft')
+                ];
                 if ($hasProductIdColumn) {
                     $payload['product_id'] = $productId;
                 }
@@ -1142,14 +1243,14 @@ class ConsumableRequestController extends Controller
 
         if ($statuses->contains('pending'))               return 'pending';
         if ($statuses->contains('validated_by_manager'))  return 'validated_by_manager';
-        // Cas mixed: certains approved_pending_exit + certains rejected => partiellement_accepte
-        if ($statuses->contains('approved_pending_exit') && $statuses->contains('rejected')) {
+        // Cas mixte: au moins un accepté (en attente ou livré) et au moins un refusé => toujours partiellement_accepte
+        if (($statuses->contains('approved_pending_exit') || $statuses->contains('approved')) && $statuses->contains('rejected')) {
             return 'partiellement_accepte';
         }
-        if ($statuses->contains('partiellement_accepte'))    return 'partiellement_accepte';
-        if ($statuses->contains('rejected'))              return 'rejected';
+        if ($statuses->contains('partiellement_accepte')) return 'partiellement_accepte';
         if ($statuses->contains('approved_pending_exit')) return 'approved_pending_exit';
         if ($statuses->every(fn($s) => $s === 'approved')) return 'approved';
+        if ($statuses->contains('rejected'))              return 'rejected';
 
         return $statuses->first() ?? 'pending';
     }

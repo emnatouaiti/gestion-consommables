@@ -10,11 +10,9 @@ use Illuminate\Support\Facades\Validator;
 
 class ReferencesController extends Controller
 {
-    // Marques
     public function listMarques(Request $request)
     {
-        $q = Marque::query();
-        return response()->json($q->orderBy('name')->get());
+        return response()->json(Marque::query()->orderBy('name')->get());
     }
 
     public function storeMarque(Request $request)
@@ -39,15 +37,22 @@ class ReferencesController extends Controller
     public function deleteMarque(int $id)
     {
         $m = Marque::findOrFail($id);
+        $hasModeles = Modele::where('marque_id', $m->id)->exists();
+        $hasProducts = \App\Models\Product::where('marque', $m->name)->exists();
+        if ($hasModeles || $hasProducts) {
+            return response()->json(['message' => 'Suppression impossible: marque deja liee a des modeles ou produits.'], 422);
+        }
+
         $m->delete();
-        return response()->json(['message' => 'Supprimé']);
+        return response()->json(['message' => 'Supprime']);
     }
 
-    // Modeles
     public function listModeles(Request $request)
     {
         $q = Modele::query();
-        if ($request->filled('marque_id')) $q->where('marque_id', $request->marque_id);
+        if ($request->filled('marque_id')) {
+            $q->where('marque_id', $request->marque_id);
+        }
         return response()->json($q->orderBy('name')->get());
     }
 
@@ -77,7 +82,12 @@ class ReferencesController extends Controller
     public function deleteModele(int $id)
     {
         $r = Modele::findOrFail($id);
+        $hasProducts = \App\Models\Product::where('model', $r->name)->exists();
+        if ($hasProducts) {
+            return response()->json(['message' => 'Suppression impossible: modele deja lie a des produits.'], 422);
+        }
+
         $r->delete();
-        return response()->json(['message' => 'Supprimé']);
+        return response()->json(['message' => 'Supprime']);
     }
 }

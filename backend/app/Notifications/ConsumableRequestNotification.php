@@ -97,7 +97,7 @@ class ConsumableRequestNotification extends Notification
                         $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
                     }
                 }
-                $mail->line("Vous recevrez votre matériel prochainement après confirmation du Responsable Logistique.")
+                $mail->line("Vous recevrez votre matériel prochainement après confirmation du Responsable.")
                     ->action("Voir mes demandes", $frontendUrl);
             } else {
                 if ($isPartialApproval) {
@@ -156,8 +156,7 @@ class ConsumableRequestNotification extends Notification
             $mail->action("Valider la demande", "http://localhost:4200/admin/validation-demandes")
                 ->line("Merci d'approuver ou de rejeter cette demande.");
         }
-
-        $mail->salutation("Cordialement,\nL'équipe Logistique");
+        $mail->salutation("Cordialement,\nL'équipe");
 
         // Attach PDFs for partial approvals (approved and rejected items)
         $approvedRequests = $this->requests->filter(fn($r) => in_array($r->status, ['approved', 'approved_pending_exit', 'validated_by_manager']));

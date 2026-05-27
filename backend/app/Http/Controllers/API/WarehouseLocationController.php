@@ -66,6 +66,10 @@ class WarehouseLocationController extends Controller
 
     public function destroy(WarehouseLocation $location)
     {
+        if (\App\Models\ProductStock::where('warehouse_location_id', $location->id)->exists()) {
+            return response()->json(['message' => 'Suppression impossible: cet emplacement contient du stock.'], 422);
+        }
+
         $location->delete();
         return response()->noContent();
     }

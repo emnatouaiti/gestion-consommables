@@ -29,7 +29,7 @@ class AuthController extends Controller
         }
 
         $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', ['utilisateur'])->first();
-        
+
         $user = User::create([
             'nomprenom' => $request->name,
             'email' => $request->email,

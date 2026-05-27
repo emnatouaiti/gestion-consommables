@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AdminUsersService } from '../services/admin-users.service';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-archived-users',
@@ -22,6 +23,7 @@ export class ArchivedUsersComponent implements OnInit {
 
   constructor(
     private svc: AdminUsersService,
+    private api: ApiService,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
@@ -88,7 +90,7 @@ export class ArchivedUsersComponent implements OnInit {
 
         this.isLoading = false;
         this.users = [];
-        this.errorMessage = err?.message || 'Impossible de charger les utilisateurs archivés.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de charger les utilisateurs archivés.');
 
         // Forcer la détection de changements
         this.cdr.detectChanges();
@@ -98,6 +100,12 @@ export class ArchivedUsersComponent implements OnInit {
 
   search() {
     if (!this.isBrowser) return;
+    this.load();
+  }
+
+  resetSearch(): void {
+    if (!this.isBrowser) return;
+    this.q = '';
     this.load();
   }
 
@@ -111,7 +119,7 @@ export class ArchivedUsersComponent implements OnInit {
       },
       error: (err) => {
         console.error('Erreur restauration:', err);
-        this.errorMessage = 'Erreur lors de la restauration.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la restauration.');
         this.cdr.detectChanges();
       }
     });
@@ -127,7 +135,7 @@ export class ArchivedUsersComponent implements OnInit {
       },
       error: (err) => {
         console.error('Erreur suppression définitive:', err);
-        this.errorMessage = 'Erreur lors de la suppression.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la suppression.');
         this.cdr.detectChanges();
       }
     });

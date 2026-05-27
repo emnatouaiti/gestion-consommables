@@ -50,6 +50,12 @@ class UnitController extends Controller
 
     public function destroy(Unit $unit)
     {
+        if ($unit->products()->exists()) {
+            return response()->json([
+                'message' => 'Suppression impossible: cette unite est liee a des produits.'
+            ], 422);
+        }
+
         $unit->delete();
 
         return response()->json(['message' => 'Unite supprimee']);

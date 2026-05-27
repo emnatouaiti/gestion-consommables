@@ -4,8 +4,8 @@
     <div class="header-left">
       <button class="btn-back" (click)="goBack()">← Retour</button>
       <div>
-        <h2 *ngIf="warehouse">🏭 {{ warehouse.name || 'Dépôt' }}</h2>
-        <h2 *ngIf="!warehouse">🏭 Produits par dépôt</h2>
+        <h2 *ngIf="warehouse">{{ warehouse.name || 'Dépôt' }}</h2>
+        <h2 *ngIf="!warehouse">Produits par dépôt</h2>
         <p class="warehouse-details" *ngIf="warehouse">
           {{ warehouse.address || '' }} {{ warehouse.city || '' }}
         </p>
@@ -14,7 +14,7 @@
   </div>
 
   <!-- Error -->
-  <div class="toast error" *ngIf="errorMessage">✗ {{ errorMessage }}</div>
+  <div class="toast error" *ngIf="errorMessage">{{ errorMessage }}</div>
 
   <!-- Loading -->
   <div class="loading-state" *ngIf="isLoading">
@@ -37,7 +37,6 @@
             <th>Quantité</th>
             <th>Seuil min</th>
             <th>Statut</th>
-            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -55,9 +54,6 @@
             <td>{{ p.stock_quantity || 0 }}</td>
             <td>{{ p.seuil_min || 0 }}</td>
             <td><span class="status-badge" [ngClass]="p.status">{{ p.status }}</span></td>
-            <td>
-              <button class="icon-btn stocks" title="Gestion des stocks" (click)="manageProductStocks(p)">📊</button>
-            </td>
           </tr>
         </tbody>
       </table>

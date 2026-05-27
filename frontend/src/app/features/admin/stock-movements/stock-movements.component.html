@@ -159,7 +159,13 @@
     </ng-template>
 
     <!-- PAGINATION -->
-    <footer class="pagination" *ngIf="total > perPage">
+    <footer class="pagination" *ngIf="total > 0">
+      <div class="page-size">
+        <label for="stock-movements-per-page">Par page</label>
+        <select id="stock-movements-per-page" [(ngModel)]="perPage" (change)="onPerPageChange()">
+          <option *ngFor="let opt of perPageOptions" [ngValue]="opt">{{ opt }}</option>
+        </select>
+      </div>
       <button (click)="prevPage()" [disabled]="page === 1" class="btn-nav">Précédent</button>
       <span class="page-info">Page {{ page }} sur {{ lastPage }}</span>
       <button (click)="nextPage()" [disabled]="page === lastPage" class="btn-nav">Suivant</button>

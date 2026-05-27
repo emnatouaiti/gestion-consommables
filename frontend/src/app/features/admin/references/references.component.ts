@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminRefService } from '../services/admin-ref.service';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-references',
@@ -26,7 +27,7 @@ export class ReferencesComponent implements OnInit {
   modalMode: 'add' | 'edit' = 'add';
   editingItem: any = null;
 
-  constructor(private svc: AdminRefService, private cdr: ChangeDetectorRef) {}
+  constructor(private svc: AdminRefService, private cdr: ChangeDetectorRef, private api: ApiService) {}
 
   ngOnInit(): void {
     this.loadMarques();
@@ -102,21 +103,21 @@ export class ReferencesComponent implements OnInit {
 
     if (this.modalType === 'marque') {
       if (this.modalMode === 'add') {
-        this.svc.createMarque({ name }).subscribe({ next: () => { this.loadMarques(); this.closeModal(); }, error: () => this.error = 'Erreur' });
+        this.svc.createMarque({ name }).subscribe({ next: () => { this.loadMarques(); this.closeModal(); }, error: (err) => this.error = this.api.extractErrorMessage(err, 'Erreur') });
       } else {
-        this.svc.updateMarque(this.editingItem.id, { name }).subscribe({ next: () => { this.loadMarques(); this.closeModal(); }, error: () => this.error = 'Erreur' });
+        this.svc.updateMarque(this.editingItem.id, { name }).subscribe({ next: () => { this.loadMarques(); this.closeModal(); }, error: (err) => this.error = this.api.extractErrorMessage(err, 'Erreur') });
       }
     } else {
       if (this.modalMode === 'add') {
         const payload = { name, marque_id: this.selectedMarque.id };
-        this.svc.createModele(payload).subscribe({ next: () => { this.loadModeles(); this.closeModal(); }, error: () => this.error = 'Erreur' });
+        this.svc.createModele(payload).subscribe({ next: () => { this.loadModeles(); this.closeModal(); }, error: (err) => this.error = this.api.extractErrorMessage(err, 'Erreur') });
       } else {
-        this.svc.updateModele(this.editingItem.id, { name, marque_id: this.editingItem.marque_id }).subscribe({ next: () => { this.loadModeles(); this.closeModal(); }, error: () => this.error = 'Erreur' });
+        this.svc.updateModele(this.editingItem.id, { name, marque_id: this.editingItem.marque_id }).subscribe({ next: () => { this.loadModeles(); this.closeModal(); }, error: (err) => this.error = this.api.extractErrorMessage(err, 'Erreur') });
       }
     }
   }
 
-  deleteMarque(m: any): void { if (!confirm('Supprimer cette marque ?')) return; this.svc.deleteMarque(m.id).subscribe({ next: ()=> { this.loadMarques(); this.modeles = []; this.selectedMarque = null; }, error: ()=> this.error='Erreur' }); }
+  deleteMarque(m: any): void { if (!confirm('Supprimer cette marque ?')) return; this.svc.deleteMarque(m.id).subscribe({ next: ()=> { this.loadMarques(); this.modeles = []; this.selectedMarque = null; }, error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
 
-  deleteModele(mo: any): void { if (!confirm('Supprimer ce modèle ?')) return; this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: ()=> this.error='Erreur' }); }
+  deleteModele(mo: any): void { if (!confirm('Supprimer ce modèle ?')) return; this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
 }

@@ -67,6 +67,10 @@ class WarehouseRoomController extends Controller
 
     public function destroy(WarehouseRoom $room)
     {
+        if ($room->locations()->exists() || $room->cabinets()->exists()) {
+            return response()->json(['message' => 'Suppression impossible: cette salle contient des emplacements ou armoires.'], 422);
+        }
+
         $room->delete();
         return response()->noContent();
     }

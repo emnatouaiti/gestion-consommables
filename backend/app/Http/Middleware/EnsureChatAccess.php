@@ -37,19 +37,15 @@ class EnsureChatAccess
         $authRole = $this->normalizeRole($auth);
         $targetRole = $this->normalizeRole($target);
 
-        if ($authRole === 'admin') {
-            return true;
+        if ($auth->id === $target->id) {
+            return false;
         }
 
-        if ($authRole === 'manager') {
-            return in_array($targetRole, ['employee', 'manager', 'admin'], true);
+        if (!$authRole || !$targetRole) {
+            return false;
         }
 
-        if ($authRole === 'employee') {
-            return in_array($targetRole, ['employee', 'manager', 'admin'], true);
-        }
-
-        return false;
+        return true;
     }
 
     private function normalizeRole(User $user): string

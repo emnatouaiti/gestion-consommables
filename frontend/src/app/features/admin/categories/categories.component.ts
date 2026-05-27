@@ -1,6 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AdminStockService } from '../services/admin-stock.service';
+import { ApiService } from '../../../core/services/api.service';
 
 interface CategoryNode {
   id: number;
@@ -37,6 +38,7 @@ export class CategoriesComponent implements OnInit {
 
   constructor(
     private readonly stockService: AdminStockService,
+    private readonly api: ApiService,
     private readonly cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) { }
@@ -58,7 +60,7 @@ export class CategoriesComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || err?.message || 'Erreur de chargement.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de chargement.');
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -173,7 +175,7 @@ export class CategoriesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || err?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
       }
     });
   }
@@ -187,7 +189,7 @@ export class CategoriesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || err?.message || 'Suppression impossible.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
       }
     });
   }

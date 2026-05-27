@@ -59,6 +59,10 @@ class WarehouseController extends Controller
 
     public function destroy(Warehouse $warehouse)
     {
+        if ($warehouse->rooms()->exists()) {
+            return response()->json(['message' => 'Suppression impossible: ce depot contient des salles.'], 422);
+        }
+
         $warehouse->delete();
         return response()->noContent();
     }
@@ -94,3 +98,4 @@ class WarehouseController extends Controller
         return response()->json($products->values());
     }
 }
+

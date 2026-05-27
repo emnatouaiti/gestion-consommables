@@ -3,6 +3,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute } from '@angular/router';
 import { AdminUsersService } from '../services/admin-users.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-users-list',
@@ -90,7 +91,8 @@ export class UsersListComponent implements OnInit {
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
-    private authService: AuthService
+    private authService: AuthService,
+    private api: ApiService
   ) {}
 
   ngOnInit(): void {
@@ -209,6 +211,13 @@ export class UsersListComponent implements OnInit {
   }
 
   search(): void {
+    this.currentPage = 1;
+    this.load();
+  }
+
+  resetSearch(): void {
+    this.q = '';
+    this.currentPage = 1;
     this.load();
   }
 
@@ -437,7 +446,7 @@ export class UsersListComponent implements OnInit {
       },
       error: (err) => {
         this.isSaving = false;
-        this.errorMessage = err?.error?.message || err?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
@@ -469,7 +478,7 @@ export class UsersListComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || err?.message || "Impossible d'archiver cet utilisateur.";
+        this.errorMessage = this.api.extractErrorMessage(err, "Impossible d'archiver cet utilisateur.");
         this.cdr.detectChanges();
       }
     });

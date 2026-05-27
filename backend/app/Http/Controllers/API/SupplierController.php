@@ -187,6 +187,15 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier)
     {
+        $linkedProducts = $supplier->products()->count();
+        $linkedStocks = \App\Models\ProductStock::where('supplier_id', $supplier->id)->count();
+
+        if ($linkedProducts > 0 || $linkedStocks > 0) {
+            return response()->json([
+                'message' => 'Suppression impossible: ce fournisseur est lie a des produits ou a des stocks.'
+            ], 422);
+        }
+
         if ($supplier->image_path) {
             Storage::disk('public')->delete($supplier->image_path);
         }

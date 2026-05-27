@@ -6,7 +6,9 @@ import { AuthGuard } from '../../core/guards/auth.guard';
 import { RoleGuard } from '../../core/guards/role.guard';
 import { ProfileComponent } from './profile/profile';
 import { ArchivedUsersComponent } from './archived-users/archived-users.component';
-import { DashboardComponent } from '../dashboard/dashboard.component';
+import { UserDashboardComponent } from '../dashboard/user-dashboard.component';
+
+
 import { AdminRolePageComponent } from './admin-role-page/admin-role-page.component';
 import { CategoriesComponent } from './categories/categories.component';
 import { ProductsComponent } from './products/products.component';
@@ -34,6 +36,7 @@ const adminAndDirector = [...adminRoles, ...directorRoles];
 const managerAndAgent = [...managerRoles, ...agentRoles, ...directorRoles];
 const directorAndManager = [...directorRoles, ...managerRoles];
 const adminAndManagerAndAgent = [...adminRoles, ...managerRoles, ...agentRoles, ...directorRoles];
+const allAppRoles = [...adminRoles, ...directorRoles, ...managerRoles, ...agentRoles, ...userRoles];
 
 const routes: Routes = [
   {
@@ -43,7 +46,7 @@ const routes: Routes = [
     children: [
       // 1. Dashboard & General
       { path: '', component: AdminRolePageComponent, data: { view: 'welcome' } },
-      { path: 'dashboard', component: DashboardComponent, canActivate: [RoleGuard], data: { roles: adminAndDirector } },
+      { path: 'dashboard', component: UserDashboardComponent, canActivate: [RoleGuard], data: { roles: allAppRoles } },
       { path: 'profile', component: ProfileComponent },
 
       // 2. User Management

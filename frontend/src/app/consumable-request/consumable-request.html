@@ -280,10 +280,16 @@
                 (click)="openEditRequestModal(r)"
               >Modifier</button>
 
+              <button
+                *ngIf="(r.status === 'pending' || r.status === 'draft') && canEditDeleteOwnRequests"
+                class="cr-btn cr-btn--danger-text"
+                (click)="deleteRequest(r.items?.[0]?.id || r.id)"
+              >Supprimer</button>
+
               <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Details</button>
 
-              <!-- For partially accepted: show 2 PDF buttons -->
-              <ng-container *ngIf="r.status === 'partiellement_accepte'">
+              <!-- For mixed lot (partial or delivered after partial): show 2 PDF buttons -->
+              <ng-container *ngIf="r.pdf_path_approved || r.pdf_path_rejected">
                 <button *ngIf="r.pdf_path_approved" class="cr-btn cr-btn--pdf" (click)="downloadPdfApproved(r)" title="PDF produits acceptes">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -303,8 +309,8 @@
                   PDF Refuses
                 </button>
               </ng-container>
-              <!-- PDF visible pour tous les autres statuts si pdf_path existe -->
-              <button *ngIf="r.pdf_path && r.status !== 'partiellement_accepte'" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
+              <!-- PDF visible pour tous les autres statuts si pdf_path existe et pas de PDFs séparés -->
+              <button *ngIf="r.pdf_path && !r.pdf_path_approved && !r.pdf_path_rejected" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -340,7 +346,7 @@
         <div style="font-size:13px;margin-bottom:10px;">{{ r.requester_name || r.user?.nomprenom || '-' }} - {{ r.requester_poste || '-' }}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="cr-btn cr-btn--ghost" (click)="openDetailsModal(r)">Details</button>
-          <ng-container *ngIf="r.status === 'partiellement_accepte'; else singlePdfCard">
+          <ng-container *ngIf="r.pdf_path_approved || r.pdf_path_rejected; else singlePdfCard">
             <button *ngIf="r.pdf_path_approved" class="cr-btn cr-btn--pdf" (click)="downloadPdfApproved(r)" title="PDF produits acceptes">
               PDF Acceptes
             </button>
@@ -658,6 +664,7 @@
               <button
                 type="button"
                 class="cr-btn cr-btn--approve"
+                [disabled]="item.available_stock === 0"
                 [style.opacity]="itemDecisions[item.id] === 'rejected' ? '0.4' : '1'"
                 [style.font-weight]="itemDecisions[item.id] === 'approved' ? '700' : '400'"
                 (click)="setItemDecision(item, 'approved')"
@@ -686,14 +693,6 @@
               [(ngModel)]="itemApprovedQuantities[item.id]"
               style="width: 80px; padding: 6px 10px; border: 1px solid #6ee7b7; border-radius: 6px; font-size: 14px; font-weight: 600;"
             >
-            <button
-              type="button"
-              class="cr-btn cr-btn--ghost"
-              style="font-size: 12px; padding: 4px 10px;"
-              (click)="useSuggestedForItem(item)"
-            >
-              Utiliser suggestion
-            </button>
             <span *ngIf="item.available_stock !== null && item.available_stock !== undefined" style="font-size: 12px; color: var(--e-500);">
               Max : {{ item.available_stock }}
             </span>
@@ -778,9 +777,6 @@
             [max]="selectedRequestForApproval?.available_stock ?? selectedRequestForApproval?.requested_quantity"
             [(ngModel)]="modalApprovedQuantity"
           >
-          <button type="button" class="cr-btn cr-btn--ghost" (click)="useSuggestedQuantity()">
-            Utiliser suggestion
-          </button>
         </div>
       </div>
 
@@ -807,7 +803,7 @@
       <div class="cr-item-card" *ngFor="let it of selectedRequestDetails.items">
         <div class="cr-item-head">
           <strong>{{ it.item_name }}</strong>
-          <span class="cr-tag" [ngClass]="stockStatusClass(it)">{{ stockStatusLabel(it) }}</span>
+          <span *ngIf="canApprove" class="cr-tag" [ngClass]="stockStatusClass(it)">{{ stockStatusLabel(it) }}</span>
         </div>
         <div class="cr-item-meta">
           <span>Ref : {{ it.product?.reference || 'N/A' }}</span>

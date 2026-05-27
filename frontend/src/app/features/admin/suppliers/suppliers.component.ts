@@ -7,6 +7,7 @@ import { HttpClient } from '@angular/common/http';
 import { SupplierService } from '../../../core/services/supplier.service';
 import { Supplier } from '../../../core/models/supplier.model';
 import { SupplierContact } from '../../../core/models/supplier-contact.model';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
     selector: 'app-suppliers',
@@ -35,6 +36,9 @@ export class SuppliersComponent implements OnInit {
     editingContactId: number | null = null;
     isContactsLoading = false;
     viewMode: 'grid' | 'list' = 'grid';
+    page = 1;
+    perPage = 10;
+    readonly perPageOptions = [5, 10, 20];
 
     supplierForm!: FormGroup;
     contactForm!: FormGroup;
@@ -53,6 +57,7 @@ export class SuppliersComponent implements OnInit {
     constructor(
         private supplierService: SupplierService,
         private http: HttpClient,
+        private api: ApiService,
         private readonly cdr: ChangeDetectorRef,
         private readonly fb: FormBuilder,
         @Inject(PLATFORM_ID) private readonly platformId: Object
@@ -112,13 +117,14 @@ export class SuppliersComponent implements OnInit {
             next: (data) => {
                 this.suppliers = data;
                 this.filteredSuppliers = [...data];
+                this.page = 1;
                 this.isLoading = false;
                 this.cdr.detectChanges();
             },
             error: (err) => {
                 console.error('Error loading suppliers', err);
                 this.isLoading = false;
-                this.errorMessage = 'Erreur lors du chargement des fournisseurs';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors du chargement des fournisseurs');
                 this.cdr.detectChanges();
             }
         });
@@ -135,6 +141,7 @@ export class SuppliersComponent implements OnInit {
                 supplier.email?.toLowerCase().includes(query)
             );
         }
+        this.page = 1;
         this.cdr.detectChanges();
     }
 
@@ -193,11 +200,38 @@ export class SuppliersComponent implements OnInit {
     clearSearch(): void {
         this.searchQuery = '';
         this.filteredSuppliers = [...this.suppliers];
+        this.page = 1;
         this.cdr.detectChanges();
     }
 
     setViewMode(mode: 'grid' | 'list'): void {
         this.viewMode = mode;
+        this.page = 1;
+    }
+
+    get pagedSuppliers(): Supplier[] {
+        const start = (this.page - 1) * this.perPage;
+        return this.filteredSuppliers.slice(start, start + this.perPage);
+    }
+
+    get totalPages(): number {
+        return Math.max(1, Math.ceil(this.filteredSuppliers.length / this.perPage));
+    }
+
+    onPerPageChange(): void {
+        this.page = 1;
+    }
+
+    prevPage(): void {
+        if (this.page > 1) {
+            this.page--;
+        }
+    }
+
+    nextPage(): void {
+        if (this.page < this.totalPages) {
+            this.page++;
+        }
     }
 
     viewProducts(supplier: Supplier): void {
@@ -214,7 +248,7 @@ export class SuppliersComponent implements OnInit {
             error: (err) => {
                 console.error('Error loading supplier products', err);
                 this.isLoading = false;
-                this.errorMessage = 'Erreur lors du chargement des produits';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors du chargement des produits');
                 this.cdr.detectChanges();
             }
         });
@@ -322,7 +356,7 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error saving contact', err);
-                this.errorMessage = 'Erreur lors de l’enregistrement du contact';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l’enregistrement du contact');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -347,7 +381,7 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error deleting contact', err);
-                this.errorMessage = 'Impossible de supprimer le contact';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le contact');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -436,11 +470,7 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error saving supplier', err);
-                if (err.error && typeof err.error === 'object') {
-                    this.errorMessage = Object.values(err.error).flat().join(', ');
-                } else {
-                    this.errorMessage = 'Erreur lors de l\'enregistrement';
-                }
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l\'enregistrement');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -457,7 +487,7 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error deleting supplier', err);
-                this.errorMessage = 'Impossible de supprimer le fournisseur';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le fournisseur');
             }
         });
     }
@@ -484,7 +514,7 @@ export class SuppliersComponent implements OnInit {
             },
             error: (err) => {
                 console.error('Error submitting review', err);
-                this.errorMessage = 'Erreur lors de la publication de l\'avis';
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la publication de l\'avis');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }

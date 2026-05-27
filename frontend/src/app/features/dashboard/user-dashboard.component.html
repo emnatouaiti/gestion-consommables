@@ -1,0 +1,41 @@
+<div class="dashboard-container">
+  <section class="hero">
+    <h1>Bienvenue {{ userName }}</h1>
+    <p>{{ role || 'Utilisateur' }} - {{ todayLabel }}</p>
+  </section>
+
+  <section class="stats-grid">
+    <article class="stat-card blue">
+      <div class="stat-value">{{ stats.myRequests }}</div>
+      <div class="stat-label">Mes demandes</div>
+    </article>
+    <article class="stat-card green">
+      <div class="stat-value">{{ stats.pendingRequests }}</div>
+      <div class="stat-label">Demandes en cours</div>
+    </article>
+    <article class="stat-card red">
+      <div class="stat-value">{{ stats.unreadNotifications }}</div>
+      <div class="stat-label">Notifications non lues</div>
+    </article>
+    <article class="stat-card yellow">
+      <div class="stat-value">{{ stats.requestsToday }}</div>
+      <div class="stat-label">Demandes aujourd hui</div>
+    </article>
+    <article class="stat-card purple" *ngIf="stats.pendingValidations > 0">
+      <div class="stat-value">{{ stats.pendingValidations }}</div>
+      <div class="stat-label">A valider</div>
+    </article>
+  </section>
+
+  <section class="actions">
+    <h2>Acces rapide</h2>
+    <div class="action-list">
+      <a class="action-item" routerLink="/admin/demandes-consommables">Mes demandes</a>
+      <a class="action-item" routerLink="/admin/mouvements-stock">Mouvements stock</a>
+      <a class="action-item" routerLink="/admin/chat">Messagerie</a>
+      <a class="action-item" routerLink="/admin/profile">Profil</a>
+    </div>
+  </section>
+
+  <p *ngIf="isLoading" class="loading">Chargement de votre espace...</p>
+</div>

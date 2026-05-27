@@ -2,6 +2,7 @@ import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angu
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminWarehouseService } from '../services/admin-warehouse.service';
+import { ApiService } from '../../../core/services/api.service';
 
 declare var L: any;
 
@@ -86,7 +87,8 @@ export class WarehousesComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object,
     private warehouseService: AdminWarehouseService,
-    private router: Router
+    private router: Router,
+    private api: ApiService
   ) { }
 
   ngOnInit(): void {
@@ -324,14 +326,20 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
   }
 
   deleteWarehouse(id: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce dépôt ?')) return;
+    const warehouse = this.warehouses.find((w) => w.id === id);
+    if (warehouse && !this.canDeleteWarehouse(warehouse)) {
+      this.errorMessage = 'Suppression impossible: ce depot contient des salles ou du stock.';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!confirm('Etes-vous sur de vouloir supprimer ce depot ?')) return;
 
     this.warehouseService.deleteWarehouse(id).subscribe({
       next: () => {
@@ -343,7 +351,7 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Impossible de supprimer ce dépôt.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer ce dépôt.');
         this.cdr.detectChanges();
       }
     });
@@ -445,14 +453,20 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
   }
 
   deleteRoom(id: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette salle ?')) return;
+    const room = this.rooms.find((r) => r.id === id);
+    if (room && !this.canDeleteRoom(room)) {
+      this.errorMessage = 'Suppression impossible: cette salle contient des emplacements, armoires ou du stock.';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!confirm('Etes-vous sur de vouloir supprimer cette salle ?')) return;
 
     this.warehouseService.deleteRoom(id).subscribe({
       next: () => {
@@ -463,7 +477,7 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Impossible de supprimer cette salle.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette salle.');
         this.cdr.detectChanges();
       }
     });
@@ -549,14 +563,20 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
   }
 
   deleteLocation(id: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cet emplacement ?')) return;
+    const location = this.locations.find((l) => l.id === id);
+    if (location && !this.canDeleteLocation(location)) {
+      this.errorMessage = 'Suppression impossible: cet emplacement n est pas vide.';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!confirm('Etes-vous sur de vouloir supprimer cet emplacement ?')) return;
 
     this.warehouseService.deleteLocation(id).subscribe({
       next: () => {
@@ -565,7 +585,7 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Impossible de supprimer cet emplacement.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cet emplacement.');
         this.cdr.detectChanges();
       }
     });
@@ -651,14 +671,20 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
   }
 
   deleteCabinet(id: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer cette armoire ?')) return;
+    const cabinet = this.cabinets.find((x) => x.id === id);
+    if (cabinet && !this.canDeleteCabinet(cabinet)) {
+      this.errorMessage = 'Suppression impossible: cette armoire n est pas vide.';
+      this.cdr.detectChanges();
+      return;
+    }
+    if (!confirm('Etes-vous sur de vouloir supprimer cette armoire ?')) return;
 
     this.warehouseService.deleteCabinet(id).subscribe({
       next: () => {
@@ -667,7 +693,7 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = err?.error?.message || 'Impossible de supprimer cette armoire.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette armoire.');
         this.cdr.detectChanges();
       }
     });
@@ -711,4 +737,26 @@ export class WarehousesComponent implements OnInit {
   close3DViewer(): void {
     this.show3DViewerModal = false;
   }
+
+  canDeleteWarehouse(item: any): boolean {
+    const roomsCount = Number(item?.rooms_count ?? item?.roomsCount ?? 0);
+    const currentUnits = Number(item?.current_units ?? item?.currentUnits ?? 0);
+    return roomsCount === 0 && currentUnits === 0;
+  }
+
+  canDeleteRoom(item: any): boolean {
+    const locationsCount = Number(item?.locations_count ?? 0);
+    const cabinetsCount = Number(item?.cabinets_count ?? 0);
+    const currentUnits = Number(item?.current_units ?? item?.currentUnits ?? 0);
+    return locationsCount === 0 && cabinetsCount === 0 && currentUnits === 0;
+  }
+
+  canDeleteLocation(item: any): boolean {
+    return Number(item?.current_units ?? item?.currentUnits ?? 0) === 0;
+  }
+
+  canDeleteCabinet(item: any): boolean {
+    return Number(item?.current_units ?? item?.currentUnits ?? 0) === 0;
+  }
 }
+

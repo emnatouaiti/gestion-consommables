@@ -2,6 +2,7 @@
 import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UnitService } from '../../../core/services/unit.service';
+import { ApiService } from '../../../core/services/api.service';
 
 @Component({
   selector: 'app-units',
@@ -26,6 +27,7 @@ export class UnitsComponent implements OnInit {
 
   constructor(
     private readonly unitService: UnitService,
+    private readonly api: ApiService,
     private readonly cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private readonly platformId: Object
   ) { }
@@ -57,7 +59,7 @@ export class UnitsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = err?.message || 'Erreur de chargement des unites.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de chargement des unites.');
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -117,7 +119,7 @@ export class UnitsComponent implements OnInit {
         setTimeout(() => (this.successMessage = ''), 2500);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.message || err?.message || 'Erreur de sauvegarde.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
         this.cdr.detectChanges();
       }
     });
@@ -136,7 +138,7 @@ export class UnitsComponent implements OnInit {
         setTimeout(() => (this.successMessage = ''), 2000);
       },
       error: (err: any) => {
-        this.errorMessage = err?.error?.message || err?.message || 'Suppression impossible.';
+        this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
         this.cdr.detectChanges();
       }
     });

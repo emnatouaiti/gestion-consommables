@@ -75,7 +75,7 @@
              VUE GRILLE
         ══════════════════════════════════════════════════ -->
         <div class="suppliers-grid" *ngIf="!isLoading && viewMode === 'grid'">
-            <div class="supplier-card" *ngFor="let supplier of filteredSuppliers">
+            <div class="supplier-card" *ngFor="let supplier of pagedSuppliers">
                 <div class="product-count" *ngIf="supplier.products_count">
                     {{ supplier.products_count }} produit{{ supplier.products_count > 1 ? 's' : '' }}
                 </div>
@@ -173,7 +173,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr *ngFor="let supplier of filteredSuppliers; let i = index"
+                        <tr *ngFor="let supplier of pagedSuppliers; let i = index"
                             [class.row-first]="i === 0"
                             [class.row-alt]="i % 2 !== 0">
                             <td class="col-avatar">
@@ -259,6 +259,18 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        <div class="suppliers-pagination" *ngIf="!isLoading && filteredSuppliers.length > 0">
+            <div class="page-size">
+                <label for="suppliers-per-page">Par page</label>
+                <select id="suppliers-per-page" [(ngModel)]="perPage" (change)="onPerPageChange()">
+                    <option *ngFor="let opt of perPageOptions" [ngValue]="opt">{{ opt }}</option>
+                </select>
+            </div>
+            <button class="btn secondary sm" (click)="prevPage()" [disabled]="page <= 1">Précédent</button>
+            <span class="page-info">Page {{ page }} / {{ totalPages }}</span>
+            <button class="btn secondary sm" (click)="nextPage()" [disabled]="page >= totalPages">Suivant</button>
         </div>
     </div>
 </div>

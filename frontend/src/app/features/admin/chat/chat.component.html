@@ -36,6 +36,7 @@
           </div>
           <div class="conv-preview">
             <span class="preview-text">{{ c.last_message || '—' }}</span>
+            <span class="unread-badge" *ngIf="conversationReadLabel(c)">{{ conversationReadLabel(c) }}</span>
             <span class="unread-badge" *ngIf="c.unread > 0">{{ c.unread }}</span>
           </div>
         </div>

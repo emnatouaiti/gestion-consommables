@@ -62,12 +62,7 @@
         Note : Cette action est définitive. Les produits listés ci-dessus ont été retirés du stock physique et informatique pour destruction ou traitement comme déchet.
     </div>
 
-    <div class="signature-section">
-        <div class="signature-box">
-            <p>Responsable du Stock / Opérateur</p>
-            <div>Signature & Cachet</div>
-        </div>
-    </div>
+
 
     <div class="footer">
         <p>Document généré automatiquement par le système de gestion des stocks.</p>

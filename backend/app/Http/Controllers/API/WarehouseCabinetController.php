@@ -68,6 +68,10 @@ class WarehouseCabinetController extends Controller
 
     public function destroy(WarehouseCabinet $cabinet)
     {
+        if (\App\Models\ProductStock::where('cabinet_id', $cabinet->id)->exists()) {
+            return response()->json(['message' => 'Suppression impossible: cette armoire contient du stock.'], 422);
+        }
+
         $cabinet->delete();
         return response()->noContent();
     }

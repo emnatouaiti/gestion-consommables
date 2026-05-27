@@ -36,6 +36,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   private readonly AVATAR_COLORS = ['c1','c2','c3','c4','c5'];
   private convSub?: Subscription;
   private msgSub?: Subscription;
+  private lastUnreadTotal = 0;
 
   constructor(
     private chat: ChatService,
@@ -123,10 +124,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   /**
    * Affiche :
    *  - "En ligne"              si < 5 min
-   *  - "Vu à 14:32"           si aujourd'hui mais > 5 min
-   *  - "Vu hier à 14:32"      si hier
+   *  - "Vu a 14:32"           si aujourd'hui mais > 5 min
+   *  - "Vu hier a 14:32"      si hier
    *  - "Vu avant-hier à..."   si avant-hier
-   *  - "Vu le 12/03 à 14:32"  sinon
+   *  - "Vu le 12/03 a 14:32"  sinon
    */
   presenceLabel(lastSeen: string | null | undefined): string {
     if (!lastSeen) return '';
@@ -139,10 +140,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const diffDays = Math.floor(diffMs / 86_400_000);
     const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-    if (diffDays === 0) return `vu à ${time}`;
-    if (diffDays === 1) return `vu hier à ${time}`;
-    if (diffDays === 2) return `vu avant-hier à ${time}`;
-    return `vu le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à ${time}`;
+    if (diffDays === 0) return `Vu a ${time}`;
+    if (diffDays === 1) return `Vu hier a ${time}`;
+    if (diffDays === 2) return `Vu avant-hier a ${time}`;
+    return `Vu le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} a ${time}`;
   }
 
   statusLabel(): string {
@@ -150,6 +151,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     if (!last) return '';
     if (this.isOnline(last)) return 'En ligne';
     return this.presenceLabel(last);
+  }
+
+  conversationReadLabel(conv: any): string {
+    if (!conv || this.authUserId == null) return '';
+    if (Number(conv?.last_sender_id) !== Number(this.authUserId)) return '';
+    return conv?.last_read_at ? 'Vu' : 'Non vu';
   }
 
   /* ─── Séparateurs de jours dans les messages ─── */
@@ -273,10 +280,18 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.convSub?.unsubscribe();
     this.convSub = this.chat.pollConversations().subscribe({
       next: (data) => {
+        const previousUnread = this.lastUnreadTotal;
         this.conversations = data;
         this.unreadCount = Array.isArray(data)
           ? data.reduce((s: number, c: any) => s + Number(c?.unread || 0), 0)
           : 0;
+        this.lastUnreadTotal = this.unreadCount;
+
+        // Log only when a new message arrives (unread count increases)
+        if (this.unreadCount > previousUnread) {
+          try { console.log(`[Chat] Nouveau message recu (${this.unreadCount - previousUnread})`); } catch {}
+        }
+
         if (this.selectedUser) {
           const found = data.find((c: any) => c?.user?.id === this.selectedUser.id);
           if (found?.user?.last_seen_at) {
@@ -330,3 +345,4 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     }
   }
 }
+

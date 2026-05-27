@@ -19,15 +19,21 @@ class ProductStockController extends Controller
             ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
             ->where('quantity', '>', 0);
 
+        if (\Illuminate\Support\Facades\Schema::hasColumn('product_stocks', 'batch_status')) {
+            $query->whereIn('batch_status', ['active', 'expired']);
+        }
+
         // Filtrer par dépôt de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
             $isStockManager = $user->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
             if ($isStockManager) {
-                $query->whereHas('warehouseLocation.room', function ($q) use ($user) {
-                    $q->where('warehouse_id', $user->depot_id);
-                })->orWhereHas('warehouseCabinet.room', function ($q) use ($user) {
-                    $q->where('warehouse_id', $user->depot_id);
+                $query->where(function ($q) use ($user) {
+                    $q->whereHas('warehouseLocation.room', function ($q2) use ($user) {
+                        $q2->where('warehouse_id', $user->depot_id);
+                    })->orWhereHas('warehouseCabinet.room', function ($q2) use ($user) {
+                        $q2->where('warehouse_id', $user->depot_id);
+                    });
                 });
             }
         }

@@ -64,16 +64,7 @@
         </tbody>
     </table>
 
-    <div class="signature-section">
-        <div class="signature-box">
-            <p>Responsable Stock</p>
-            <div>Signature</div>
-        </div>
-        <div class="signature-box">
-            <p>Fournisseur (Accusé de réception)</p>
-            <div>Cachet et Signature</div>
-        </div>
-    </div>
+
 
     <div class="footer">
         <p>Document généré automatiquement par le système de gestion des stocks.</p>

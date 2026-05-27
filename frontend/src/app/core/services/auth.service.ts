@@ -9,6 +9,7 @@ import { isPlatformBrowser } from '@angular/common';
 })
 export class AuthService {
     private readonly TOKEN_KEY = 'auth_token';
+    private readonly USER_CACHE_KEY = 'auth_user';
     currentUser = signal<any>(null);
 
     constructor(
@@ -17,6 +18,10 @@ export class AuthService {
         @Inject(PLATFORM_ID) private platformId: Object
     ) {
         if (isPlatformBrowser(this.platformId)) {
+            const cachedUser = localStorage.getItem(this.USER_CACHE_KEY);
+            if (cachedUser) {
+                try { this.currentUser.set(JSON.parse(cachedUser)); } catch {}
+            }
             setTimeout(() => this.loadUser(), 0);
         }
     }
@@ -30,10 +35,19 @@ export class AuthService {
         try { console.debug('[AuthService] loadUser token:', token); } catch (e) {}
         if (token) {
             this.apiService.get('user').subscribe({
-                next: (user) => this.currentUser.set(user),
-                error: () => {
-                    try { console.debug('[AuthService] loadUser failed, logging out'); } catch (e) {}
-                    this.logout();
+                next: (user) => {
+                    this.currentUser.set(user);
+                    if (isPlatformBrowser(this.platformId)) {
+                        localStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(user));
+                    }
+                },
+                error: (err) => {
+                    const status = Number(err?.status || err?.error?.status || 0);
+                    // Only purge session when truly unauthorized
+                    if (status === 401 || status === 403) {
+                        try { console.debug('[AuthService] unauthorized session, logging out'); } catch (e) {}
+                        this.logout();
+                    }
                 }
             });
         }
@@ -116,7 +130,21 @@ export class AuthService {
         return String(role || '').trim().toLowerCase();
     }
 
-    getUserRoles(user: any): string[] {
+    /**
+   * Return a primary role string for the current user, or null if not logged in.
+   */
+  getUserRole(): string | null {
+    const user = this.currentUser();
+    if (!user) return null;
+    const roles = this.getUserRoles(user);
+    return roles.length ? roles[0] : null;
+  }
+
+    /**
+     * Extract normalized role strings from a user object.
+     * Handles both role relations (array of role objects) and a direct role field.
+     */
+    public getUserRoles(user: any): string[] {
         const relationRoles = (user?.roles || []).map((r: any) => r?.name || r);
         const fallbackRole = user?.role ? [user.role] : [];
         const allRoles = [...relationRoles, ...fallbackRole]
@@ -124,6 +152,7 @@ export class AuthService {
             .filter(Boolean);
         return [...new Set(allRoles)];
     }
+
 
     userHasAnyRole(user: any, expected: string[]): boolean {
         if (!user || !expected?.length) {
@@ -161,12 +190,16 @@ export class AuthService {
 
         try { console.debug('[AuthService] setSession token:', authResult.token, 'user:', authResult.user); } catch (e) {}
         this.currentUser.set(authResult.user);
+        if (isPlatformBrowser(this.platformId)) {
+            localStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(authResult.user || null));
+        }
         this.router.navigate([this.resolvePostLoginRoute(authResult.user)]);
     }
 
     private purgeAuth() {
         if (isPlatformBrowser(this.platformId)) {
             localStorage.removeItem(this.TOKEN_KEY);
+            localStorage.removeItem(this.USER_CACHE_KEY);
             try { console.debug('[AuthService] purgeAuth called, navigating to /login'); } catch (e) {}
         }
         this.currentUser.set(null);

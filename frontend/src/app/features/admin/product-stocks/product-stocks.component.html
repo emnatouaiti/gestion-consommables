@@ -159,11 +159,7 @@
               </div>
 
               <div class="depot-details" *ngIf="selectedWarehouseId===wh.warehouse_id">
-                <div class="depot-actions">
-                  <button class="btn primary small" (click)="openAddStockModal(wh.warehouse_id); $event.stopPropagation()">
-                    + Ajouter stock ici
-                  </button>
-                </div>
+
                 <div *ngIf="getStocksForWarehouse(wh.warehouse_id).length===0" class="depot-empty">
                   Aucun stock détaillé pour ce dépôt.
                 </div>

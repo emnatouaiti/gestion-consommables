@@ -30,6 +30,7 @@ export class StockMovementsComponent implements OnInit {
   selectedMovement: any = null;
   page = 1;
   perPage = 20;
+  readonly perPageOptions = [5, 10, 20];
   total = 0;
   lastPage = 1;
   filters: any = { status: '', movement_type: '', reference: '' };
@@ -221,6 +222,10 @@ export class StockMovementsComponent implements OnInit {
   applyFilters(): void { this.page = 1; this.load(); }
   prevPage(): void { if (this.page > 1) { this.page--; this.load(); } }
   nextPage(): void { if (this.page < this.lastPage) { this.page++; this.load(); } }
+  onPerPageChange(): void {
+    this.page = 1;
+    this.load();
+  }
 
   validate(m: any): void {
     this.confirmationModal = {

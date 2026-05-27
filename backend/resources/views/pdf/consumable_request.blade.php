@@ -177,19 +177,7 @@
         </table>
     </div>
 
-    {{-- ===== SIGNATURES ===== --}}
-    <table style="border: none; width: 100%; margin-top: 50px;">
-        <tr>
-            <td style="border: none; width: 50%; text-align: left;">
-                <p>Signature Demandeur:</p>
-                <div class="signature" style="margin-top: 40px; width: 200px;"></div>
-            </td>
-            <td style="border: none; width: 50%; text-align: right;">
-                <p>Visa Direction:</p>
-                <div class="signature" style="margin-top: 40px; display: inline-block; width: 200px;"></div>
-            </td>
-        </tr>
-    </table>
+
 
     <div class="footer">
         <p>Document genere automatiquement le {{ date('d/m/Y') }}</p>

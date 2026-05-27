@@ -53,11 +53,35 @@ class StockMovementController extends Controller
         
         $user = Auth::user();
         if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['Administrateur'])) {
-            $query->where(function ($q) use ($user) {
-                $q->where('depot_id', $user->depot_id)
-                  ->orWhere(function ($q2) use ($user) {
+            $depotId = (int) $user->depot_id;
+            $query->where(function ($q) use ($user, $depotId) {
+                $q->where('depot_id', $depotId)
+                  ->orWhere(function ($q2) use ($user, $depotId) {
+                      // Legacy/null-depot movements:
+                      // keep creator visibility and also include movements linked
+                      // to the same depot through source/destination location/cabinet.
                       $q2->whereNull('depot_id')
-                         ->where('created_by', $user->id);
+                         ->where(function ($q3) use ($user, $depotId) {
+                             $q3->where('created_by', $user->id)
+                                ->orWhereHas('sourceWarehouseLocation.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                })
+                                ->orWhereHas('destinationWarehouseLocation.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                })
+                                ->orWhereHas('lines.location.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                })
+                                ->orWhereHas('sourceCabinet.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                })
+                                ->orWhereHas('destinationCabinet.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                })
+                                ->orWhereHas('lines.cabinet.room', function ($sq) use ($depotId) {
+                                    $sq->where('warehouse_id', $depotId);
+                                });
+                         });
                   });
             });
         }

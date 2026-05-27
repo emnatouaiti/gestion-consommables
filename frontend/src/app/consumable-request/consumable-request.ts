@@ -282,30 +282,25 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
   get pendingExitRequests(): any[] {
     const rows: any[] = [];
-    const seen = new Set<number>();
+    const seen = new Set<string | number>();
 
     for (const group of this.sortedByDate) {
       const items = Array.isArray(group?.items) && group.items.length > 0 ? group.items : [group];
+      const pendingItems = items.filter((it: any) => String(it?.status || '').toLowerCase() === 'approved_pending_exit');
+      
+      if (pendingItems.length === 0) continue;
+      
+      const groupId = group.batch_code || group.id;
+      if (seen.has(groupId)) continue;
+      seen.add(groupId);
 
-      for (const it of items) {
-        if (String(it?.status || '').toLowerCase() !== 'approved_pending_exit') continue;
-        const itemId = Number(it?.id || 0);
-        if (itemId > 0 && seen.has(itemId)) continue;
-        if (itemId > 0) seen.add(itemId);
-
-        rows.push({
-          ...group,
-          ...it,
-          id: itemId || group.id,
-          item_name: it?.item_name || group.item_name,
-          created_at: it?.created_at || group.created_at,
-          pdf_path: it?.pdf_path || group.pdf_path,
-          requester_name: group.requester_name,
-          requester_poste: group.requester_poste,
-          user: group.user,
-          items: [it],
-        });
-      }
+      rows.push({
+        ...group,
+        items: pendingItems,
+        item_name: pendingItems.length > 1 ? pendingItems.length + ' produits' : pendingItems[0].item_name,
+        requested_quantity: pendingItems.reduce((sum: number, it: any) => sum + Number(it.requested_quantity || 0), 0),
+        approved_quantity: pendingItems.reduce((sum: number, it: any) => sum + Number(it.approved_quantity || 0), 0)
+      });
     }
 
     return rows.sort((a, b) => {
@@ -525,23 +520,24 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   submitRequest(): void {
     let request$: any;
 
-    if (this.requestModalEditMode && this.editingRequestId) {
-      if (!this.form.valid) return;
-      const val = this.form.value;
-      const selectedProduct = this.products.find(p => p.id === val.product_id);
-      const itemName = (selectedProduct?.title || val.item_name || '').trim();
+    const validLines = this.requestLines.filter(l => (l.product_id || l.searchTerm) && Number(l.requested_quantity) >= 1);
+    if (validLines.length === 0) {
+      this.message = 'Ajoutez au moins un produit avec une quantite valide.';
+      return;
+    }
+
+    if (this.requestModalEditMode && this.editingRequestId && !this.currentBatchCode) {
+      // Edit a single old request (no batch_code)
+      const l = validLines[0];
+      const p = this.products.find(prod => prod.id === l.product_id);
       request$ = this.consumableRequestService.updateRequest(this.editingRequestId, {
-        product_id: val.product_id || null,
-        item_name: itemName,
-        requested_quantity: val.requested_quantity,
+        product_id: l.product_id || null,
+        item_name: p ? p.title : l.searchTerm,
+        requested_quantity: l.requested_quantity,
         status: 'pending'
       });
     } else {
-      const validLines = this.requestLines.filter(l => (l.product_id || l.searchTerm) && Number(l.requested_quantity) >= 1);
-      if (validLines.length === 0) {
-        this.message = 'Ajoutez au moins un produit avec une quantite valide.';
-        return;
-      }
+      // Create new request or Edit a batch request (which will replace the batch via createRequest)
       const payload: any = {
         batch_code: this.currentBatchCode,
         items: validLines.map(l => {
@@ -558,11 +554,12 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     }
 
     this.loading = true;
+    this.closeRequestModal(); // Fermer la modal immediatement
+    
     request$.subscribe({
       next: () => {
-        this.message = 'Demande traitee avec succes.';
+        this.message = this.requestModalEditMode ? 'Demande modifiée avec succès.' : 'demande ajouter avec succes non traite';
         this.cdr.detectChanges();
-        this.closeRequestModal();
         this.currentBatchCode = null;
         this.loading = false;
         this.loadRequests();
@@ -659,13 +656,18 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
     if (Array.isArray(request?.items)) {
       for (const item of request.items) {
-        // Par defaut : aucune decision prise (pending)
-        this.itemDecisions[item.id] = 'pending';
-        const suggestedQty = Number(item?.suggested_approved_quantity);
-        this.itemApprovedQuantities[item.id] = Number.isFinite(suggestedQty)
-          ? suggestedQty
-          : Number(item?.requested_quantity || 0);
-        this.itemRejectReasons[item.id] = '';
+        if (Number(item?.available_stock) === 0) {
+          this.itemDecisions[item.id] = 'rejected';
+          this.itemApprovedQuantities[item.id] = 0;
+          this.itemRejectReasons[item.id] = 'Rupture de stock';
+        } else {
+          this.itemDecisions[item.id] = 'pending';
+          const suggestedQty = Number(item?.suggested_approved_quantity);
+          this.itemApprovedQuantities[item.id] = Number.isFinite(suggestedQty)
+            ? suggestedQty
+            : Number(item?.requested_quantity || 0);
+          this.itemRejectReasons[item.id] = '';
+        }
       }
     }
   }
@@ -676,21 +678,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     this.itemDecisions = {};
     this.itemApprovedQuantities = {};
     this.itemRejectReasons = {};
-    this.approving = false;
     this.depotWarnings = [];
     this.depotWarningMessage = '';
-  }
-
-  useSuggestedQuantity(): void {
-    if (!this.selectedRequestForApproval) return;
-    const suggested = Number(this.selectedRequestForApproval?.suggested_approved_quantity);
-    this.modalApprovedQuantity = Number.isFinite(suggested)
-      ? suggested
-      : Number(this.selectedRequestForApproval?.requested_quantity || 0);
+    this.approving = false;
   }
 
   /** Definir la decision pour un item dans un lot */
-  setItemDecision(item: any, decision: ItemDecision): void {
+  setItemDecision(item: any, decision: 'pending'|'approved'|'rejected'): void {
     this.itemDecisions[item.id] = decision;
     // Si on approuve, pre-remplir avec suggestion si pas encore defini
     if (decision === 'approved' && !this.itemApprovedQuantities[item.id]) {
@@ -701,13 +695,6 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     }
   }
 
-  /** Utiliser la quantite suggessee pour un item specifique */
-  useSuggestedForItem(item: any): void {
-    const suggested = Number(item?.suggested_approved_quantity);
-    this.itemApprovedQuantities[item.id] = Number.isFinite(suggested)
-      ? suggested
-      : Number(item?.requested_quantity || 0);
-  }
 
   /** Compter les decisions d'un type specifique */
   countDecisions(decision: ItemDecision): number {
@@ -758,7 +745,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       rejections: {}
     };
 
-    // Ajouter les quantitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©s approuvÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©es
+    // Ajouter les quantités approuvées
     for (const item of approvedItems) {
       payload.approved_quantities[item.id] = Number(this.itemApprovedQuantities[item.id]);
     }
@@ -778,13 +765,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         // Handle depot warnings
         if (res?.depot_warnings && res.depot_warnings.length > 0) {
           this.depotWarnings = res.depot_warnings;
-          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´ts.';
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dépôts.';
         }
         if (res?.insufficient_warnings?.length > 0) {
           const details = res.insufficient_warnings
             .map((w: any) => `${w.product}: manque ${w.missing}`)
             .join(', ');
-          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©.`;
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilité.`;
         }
 
         if (rejectedCount > 0 && approvedCount > 0) {
@@ -1158,17 +1145,21 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       });
 
       // Deduplicate by exact source id (location or cabinet) to avoid mixed/duplicate options.
-      const seen = new Set<string>();
-      productLoc.locationsList = filtered.filter(s => {
+      const seen = new Map<string, any>();
+      for (const s of filtered) {
         const key = s?.warehouse_location_id
           ? `loc:${s.warehouse_location_id}`
           : s?.cabinet_id
             ? `cab:${s.cabinet_id}`
             : `row:${s?.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
+        if (seen.has(key)) {
+          const existing = seen.get(key);
+          existing.quantity = Number(existing.quantity) + Number(s.quantity || 0);
+        } else {
+          seen.set(key, { ...s });
+        }
+      }
+      productLoc.locationsList = Array.from(seen.values());
     }
   }
 
@@ -1217,12 +1208,16 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       ? this.selectedRequestForExit.items
       : [this.selectedRequestForExit];
 
-    // For now, confirm exit for the first item (we'll need to handle batch exits differently)
-    // The backend confirmExit works on a single request at a time
-    const firstItem = items[0];
-    const productId = this.getExitProductId(firstItem) || this.getExitProductId(this.selectedRequestForExit);
-
-    const productLoc = productId ? this.exitProductLocations[productId] : null;
+    const itemsPayload = items.map((item: any) => {
+      const productId = this.getExitProductId(item) || this.getExitProductId(this.selectedRequestForExit);
+      const productLoc = productId ? this.exitProductLocations[productId] : null;
+      const s = productLoc?.emplacement;
+      return {
+        id: item.id,
+        source_warehouse_location_id: s?.warehouse_location_id || null,
+        source_cabinet_id: s?.cabinet_id || null
+      };
+    });
 
     const destinationText = this.exitRequesterName +
       (this.selectedRequestForExit.requester_siege ? ' - ' + this.selectedRequestForExit.requester_siege : '') +
@@ -1231,18 +1226,19 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     const payload: any = {
       motif: this.exitMotif,
       destination_text: destinationText,
-      exit_mode: 'depot'
+      exit_mode: 'depot',
+      items: itemsPayload
     };
 
-    if (productLoc && productLoc.emplacement) {
-      const s = productLoc.emplacement;
-      if (s.warehouse_location_id) payload.source_warehouse_location_id = s.warehouse_location_id;
-      else if (s.cabinet_id) payload.source_cabinet_id = s.cabinet_id;
+    // Keep top-level source for backward compatibility
+    if (itemsPayload.length > 0) {
+      payload.source_warehouse_location_id = itemsPayload[0].source_warehouse_location_id;
+      payload.source_cabinet_id = itemsPayload[0].source_cabinet_id;
     }
 
     this.consumableRequestService.confirmExit(this.selectedRequestForExit.id, payload).subscribe({
       next: (res: any) => {
-        const depotName = res?.depot_name ? ` (DÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´t: ${res.depot_name})` : '';
+        const depotName = res?.depot_name ? ` (Dépôt: ${res.depot_name})` : '';
         this.message = 'Remise effectuee et stock mis a jour.' + depotName;
         this.confirmingExit = false;
         this.closeExitModal();

@@ -227,6 +227,44 @@
   flex-shrink: 0;
 }
 
+.suppliers-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.suppliers-pagination .page-size {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 4px;
+}
+
+.suppliers-pagination .page-size label {
+  font-size: 12px;
+  color: var(--dim);
+  font-weight: 600;
+}
+
+.suppliers-pagination .page-size select {
+  border: 1px solid var(--silver);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.suppliers-pagination .page-info {
+  font-size: 12px;
+  color: var(--slate);
+  font-weight: 600;
+  min-width: 90px;
+  text-align: center;
+}
+
 /* ══════════════════════════════════════════════════════════════
    ██████╗ ██████╗ ██╗██████╗ ██████╗
    ██╔════╝ ██╔══██╗██║██╔══██╗██╔══██╗

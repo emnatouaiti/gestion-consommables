@@ -46,8 +46,10 @@ class MessageController extends Controller
         }
 
         $message = Message::create($payload)->load([
-            'sender:id,nomprenom as name,role',
-            'receiver:id,nomprenom as name,role',
+            'sender:id,nomprenom,last_seen_at,role_id',
+            'sender.role:id,name',
+            'receiver:id,nomprenom,last_seen_at,role_id',
+            'receiver.role:id,name',
         ]);
 
         return response()->json([
@@ -71,8 +73,10 @@ class MessageController extends Controller
             ->update(['is_read' => true, 'read_at' => now()]);
 
         $messages = Message::with([
-                'sender:id,nomprenom as name,role',
-                'receiver:id,nomprenom as name,role',
+                'sender:id,nomprenom,last_seen_at,role_id',
+                'sender.role:id,name',
+                'receiver:id,nomprenom,last_seen_at,role_id',
+                'receiver.role:id,name',
             ])
             ->where(function ($q) use ($auth, $other) {
                 $q->where('sender_id', $auth->id)->where('receiver_id', $other->id);
@@ -138,6 +142,7 @@ class MessageController extends Controller
                 ],
                 'last_message' => $preview,
                 'last_at' => optional($lastMessage)->created_at,
+                'last_sender_id' => $lastMessage?->sender_id,
                 'last_read_at' => $lastMessage?->read_at,
                 'unread' => $unread,
             ];
@@ -187,19 +192,15 @@ class MessageController extends Controller
         $authRole = $this->normalizeRole($auth);
         $targetRole = $this->normalizeRole($target);
 
-        if ($authRole === 'admin') {
-            return true;
+        if ($auth->id === $target->id) {
+            return false;
         }
 
-        if ($authRole === 'manager') {
-            return in_array($targetRole, ['employee', 'manager', 'admin'], true);
+        if (!$authRole || !$targetRole) {
+            return false;
         }
 
-        if ($authRole === 'employee') {
-            return in_array($targetRole, ['manager', 'admin'], true);
-        }
-
-        return false;
+        return true;
     }
 
     private function normalizeRole(User $user): string

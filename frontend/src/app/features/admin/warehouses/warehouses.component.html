@@ -60,7 +60,7 @@
             <button class="btn mini" (click)="openEditWarehouseModal(warehouse)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)">
+            <button class="btn mini danger" (click)="deleteWarehouse(warehouse.id)" [disabled]="!canDeleteWarehouse(warehouse)" [title]="!canDeleteWarehouse(warehouse) ? 'Depot non vide' : 'Supprimer'">
               Supprimer
             </button>
           </div>
@@ -108,7 +108,7 @@
             <button class="btn mini" (click)="openEditRoomModal(room)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="btn mini danger" (click)="deleteRoom(room.id)">
+            <button class="btn mini danger" (click)="deleteRoom(room.id)" [disabled]="!canDeleteRoom(room)" [title]="!canDeleteRoom(room) ? 'Salle non vide' : 'Supprimer'">
               Supprimer
             </button>
           </div>
@@ -179,7 +179,7 @@
             <button class="btn mini" (click)="openEditLocationModal(location)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="btn mini danger" (click)="deleteLocation(location.id)">
+            <button class="btn mini danger" (click)="deleteLocation(location.id)" [disabled]="!canDeleteLocation(location)" [title]="!canDeleteLocation(location) ? 'Emplacement non vide' : 'Supprimer'">
               Supprimer
             </button>
           </div>
@@ -203,7 +203,7 @@
               <button class="btn mini" (click)="openEditCabinetModal(cabinet)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               </button>
-              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)">
+              <button class="btn mini danger" (click)="deleteCabinet(cabinet.id)" [disabled]="!canDeleteCabinet(cabinet)" [title]="!canDeleteCabinet(cabinet) ? 'Armoire non vide' : 'Supprimer'">
                 Supprimer
               </button>
             </div>
@@ -451,3 +451,4 @@
     </div>
   </div>
 </div>
+

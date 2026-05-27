@@ -34,6 +34,7 @@ export class AdminLayoutComponent implements OnInit, AfterViewInit, OnDestroy {
   notificationsLoading = false;
   chatUnread = 0;
   private chatSub?: Subscription;
+  private notificationPollTimer: any = null;
   miniChatOpen = false;
 
   private deferViewSync(): void {
@@ -154,7 +155,7 @@ get userInitials(): string {
         { label: 'Tableau de bord', route: '/admin/dashboard' },
         { label: 'Valider demandes', route: '/admin/validation-demandes', badge: 'Action' },
         { label: 'Mes Demandes', route: '/admin/demandes-consommables', exact: true },
-        { label: 'PrÃ©visions (IA)', route: '/admin/previsions' },
+        { label: 'Prévisions', route: '/admin/previsions' },
         { label: 'Anomalies', route: '/admin/anomalies-critiques' }
       ]
     },
@@ -211,13 +212,13 @@ get userInitials(): string {
       this.authService.getCurrentUser().subscribe({
         next: (user) => {
           this.user = user;
-          this.loadUnreadNotifications();
+          this.initNotificationsIfAllowed();
           this.deferViewSync();
           this.redirectAdminRootToFirstMenu();
         }
       });
     } else {
-      this.loadUnreadNotifications();
+      this.initNotificationsIfAllowed();
     }
 
     this.redirectAdminRootToFirstMenu();
@@ -231,6 +232,14 @@ get userInitials(): string {
 
   ngOnDestroy(): void {
     this.chatSub?.unsubscribe();
+    if (this.notificationPollTimer) {
+      clearInterval(this.notificationPollTimer);
+      this.notificationPollTimer = null;
+    }
+  }
+
+  get canUseNotifications(): boolean {
+    return !this.authService.userHasAnyRole(this.user, ['Administrateur']);
   }
 
   get navSections(): NavSection[] {
@@ -356,7 +365,7 @@ get userInitials(): string {
     const data = notification?.data || {};
     const requestId = data?.consumable_request_id;
     const movementId = data?.movement_id;
-    const target = data?.action_url || data?.url || '/admin/validation-demandes';
+    const target = this.resolveNotificationTarget(data);
     this.notificationsOpen = false;
 
     if (requestId) {
@@ -372,6 +381,32 @@ get userInitials(): string {
     this.router.navigateByUrl(target);
   }
 
+  private resolveNotificationTarget(data: any): string {
+    const rawTarget = String(data?.action_url || data?.url || '').trim();
+
+    if (!rawTarget) {
+      if (data?.movement_id) return '/admin/mouvements-stock';
+      if (data?.consumable_request_id) return '/admin/validation-demandes';
+      return '/admin/dashboard';
+    }
+
+    if (rawTarget.startsWith('/')) {
+      return rawTarget;
+    }
+
+    try {
+      const parsed = new URL(rawTarget);
+      if (parsed.pathname.startsWith('/admin/')) {
+        return parsed.pathname + (parsed.search || '');
+      }
+    } catch {
+      // ignore malformed absolute URL and fallback below
+    }
+
+    if (data?.movement_id) return '/admin/mouvements-stock';
+    if (data?.consumable_request_id) return '/admin/validation-demandes';
+    return '/admin/dashboard';
+  }
   private redirectAdminRootToFirstMenu(): void {
     const isAdminRoot = this.router.url === '/admin' || this.router.url === '/admin/';
     if (!isAdminRoot) return;
@@ -392,6 +427,18 @@ get userInitials(): string {
         this.notifCount = 0;
       }
     });
+  }
+
+  private initNotificationsIfAllowed(): void {
+    if (!this.canUseNotifications) {
+      this.notifCount = 0;
+      return;
+    }
+
+    this.loadUnreadNotifications();
+    if (!this.notificationPollTimer && isPlatformBrowser(this.platformId)) {
+      this.notificationPollTimer = setInterval(() => this.loadUnreadNotifications(), 20000);
+    }
   }
 
   private startChatBadge(): void {
