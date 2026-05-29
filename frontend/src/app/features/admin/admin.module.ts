@@ -9,6 +9,7 @@ import { RouterModule } from '@angular/router';
 import { ProfileComponent } from './profile/profile';
 import { ArchivedUsersComponent } from './archived-users/archived-users.component';
 import { DashboardComponent } from '../dashboard/dashboard.component';
+import { UserDashboardComponent } from '../dashboard/user-dashboard.component';
 import { AdminRolePageComponent } from './admin-role-page/admin-role-page.component';
 import { CategoriesComponent } from './categories/categories.component';
 import { ProductsComponent } from './products/products.component';
@@ -66,6 +67,7 @@ import { Storage3dViewerComponent } from './components/storage-3d-viewer/storage
     SuppliersComponent,
     ThreadWidgetComponent,
     UnitsComponent,
+    UserDashboardComponent,
   ],
   providers: [
     // empty on purpose; keeps module extensible

@@ -15,27 +15,29 @@ class AdminController extends Controller
         // Check if user has admin-like roles for global stats
         $isAdmin = in_array($userRole, ['administrateur', 'admin']);
         $isDirector = in_array($userRole, ['directeur', 'directeur général', 'dg']);
-        $isManager = in_array($userRole, ['responsable', 'responsable de stock', 'gestionnaire']);
+        $isManager = in_array($userRole, ['responsable', 'responsable de stock', 'gestionnaire', 'agent']);
+        $isStandardUser = !$isAdmin && !$isDirector && !$isManager;
 
         // Users stats using SoftDeletes (only for admins)
         $totalUsers = $isAdmin ? \App\Models\User::withTrashed()->count() : 0;
         $activeUsers = $isAdmin ? \App\Models\User::count() : 0;
         $archivedUsers = $isAdmin ? \App\Models\User::onlyTrashed()->count() : 0;
 
-        $totalProducts = \App\Models\Product::count();
-        $totalCategories = \App\Models\Category::count();
-        $totalWarehouses = \App\Models\Warehouse::count();
+        // Products, Categories, Warehouses stats (only for managers/directors, NOT for admins)
+        $totalProducts = ($isManager || $isDirector) ? \App\Models\Product::count() : 0;
+        $totalCategories = ($isManager || $isDirector) ? \App\Models\Category::count() : 0;
+        $totalWarehouses = ($isManager || $isDirector) ? \App\Models\Warehouse::count() : 0;
 
         // Estimated Stock Value calculation is disabled since purchase_price is removed
         $totalStockValue = 0;
 
-        // Stock alerts: Products where sum of quantities in all locations < product threshold
-        $lowStockProducts = \App\Models\Product::withSum('stocks', 'quantity')
+        // Stock alerts: Products where sum of quantities in all locations < product threshold (only for managers/directors)
+        $lowStockProducts = ($isManager || $isDirector) ? \App\Models\Product::withSum('stocks', 'quantity')
             ->get()
             ->filter(function ($p) {
             $threshold = $p->seuil_min ?? 10; // Use individual threshold or default to 10
             return ($p->stocks_sum_quantity ?? 0) < $threshold;
-        })->count();
+        })->count() : 0;
 
         // User-specific stats
         $myRequests = 0;
@@ -94,33 +96,34 @@ class AdminController extends Controller
             });
         }
 
-        // Real Recent activities (filtered by user if not admin)
-        $recentActivitiesQuery = \App\Models\ProductStock::with(['product', 'warehouseLocation'])
-            ->whereHas('product', fn ($q) => $q->where('status', 'active'));
+        // Real Recent activities (filtered by role)
+        $recentActivities = [];
+        if ($isManager || $isDirector) {
+            $recentActivitiesQuery = \App\Models\ProductStock::with(['product', 'warehouseLocation'])
+                ->whereHas('product', fn ($q) => $q->where('status', 'active'));
 
-        if (!$isAdmin && $userId) {
-            // For non-admins, show only activities related to their depot or movements
-            $recentActivitiesQuery->whereHas('warehouseLocation', function($q) use ($user) {
-                if ($user && $user->depot_id) {
+            if ($userId && $user && $user->depot_id) {
+                // For managers with depot assignment, show only activities related to their depot
+                $recentActivitiesQuery->whereHas('warehouseLocation', function($q) use ($user) {
                     $q->where('warehouse_id', $user->depot_id);
-                }
+                });
+            }
+
+            $recentActivities = $recentActivitiesQuery->orderBy('created_at', 'desc')
+                ->take(8)
+                ->get()
+                ->map(function ($ps) {
+                $loc = $ps->warehouseLocation;
+                $locCode = $loc ? $loc->code : ($ps->warehouseCabinet ? $ps->warehouseCabinet->code : 'Empl. inconnu');
+                return [
+                'type' => 'stock',
+                'icon' => '📦',
+                'description' => "{$ps->quantity}x {$ps->product->title} -> {$locCode}",
+                'created_at' => $ps->created_at,
+                'notes' => $ps->notes
+                ];
             });
         }
-
-        $recentActivities = $recentActivitiesQuery->orderBy('created_at', 'desc')
-            ->take(8)
-            ->get()
-            ->map(function ($ps) {
-            $loc = $ps->warehouseLocation;
-            $locCode = $loc ? $loc->code : ($ps->warehouseCabinet ? $ps->warehouseCabinet->code : 'Empl. inconnu');
-            return [
-            'type' => 'stock',
-            'icon' => '📦',
-            'description' => "{$ps->quantity}x {$ps->product->title} -> {$locCode}",
-            'created_at' => $ps->created_at,
-            'notes' => $ps->notes
-            ];
-        });
 
         $roles = [];
         if ($isAdmin) {
@@ -137,28 +140,34 @@ class AdminController extends Controller
             });
         }
 
-        // Stock distribution by category (creative: top categories)
-        $categoryStock = \App\Models\Category::withCount('products')
-            ->orderBy('products_count', 'desc')
-            ->take(5)
-            ->get()
-            ->map(function ($cat) {
-            return [
-            'name' => $cat->title, // Fixed: use title
-            'count' => $cat->products_count,
-            ];
-        });
+        // Stock distribution by category (only for managers/directors)
+        $categoryStock = [];
+        if ($isManager || $isDirector) {
+            $categoryStock = \App\Models\Category::withCount('products')
+                ->orderBy('products_count', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function ($cat) {
+                return [
+                'name' => $cat->title,
+                'count' => $cat->products_count,
+                ];
+            });
+        }
 
-        // Movement Trend: Last 7 days
-        $movementsTrend = collect(range(6, 0))->map(function ($daysAgo) {
-            $date = now()->subDays($daysAgo);
-            $count = \App\Models\ProductStock::whereDate('created_at', $date->toDateString())->count();
-            return [
-            'day' => $date->format('D'),
-            'count' => $count,
-            'date' => $date->toDateString()
-            ];
-        });
+        // Movement Trend: Last 7 days (only for managers/directors)
+        $movementsTrend = [];
+        if ($isManager || $isDirector) {
+            $movementsTrend = collect(range(6, 0))->map(function ($daysAgo) {
+                $date = now()->subDays($daysAgo);
+                $count = \App\Models\ProductStock::whereDate('created_at', $date->toDateString())->count();
+                return [
+                'day' => $date->format('D'),
+                'count' => $count,
+                'date' => $date->toDateString()
+                ];
+            });
+        }
 
         return response()->json([
             'stats' => [

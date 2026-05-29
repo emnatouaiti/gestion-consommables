@@ -101,6 +101,12 @@ get userInitials(): string {
 
   private readonly managerSections: NavSection[] = [
     {
+      title: "Tableau de bord",
+      items: [
+        { label: "Tableau de bord", route: "/admin/dashboard" }
+      ]
+    },
+    {
         title: 'Catalogue & Dépôts',
       items: [
         { label: 'Catégories', route: '/admin/gerer-categories' },
@@ -129,6 +135,12 @@ get userInitials(): string {
   ];
 
   private readonly agentSections: NavSection[] = [
+    {
+      title: "Tableau de bord",
+      items: [
+        { label: "Tableau de bord", route: "/admin/dashboard" }
+      ]
+    },
     {
       title: 'Opérations',
       items: [
@@ -168,6 +180,12 @@ get userInitials(): string {
   ];
 
   private readonly userSections: NavSection[] = [
+    {
+      title: "Tableau de bord",
+      items: [
+        { label: "Tableau de bord", route: "/admin/dashboard" }
+      ]
+    },
     {
       title: 'Espace Employé',
       items: [
