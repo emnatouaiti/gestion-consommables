@@ -33,7 +33,7 @@
     "@angular/platform-server": "^21.1.0",
     "@angular/router": "^21.1.0",
     "@angular/ssr": "^21.1.3",
-    "@types/three": "^0.184.0",
+    "@types/three": "^0.184.1",
     "express": "^5.1.0",
     "rxjs": "~7.8.0",
     "three": "^0.184.0",

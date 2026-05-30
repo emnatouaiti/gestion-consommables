@@ -940,11 +940,11 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   /* ── Nettoyage scène ─────────────────────────────────────────── */
   private disposeScene() {
     if (!this.rootGroup) return;
-    this.rootGroup.traverse(obj => {
+    this.rootGroup.traverse((obj: THREE.Object3D) => {
       if ((obj as THREE.Mesh).isMesh) {
         const mesh = obj as THREE.Mesh;
         mesh.geometry?.dispose();
-        if (Array.isArray(mesh.material)) mesh.material.forEach(m => m.dispose());
+        if (Array.isArray(mesh.material)) mesh.material.forEach((m: THREE.Material) => m.dispose());
         else (mesh.material as THREE.Material)?.dispose();
       }
     });
