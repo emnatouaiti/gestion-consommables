@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+﻿import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { Supplier } from '../models/supplier.model';
@@ -8,8 +8,8 @@ import { SupplierContact } from '../models/supplier-contact.model';
     providedIn: 'root'
 })
 export class SupplierService {
-    private readonly apiUrl = '/api/admin/suppliers';
-    private readonly productsUrl = '/api/admin/products';
+    private readonly apiUrl = '/api/suppliers';
+    private readonly productsUrl = '/api/products';
 
     constructor(private http: HttpClient) { }
 

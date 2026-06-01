@@ -1,4 +1,4 @@
-import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
+﻿import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { HttpRequest, HttpHandler, HttpEvent, HttpInterceptor } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';

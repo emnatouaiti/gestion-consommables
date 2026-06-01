@@ -9,7 +9,7 @@ import { AuthInterceptor } from './core/interceptors/auth.interceptor';
 
 import { LoginComponent } from './features/auth/login/login.component';
 import { RegisterComponent } from './features/auth/register/register.component';
-import { Layout as LayoutComponent } from './layout/layout';
+import { Layout as LayoutComponent } from './features/layout/layout';
 import { GoogleCallbackComponent } from './features/auth/google-callback/google-callback.component';
 import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-password.component';
 
@@ -38,3 +38,4 @@ import { ForgotPasswordComponent } from './features/auth/forgot-password/forgot-
   bootstrap: [App]
 })
 export class AppModule { }
+

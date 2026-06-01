@@ -1,0 +1,1030 @@
+﻿[33mΓ¥»[39m Building...
+[32mΓ£ö[39m Building...
+[35mPrerendered 0 static routes.[39m
+Application bundle generation failed. [24.494 seconds] - 2026-05-31T15:57:31.421Z
+
+node.exe : [1m[31m[31mX 
+[41;31m[[41;97mERROR[41;
+31m][0m [1mTS2307: 
+Cannot find module '../core
+/services/auth.service' or 
+its corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+At C:\Users\emnat\AppData\R
+oaming\npm\ng.ps1:24 char:5
++     & "node$exe"  "$based
+ir/node_modules/@angular/cl
+i/bin/ng.js" $arg ...
++     ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~
+    + CategoryInfo         
+     : NotSpecifi    ed: 
+([1m[31m[31    
+mX...r-compiler][    
+0m:String) [], Rem    
+oteException
+    + FullyQualifiedEr    
+rorId : NativeComm    
+andError
+ 
+
+    src/app/core/guards/aut
+h.guard.ts:4:28:
+[37m      4 Γöé import { 
+AuthService } from [32m'..
+/core/services/auth.service
+'[37m;
+        Γò╡                
+             [32m~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'authService' of 
+class 'AuthGuard'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/guards/aut
+h.guard.ts:10:24:
+[37m      10 Γöé     
+constructor(private 
+[32mauthService[37m: 
+AuthService, private 
+router: ...
+         Γò╡               
+          
+[32m~~~~~~~~~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/guards/aut
+h.guard.ts:10:37:
+[37m      10 Γöé 
+...ctor(private 
+authService: 
+[32mAuthService[37m, 
+private router: Router) { }
+         Γò╡               
+               
+[32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/au
+th.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/guards/rol
+e.guard.ts:3:28:
+[37m      3 Γöé import { 
+AuthService } from [32m'..
+/core/services/auth.service
+'[37m;
+        Γò╡                
+             [32m~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'auth' of class 
+'RoleGuard'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/guards/rol
+e.guard.ts:9:22:
+[37m      9 Γöé   
+constructor(private 
+[32mauth[37m: 
+AuthService, private 
+router: Router) {}
+        Γò╡                
+       [32m~~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/guards/rol
+e.guard.ts:9:28:
+[37m      9 Γöé   
+constructor(private auth: 
+[32mAuthService[37m, 
+private router: Router) {}
+        Γò╡                
+             
+[32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/ap
+i.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/c
+hat.service.ts:3:27:
+[37m      3 Γöé import { 
+ApiService } from [32m'../
+core/services/api.service'
+[37m;
+        Γò╡                
+            [32m~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'api' of class 
+'ChatService'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/c
+hat.service.ts:7:22:
+[37m      7 Γöé   
+constructor(private 
+[32mapi[37m: ApiService) 
+{}
+        Γò╡                
+       [32m~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/services/c
+hat.service.ts:7:27:
+[37m      7 Γöé   
+constructor(private api: 
+[32mApiService[37m) {}
+        Γò╡                
+            
+[32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/ap
+i.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/c
+onsumable-request.service.t
+s:3:27:
+[37m      3 Γöé import { 
+ApiService } from [32m'../
+core/services/api.service'
+[37m;
+        Γò╡                
+            [32m~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'apiService' of 
+class 
+'ConsumableRequestService'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/c
+onsumable-request.service.t
+s:12:22:
+[37m      12 Γöé   
+constructor(private 
+[32mapiService[37m: 
+ApiService) {}
+         Γò╡               
+        [32m~~~~~~~~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/services/c
+onsumable-request.service.t
+s:12:34:
+[37m      12 Γöé   
+constructor(private 
+apiService: 
+[32mApiService[37m) {}
+         Γò╡               
+                    
+[32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/au
+th.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/d
+ashboard-selector.service.t
+s:3:28:
+[37m      3 Γöé import { 
+AuthService } from [32m'..
+/core/services/auth.service
+'[37m;
+        Γò╡                
+             [32m~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'auth' of class 
+'DashboardSelectorService'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/d
+ashboard-selector.service.t
+s:16:22:
+[37m      16 Γöé   
+constructor(private 
+[32mauth[37m: 
+AuthService, private 
+router: Router) {}
+         Γò╡               
+        [32m~~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/services/d
+ashboard-selector.service.t
+s:16:28:
+[37m      16 Γöé   
+constructor(private auth: 
+[32mAuthService[37m, 
+private router: Router) {}
+         Γò╡               
+              
+[32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/ap
+i.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/s
+tock-movement.service.ts:3:
+27:
+[37m      3 Γöé import { 
+ApiService } from [32m'../
+core/services/api.service'
+[37m;
+        Γò╡                
+            [32m~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 'api' of class 
+'StockMovementService'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/core/services/s
+tock-movement.service.ts:12
+:22:
+[37m      12 Γöé   
+constructor(private 
+[32mapi[37m: ApiService) 
+{}
+         Γò╡               
+        [32m~~~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/core/services/s
+tock-movement.service.ts:12
+:27:
+[37m      12 Γöé   
+constructor(private api: 
+[32mApiService[37m) {}
+         Γò╡               
+             
+[32m~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/co
+nsumable-request.service' 
+or its corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:5:41:
+[37m      5 Γöé 
+...equestService } from [3
+2m'../core/services/consuma
+ble-request.service'[37m;
+        Γò╡                
+         [32m~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/au
+th.service' or its 
+corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:6:28:
+[37m      6 Γöé import { 
+AuthService } from [32m'..
+/core/services/auth.service
+'[37m;
+        Γò╡                
+             [32m~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2307: Cannot find 
+module '../core/services/ad
+min-warehouse.service' or 
+its corresponding type 
+declarations.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:7:38:
+[37m      7 Γöé 
+...WarehouseService } from 
+[32m'../core/services/admi
+n-warehouse.service'[37m;
+        Γò╡                
+            [32m~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mNG2003: No suitable 
+injection token for 
+parameter 
+'consumableRequestService' 
+of class 'ConsumableRequest
+Component'.
+  Consider using the 
+@Inject decorator to 
+specify an injection 
+token.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:120:12:
+[37m      120 Γöé     
+private [32mconsumableRequ
+estService[37m: 
+ConsumableRequestService,
+          Γò╡             
+[32m~~~~~~~~~~~~~~~~~~~~~~~
+~[0m
+
+  This type does not have 
+a value, so it cannot be 
+used as injection token.
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:120:38:
+[37m      120 Γöé     
+private 
+consumableRequestService: 
+[32mConsumableRequestServic
+e[37m,
+          Γò╡              
+                         [
+32m~~~~~~~~~~~~~~~~~~~~~~~~
+[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'user' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:144:13:
+[37m      144 Γöé       
+next: ([32muser[37m) => {
+          Γò╡              
+[32m~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'data' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:181:13:
+[37m      181 Γöé       
+next: ([32mdata[37m) => {
+          Γò╡              
+[32m~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'data' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/consum
+able-request/consumable-req
+uest.ts:201:13:
+[37m      201 Γöé       
+next: ([32mdata[37m) => {
+          Γò╡              
+[32m~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'listAll' does not exist 
+on type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/mouvem
+ents/list-mouvement/stock-m
+ovements.component.ts:198:2
+2:
+[37m      198 Γöé     this
+.usersService.[32mlistAll
+[37m().subscribe({
+          Γò╡              
+         [32m~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'getBatchLifecycle' does 
+not exist on type 'AdminExp
+irationService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:371:27:
+[37m      371 Γöé ...this.
+expirationService.[32mgetB
+atchLifecycle[37m(this.pro
+ductId).subsc...
+          Γò╡              
+             
+[32m~~~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:377:14:
+[37m      377 Γöé       
+error: ([32merr[37m) => 
+console.warn('Erreur 
+batches:', err)
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'getExpiringSoon' does not 
+exist on type 'AdminExpirat
+ionService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:380:27:
+[37m      380 Γöé     this
+.expirationService.[32mget
+ExpiringSoon[37m(this.prod
+uctId).subscr...
+          Γò╡              
+              
+[32m~~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:385:14:
+[37m      385 Γöé       
+error: ([32merr[37m) => 
+console.warn('Erreur 
+expirations:', err)
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'getExpirationEvents' does 
+not exist on type 'AdminExp
+irationService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:388:27:
+[37m      388 Γöé ...his.e
+xpirationService.[32mgetEx
+pirationEvents[37m(this.pr
+oductId).subs...
+          Γò╡              
+            [32m~~~~~~~~~~
+~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:393:14:
+[37m      393 Γöé       
+error: ([32merr[37m) => 
+console.warn('Erreur 
+├⌐v├⌐nements:', err)
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'eliminateBatch' does not 
+exist on type 'AdminExpirat
+ionService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:553:27:
+[37m      553 Γöé     this
+.expirationService.[32meli
+minateBatch[37m(this.elimi
+nateTargetBat...
+          Γò╡              
+              
+[32m~~~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:560:14:
+[37m      560 Γöé       
+error: ([32merr[37m) => 
+this.errorMessage = 
+this.extractApiError(er...
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'returnToSupplierBatch' 
+does not exist on type 'Adm
+inExpirationService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:578:27:
+[37m      578 Γöé ...is.ex
+pirationService.[32mreturn
+ToSupplierBatch[37m(this.r
+eturnTargetBa...
+          Γò╡              
+           [32m~~~~~~~~~~~
+~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/produi
+ts/product-stocks/product-s
+tocks.component.ts:585:14:
+[37m      585 Γöé       
+error: ([32merr[37m) => 
+this.errorMessage = 
+this.extractApiError(er...
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'listArchived' does not 
+exist on type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/archived-users/archi
+ved-users.component.ts:58:1
+3:
+[37m      58 Γöé     this.
+svc.[32mlistArchived[37m(
+searchTerm).subscribe({
+         Γò╡              
+[32m~~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'restore' does not exist 
+on type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/archived-users/archi
+ved-users.component.ts:116:
+13:
+[37m      116 Γöé     this
+.svc.[32mrestore[37m(id).
+subscribe({
+          Γò╡              
+[32m~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/archived-users/archi
+ved-users.component.ts:120:
+14:
+[37m      120 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'forceDelete' does not 
+exist on type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/archived-users/archi
+ved-users.component.ts:132:
+13:
+[37m      132 Γöé     this
+.svc.[32mforceDelete[37m(
+id).subscribe({
+          Γò╡              
+[32m~~~~~~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/archived-users/archi
+ved-users.component.ts:136:
+14:
+[37m      136 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'roles' does not exist on 
+type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:116:22:
+[37m      116 Γöé     this
+.usersService.[32mroles[3
+7m().subscribe({
+          Γò╡              
+         [32m~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:122:14:
+[37m      122 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'list' does not exist on 
+type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:193:22:
+[37m      193 Γöé     this
+.usersService.[32mlist[37
+m(this.q || null, 20, 
+'active').subscribe({
+          Γò╡              
+         [32m~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:205:14:
+[37m      205 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'update' does not exist on 
+type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:436:26:
+[37m      436 Γöé       ? 
+this.usersService.[32mupda
+te[37m(this.editingId, 
+payload)
+          Γò╡              
+             
+[32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'create' does not exist on 
+type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:437:26:
+[37m      437 Γöé       : 
+this.usersService.[32mcrea
+te[37m(payload);
+          Γò╡              
+             
+[32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:447:14:
+[37m      447 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS2339: Property 
+'delete' does not exist on 
+type 
+'AdminUsersService'.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:474:22:
+[37m      474 Γöé     this
+.usersService.[32mdelete[
+37m(id).subscribe({
+          Γò╡              
+         [32m~~~~~~[0m
+
+
+[31mX [41;31m[[41;97mERR
+OR[41;31m][0m 
+[1mTS7006: Parameter 
+'err' implicitly has an 
+'any' type.[0m 
+[1m[35m[plugin 
+angular-compiler][0m
+
+    src/app/features/utilis
+ateurs/list-users/users-lis
+t.component.ts:480:14:
+[37m      480 Γöé       
+error: ([32merr[37m) => {
+          Γò╡              
+ [32m~~~[0m
+
+[39m[22m

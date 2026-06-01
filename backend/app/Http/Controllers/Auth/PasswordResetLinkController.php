@@ -54,6 +54,11 @@ class PasswordResetLinkController extends Controller
         $user->notify(new ResetPasswordNotification($code));
 
         return redirect()->route('password.reset', ['email' => $request->email])
-            ->with('status', 'Code de vérification envoyé par email. Vérifiez votre boîte de réception.');
+            ->with('status', 'Code de vÃƒÂ©rification envoyÃƒÂ© par email. VÃƒÂ©rifiez votre boÃƒÂ®te de rÃƒÂ©ception.');
     }
 }
+
+
+
+
+

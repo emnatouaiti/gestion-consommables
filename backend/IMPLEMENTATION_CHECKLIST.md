@@ -1,4 +1,4 @@
-# 🚀 Checklist d'Implémentation - Cycle de Vie des Produits
+﻿# 🚀 Checklist d'Implémentation - Cycle de Vie des Produits
 
 ## ✅ Phase 1: Préparation & Migrations (Base de Données)
 
@@ -78,12 +78,12 @@ DESCRIBE expiration_events;
   ```
 
 ### Tests API (Postman/Insomnia)
-- [ ] Test: `GET /api/admin/expirations/expired`
-- [ ] Test: `GET /api/admin/expirations/expiring-soon?days=7`
-- [ ] Test: `GET /api/admin/expirations/alerts`
-- [ ] Test: `GET /api/admin/expirations/history`
-- [ ] Test: `GET /api/admin/expirations/stats`
-- [ ] Test: `POST /api/admin/expirations/check`
+- [ ] Test: `GET /api/expirations/expired`
+- [ ] Test: `GET /api/expirations/expiring-soon?days=7`
+- [ ] Test: `GET /api/expirations/alerts`
+- [ ] Test: `GET /api/expirations/history`
+- [ ] Test: `GET /api/expirations/stats`
+- [ ] Test: `POST /api/expirations/check`
 
 ---
 
@@ -130,10 +130,10 @@ DESCRIBE expiration_events;
 - [ ] **Test 1: Créer un stock avec date d'expiration**
   ```bash
   # Créer un produit d'abord
-  # POST /api/admin/products
+  # POST /api/products
   
   # Puis créer un stock avec expiration
-  POST /api/admin/product-stocks
+  POST /api/product-stocks
   {
     "product_id": 1,
     "warehouse_location_id": 1,
@@ -149,7 +149,7 @@ DESCRIBE expiration_events;
   php artisan expirations:check --verbose
   
   # Vérifier les alertes
-  GET /api/admin/expirations/alerts
+  GET /api/expirations/alerts
   # Doit voir: event_type='alert_7days', status='pending'
   ```
 
@@ -168,7 +168,7 @@ DESCRIBE expiration_events;
 - [ ] **Test 4: Tentative de consommation d'un produit expiré**
   ```bash
   # Vérifier d'abord si peut être consommé
-  GET /api/admin/product-stocks/{id}/can-consume
+  GET /api/product-stocks/{id}/can-consume
   # Doit retourner: "can_consume": false
   
   # Essayer la consommation (doit être rejeté)
@@ -182,7 +182,7 @@ DESCRIBE expiration_events;
 
 - [ ] **Test 5: Admin override (force-consume)**
   ```bash
-  POST /api/admin/expirations/{stockId}/force-consume
+  POST /api/expirations/{stockId}/force-consume
   {
     "quantity": 5,
     "justification": "Patient critique - situation d'urgence"

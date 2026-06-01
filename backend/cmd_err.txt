@@ -1,0 +1,19 @@
+
+   ErrorException 
+
+  include(C:\Users\emnat\OneDrive\Desktop\consotrack\backend\vendor\composer/../../app/Http/Controllers/ProfileController.php): Failed to open stream: No such file or directory
+
+  at vendor\composer\ClassLoader.php:576
+    572▕          * @param  string $file
+    573▕          * @return void
+    574▕          */
+    575▕         self::$includeFile = \Closure::bind(static function($file) {
+  ➜ 576▕             include $file;
+    577▕         }, null, null);
+    578▕     }
+    579▕ }
+    580▕
+
+  1   vendor\composer\ClassLoader.php:576
+  2   vendor\composer\ClassLoader.php:427
+

@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') { return; }
         Schema::table('products', function (Blueprint $table) {
             $table->dropForeign(['warehouse_location_id']);
             $table->dropColumn([
@@ -67,6 +68,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (\Illuminate\Support\Facades\DB::getDriverName() === 'sqlite') { return; }
         Schema::table('products', function (Blueprint $table) {
             $table->decimal('sale_price', 12, 2)->nullable();
             $table->string('location')->nullable();

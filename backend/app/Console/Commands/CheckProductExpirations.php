@@ -22,7 +22,7 @@ class CheckProductExpirations extends Command
      *
      * @var string
      */
-    protected $description = 'Scanne les stocks et envoie des alertes email pour les produits expirés';
+    protected $description = 'Scanne les stocks et envoie des alertes email pour les produits expirÃ©s';
 
     /**
      * Execute the console command.
@@ -68,8 +68,8 @@ class CheckProductExpirations extends Command
         }
 
         if (count($expiringSoon) === 0 && count($expired) === 0) {
-            $this->info('Aucun produit expiré ou proche de l\'expiration.');
-            \Illuminate\Support\Facades\Log::info("Scan Expiration : Aucun produit problématique détecté.");
+            $this->info('Aucun produit expirÃ© ou proche de l\'expiration.');
+            \Illuminate\Support\Facades\Log::info("Scan Expiration : Aucun produit problÃ©matique dÃ©tectÃ©.");
             return;
         }
 
@@ -91,17 +91,17 @@ class CheckProductExpirations extends Command
         ])->get();
 
         if ($responsables->isEmpty()) {
-            $this->error("Aucun utilisateur responsable trouvé.");
-            \Illuminate\Support\Facades\Log::warning("Alerte Expiration : Aucun utilisateur trouvé avec les rôles administratifs.");
+            $this->error("Aucun utilisateur responsable trouvÃ©.");
+            \Illuminate\Support\Facades\Log::warning("Alerte Expiration : Aucun utilisateur trouvÃ© avec les rÃ´les administratifs.");
             return;
         }
 
-        \Illuminate\Support\Facades\Log::info("Envoi d'alertes expiration à : " . $responsables->pluck('email')->implode(', '));
+        \Illuminate\Support\Facades\Log::info("Envoi d'alertes expiration Ã  : " . $responsables->pluck('email')->implode(', '));
 
         foreach ($responsables as $user) {
             $user->notify(new ProductExpirationAlert($expiringSoon, $expired));
         }
 
-        $this->info(count($expiringSoon) . ' lots expirent bientôt et ' . count($expired) . ' lots sont expirés. Notifications envoyées.');
+        $this->info(count($expiringSoon) . ' lots expirent bientÃ´t et ' . count($expired) . ' lots sont expirÃ©s. Notifications envoyÃ©es.');
     }
 }

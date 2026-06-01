@@ -1,0 +1,19 @@
+﻿
+   ErrorException 
+
+  include(C:\Users\emnat\OneDrive\Desktop\consotrack\backend\vendor\composer/../../app/Http/Controllers/Auth2/AuthController.php): Failed to open stream: No such file or directory
+
+  at vendor\composer\ClassLoader.php:576
+    572Γûò          * @param  string $file
+    573Γûò          * @return void
+    574Γûò          */
+    575Γûò         self::$includeFile = \Closure::bind(static function($file) {
+  Γ₧£ 576Γûò             include $file;
+    577Γûò         }, null, null);
+    578Γûò     }
+    579Γûò }
+    580Γûò
+
+  1   vendor\composer\ClassLoader.php:576
+  2   vendor\composer\ClassLoader.php:427
+

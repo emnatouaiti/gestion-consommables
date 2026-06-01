@@ -1,4 +1,4 @@
-# 📊 Schéma Base de Données Complet
+﻿# 📊 Schéma Base de Données Complet
 
 ## Diagramme Entité-Relation
 

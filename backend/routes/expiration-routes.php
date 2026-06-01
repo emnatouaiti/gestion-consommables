@@ -3,7 +3,7 @@
 /**
  * Routes d'API pour la gestion des expirations
  *
- * À ajouter dans: backend/routes/api.php
+ * Ã€ ajouter dans: backend/routes/api.php
  *
  * Usage:
  * Route::middleware(['auth:sanctum', 'permission:manage-stock'])->group(function () {
@@ -11,18 +11,18 @@
  * });
  */
 
-use App\Http\Controllers\API\ExpirationController;
+use App\Http\Controllers\Expiration\ExpirationController;
 use Illuminate\Support\Facades\Route;
 
 // Checkpoint automatique des expirations (scheduler ou appel manuelle)
 Route::post('/expirations/check', [ExpirationController::class, 'checkAllExpirations'])
     ->name('expirations.check');
 
-// Lister les produits expiréés
+// Lister les produits expirÃ©Ã©s
 Route::get('/expirations/expired', [ExpirationController::class, 'getExpiredProducts'])
     ->name('expirations.expired');
 
-// Lister les produits expirant bientôt
+// Lister les produits expirant bientÃ´t
 Route::get('/expirations/expiring-soon', [ExpirationController::class, 'getExpiringProducts'])
     ->name('expirations.expiring-soon');
 
@@ -38,19 +38,19 @@ Route::get('/expirations/history', [ExpirationController::class, 'getHistory'])
 Route::get('/expirations/stats', [ExpirationController::class, 'getStats'])
     ->name('expirations.stats');
 
-// Vérifier le statut d'un stock
+// VÃ©rifier le statut d'un stock
 Route::get('/product-stocks/{id}/expiration-status', [ExpirationController::class, 'checkStatus'])
     ->name('expirations.check-status');
 
-// Marquer une alerte comme traitée (acknowledge/resolve)
+// Marquer une alerte comme traitÃ©e (acknowledge/resolve)
 Route::post('/expirations/{id}/acknowledge', [ExpirationController::class, 'acknowledgeAlert'])
     ->name('expirations.acknowledge');
 
-// Admin only: Forcer la consommation d'un produit expiré
+// Admin only: Forcer la consommation d'un produit expirÃ©
 Route::post('/expirations/{stockId}/force-consume', [ExpirationController::class, 'forceConsumeExpired'])
     ->name('expirations.force-consume');
 
-// Admin only: Éliminer un lot expiré/endommagé
+// Admin only: Ã‰liminer un lot expirÃ©/endommagÃ©
 Route::post('/expirations/{stockId}/eliminate', [ExpirationController::class, 'eliminateBatch'])
     ->name('expirations.eliminate');
 

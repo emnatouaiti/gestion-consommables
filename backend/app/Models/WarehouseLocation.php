@@ -33,4 +33,9 @@ class WarehouseLocation extends Model
         return $this->belongsTo(WarehouseRoom::class, 'room_id');
     }
 
+    public function productStocks()
+    {
+        return $this->hasMany(ProductStock::class, 'warehouse_location_id');
+    }
+
 }

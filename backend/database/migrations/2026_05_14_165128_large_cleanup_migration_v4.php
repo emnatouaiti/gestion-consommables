@@ -48,12 +48,12 @@ return new class extends Migration
         }
 
         // 5. Delete tables
-        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
         Schema::dropIfExists('role_has_permissions');
         Schema::dropIfExists('sites_room');
         Schema::dropIfExists('sites_floor');
         Schema::dropIfExists('sites');
-        DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
     }
 
     public function down(): void

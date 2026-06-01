@@ -1,4 +1,4 @@
-<div class="dashboard-wrapper" [class.loading]="isLoading">
+﻿<div class="dashboard-wrapper" [class.loading]="isLoading">
   <header class="dashboard-header">
     <div class="header-content">
       <div class="welcome-badge">{{ dashboardBadge }}</div>
@@ -125,28 +125,28 @@
 
           <ng-template #rolePanel>
             <div class="mini-users">
-              <a class="mini-user-item" routerLink="/admin/profile">
+              <a class="mini-user-item" routerLink="/profile">
                 <div class="mu-info">
                   <span class="mu-name">Mon profil</span>
                   <span class="mu-email">Consulter et modifier mes informations</span>
                 </div>
               </a>
 
-              <a class="mini-user-item" *ngIf="isDirector" routerLink="/admin/validation-demandes">
+              <a class="mini-user-item" *ngIf="isDirector" routerLink="/validation-demandes">
                 <div class="mu-info">
                   <span class="mu-name">Demandes a valider</span>
                   <span class="mu-email">Acceder aux validations sans passer par la connexion</span>
                 </div>
               </a>
 
-              <a class="mini-user-item" *ngIf="isManager" routerLink="/admin/mouvements-stock">
+              <a class="mini-user-item" *ngIf="isManager" routerLink="/mouvements-stock">
                 <div class="mu-info">
                   <span class="mu-name">Mouvements de stock</span>
                   <span class="mu-email">Suivre les entrees, sorties et transferts</span>
                 </div>
               </a>
 
-              <a class="mini-user-item" *ngIf="!isAdmin" routerLink="/admin/chat">
+              <a class="mini-user-item" *ngIf="!isAdmin" routerLink="/chat">
                 <div class="mu-info">
                   <span class="mu-name">Chat interne</span>
                   <span class="mu-email">Contacter rapidement votre equipe</span>

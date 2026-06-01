@@ -1,0 +1,89 @@
+﻿<div class="layout-root">
+  <aside class="sidebar">
+    <div class="sidebar-orb orb-1"></div>
+    <div class="sidebar-orb orb-2"></div>
+    <div class="brand">
+      <div class="brand-logo-wrap">
+        <ng-container *ngIf="userPhotoUrl; else sidebarInitials">
+          <img [src]="userPhotoUrl" alt="Photo utilisateur" class="logo user-photo" />
+        </ng-container>
+        <ng-template #sidebarInitials>
+          <div class="logo user-photo-fallback">{{ userInitials }}</div>
+        </ng-template>
+        <div class="brand-pulse"></div>
+      </div>
+      <div class="brand-text">
+        <span class="brand-name">{{ userDisplayName }}</span>
+        <span class="brand-role">{{ userRoleLabel }}</span>
+      </div>
+    </div>
+    <div class="sidebar-divider"></div>
+    <nav class="nav" *ngIf="navSections && navSections.length">
+      <ng-container *ngFor="let section of navSections">
+        <div class="nav-section">
+          <div class="nav-section-title">{{ section.title }}</div>
+          <ul>
+            <li *ngFor="let item of section.items">
+              <a [routerLink]="item.route" routerLinkActive="active" class="nav-item">
+                <span class="nav-label">{{ item.label }}</span>
+                <span *ngIf="item.badge" class="item-badge">{{ item.badge }}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </ng-container>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-status">
+        <span class="status-dot"></span>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-area">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-brand">
+          <img src="etap-logo.png" alt="Logo ETAP" class="topbar-logo" />
+          <div class="topbar-title">Consotracker</div>
+        </div>
+        <div class="user-chip">
+          <div class="user-avatar">{{ userDisplayName.charAt(0) }}</div>
+          <span class="user-name">{{ userDisplayName }}</span>
+          <button *ngIf="canUseNotifications" class="notification-btn" (click)="toggleNotifications()" title="Notifications">
+            <span class="notification-bell">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5"></path>
+                <path d="M9 17a3 3 0 0 0 6 0"></path>
+              </svg>
+            </span>
+            <span *ngIf="notifCount" class="notification-count">{{ notifCount }}</span>
+          </button>
+          <button class="logout-btn" (click)="logout()">Logout</button>
+        </div>
+      </div>
+    </header>
+
+    <div class="notifications-panel" *ngIf="canUseNotifications && notificationsOpen">
+      <div class="notif-head">
+        <strong>Notifications</strong>
+        <button class="notif-close" (click)="notificationsOpen = false">Fermer</button>
+      </div>
+      <div class="notif-body" *ngIf="notificationsLoading">Chargement...</div>
+      <div class="notif-body" *ngIf="!notificationsLoading && notifications.length === 0">Aucune notification.</div>
+      <button class="notif-item" *ngFor="let notification of notifications" (click)="onNotificationClick(notification)">
+        {{ notificationLabel(notification) }}
+      </button>
+    </div>
+
+    <main class="content">
+      <router-outlet></router-outlet>
+    </main>
+    <button class="chat-fab" (click)="toggleMiniChat()">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+      </svg>
+      <span class="chat-badge" *ngIf="chatUnread">{{ chatUnread }}</span>
+    </button>
+  </div>
+</div>

@@ -1,1 +1,88 @@
-export { AdminStockService } from '../../features/admin/services/admin-stock.service';
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { ApiService } from './api.service';
+
+@Injectable({ providedIn: 'root' })
+export class AdminStockService {
+  private readonly apiBase = '/api';
+
+  constructor(
+    private readonly api: ApiService,
+    private readonly http: HttpClient
+  ) { }
+
+  /* ─── Categories ─── */
+  listCategories(params?: { tree?: boolean; status?: string; q?: string }): Observable<any[]> {
+    let path = 'categories';
+    const query: string[] = [];
+    if (params?.tree) query.push('tree=1');
+    if (params?.status && params.status !== 'all') query.push(`status=${encodeURIComponent(params.status)}`);
+    if (params?.q) query.push(`q=${encodeURIComponent(params.q)}`);
+    if (query.length) { path += `?${query.join('&')}`; }
+    return this.api.get(path);
+  }
+
+  createCategory(payload: any): Observable<any> { return this.api.post('categories', payload); }
+  updateCategory(id: number, payload: any): Observable<any> { return this.api.put(`categories/${id}`, payload); }
+  deleteCategory(id: number): Observable<any> { return this.api.delete(`categories/${id}`); }
+
+  /* ─── Products ─── */
+  listProducts(params?: any): Observable<any> {
+    let path = 'products';
+    const query: string[] = [];
+    if (params?.q) query.push(`q=${encodeURIComponent(params.q)}`);
+    if (params?.status && params.status !== 'all') query.push(`status=${encodeURIComponent(params.status)}`);
+    if (params?.categorie_id) query.push(`categorie_id=${encodeURIComponent(String(params.categorie_id))}`);
+    if (params?.supplier_id) query.push(`supplier_id=${encodeURIComponent(String(params.supplier_id))}`);
+    if (params?.low_stock_only) query.push('low_stock_only=1');
+    if (params?.out_of_stock_only) query.push('out_of_stock_only=1');
+    if (params?.page) query.push(`page=${encodeURIComponent(String(params.page))}`);
+    if (params?.per_page) query.push(`per_page=${encodeURIComponent(String(params.per_page))}`);
+    if (query.length) { path += `?${query.join('&')}`; }
+    return this.api.get(path);
+  }
+
+  productsOverview(): Observable<any> { return this.api.get('products-overview'); }
+  createProduct(payload: any): Observable<any> { return this.api.post('products', this.toFormData(payload)); }
+  updateProduct(id: number, payload: any): Observable<any> { const formData = this.toFormData(payload); formData.append('_method', 'PUT'); return this.api.post(`products/${id}`, formData); }
+  deleteProduct(id: number): Observable<any> { return this.api.delete(`products/${id}`); }
+  getProduct(productId: number): Observable<any> { return this.api.get(`products/${productId}`); }
+  getProductsByLocation(locationId: number): Observable<any> { return this.api.get(`warehouse-locations/${locationId}/products`); }
+  getProductsByCabinet(cabinetId: number): Observable<any> { return this.api.get(`warehouse-cabinets/${cabinetId}/products`); }
+
+  getBrands(): Observable<any> { return this.api.get('brands'); }
+  getModels(marque?: string): Observable<any> { let path = 'models'; if (marque) path += `?marque=${encodeURIComponent(marque)}`; return this.api.get(path); }
+  generateDescriptions(payload: any): Observable<any> { return this.api.post('products/generate-descriptions', payload); }
+
+  getDashboardStats(): Observable<any> { return this.api.get('dashboard'); }
+  getRecommendations(): Observable<any> { return this.api.get('recommendations'); }
+
+  downloadReport(type: 'stock' | 'movements'): Observable<Blob> { return this.http.get(`${this.apiBase}/reports/${type}`, { responseType: 'blob' }); }
+  activateProduct(id: number): Observable<any> { return this.api.put(`products/${id}/activate`, {}); }
+
+  getProductHistory(productId: number, params?: { page?: number; per_page?: number; date_start?: string; date_end?: string }): Observable<any> {
+    let path = `products/${productId}/history`;
+    if (params) {
+      const q: string[] = [];
+      if (params.page) q.push(`page=${params.page}`);
+      if (params.per_page) q.push(`per_page=${params.per_page}`);
+      if (params.date_start) q.push(`date_start=${params.date_start}`);
+      if (params.date_end) q.push(`date_end=${params.date_end}`);
+      if (q.length) path += `?${q.join('&')}`;
+    }
+    return this.api.get(path);
+  }
+
+  private toFormData(payload: any): FormData {
+    const formData = new FormData();
+    Object.entries(payload || {}).forEach(([key, value]) => {
+      if (value === null || value === undefined) return;
+      if (value instanceof File) { formData.append(key, value); return; }
+      if (Array.isArray(value)) { value.forEach(item => { if (item instanceof File) { formData.append(`${key}[]`, item); } else { formData.append(`${key}[]`, String(item)); } }); return; }
+      formData.append(key, String(value));
+    });
+    return formData;
+  }
+}
+

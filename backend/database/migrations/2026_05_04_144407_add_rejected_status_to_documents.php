@@ -11,6 +11,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') { return; }
         DB::statement("ALTER TABLE documents MODIFY COLUMN status ENUM('pending', 'applied', 'rejected', 'pending_validation') DEFAULT 'pending'");
     }
 
@@ -19,6 +20,7 @@ return new class extends Migration
      */
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') { return; }
         DB::statement("ALTER TABLE documents MODIFY COLUMN status ENUM('pending', 'applied', 'pending_validation') DEFAULT 'pending'");
     }
 };

@@ -1,4 +1,4 @@
-# 📚 INDEX - Cycle de Vie des Produits
+﻿# 📚 INDEX - Cycle de Vie des Produits
 
 ## 📄 Documentation Créée
 
@@ -232,14 +232,14 @@ Admin → POST /expirations/{stockId}/force-consume
 
 ### API Endpoints
 ```
-GET    /api/admin/expirations/expired
-GET    /api/admin/expirations/expiring-soon?days=7
-GET    /api/admin/expirations/alerts
-GET    /api/admin/expirations/history
-GET    /api/admin/expirations/stats
-POST   /api/admin/expirations/check
-POST   /api/admin/expirations/{id}/acknowledge
-POST   /api/admin/expirations/{id}/force-consume
+GET    /api/expirations/expired
+GET    /api/expirations/expiring-soon?days=7
+GET    /api/expirations/alerts
+GET    /api/expirations/history
+GET    /api/expirations/stats
+POST   /api/expirations/check
+POST   /api/expirations/{id}/acknowledge
+POST   /api/expirations/{id}/force-consume
 ```
 
 ---

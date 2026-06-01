@@ -1,4 +1,4 @@
-Architecture frontend - Angular (recommandations)
+﻿Architecture frontend - Angular (recommandations)
 
 Structure recommandée:
 
@@ -18,3 +18,4 @@ Bonnes pratiques:
 - Préférer des interfaces (models) dans `core/models` pour typage partagé.
 - Garder les composants petits et testables; exporter les composants réutilisables depuis `shared/components`.
 - Documenter les routes lazy-load dans `app-routing-module.ts`.
+

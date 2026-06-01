@@ -1,4 +1,4 @@
-import { Injectable, signal, Inject, PLATFORM_ID } from '@angular/core';
+﻿import { Injectable, signal, Inject, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap, switchMap, of } from 'rxjs';
 import { ApiService } from './api.service';
@@ -168,19 +168,19 @@ export class AuthService {
         if (!user) return '/login';
 
         if (this.userHasAnyRole(user, ['Administrateur'])) {
-            return '/admin/dashboard';
+            return '/dashboard';
         }
 
         if (this.userHasAnyRole(user, ['Directeur', 'Validateur'])) {
-            return '/admin/validation-demandes';
+            return '/validation-demandes';
         }
 
         if (this.userHasAnyRole(user, ['Agent', 'Responsable', 'Gestionnaire'])) {
-            return '/admin/demandes-consommables';
+            return '/demandes-consommables';
         }
 
         // Default for plain users
-        return '/admin/demandes-consommables';
+        return '/demandes-consommables';
     }
 
     private setSession(authResult: any) {

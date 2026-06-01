@@ -43,14 +43,14 @@ class NewPasswordController extends Controller
 
         if (!$resetRecord) {
             return back()->withInput($request->only('email'))
-                ->withErrors(['code' => 'Code invalide ou expiré.']);
+                ->withErrors(['code' => 'Code invalide ou expirÃƒÂ©.']);
         }
 
         // Check if code is expired (15 minutes)
         if ($resetRecord->created_at && now()->diffInMinutes($resetRecord->created_at) > 15) {
             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
             return back()->withInput($request->only('email'))
-                ->withErrors(['code' => 'Ce code a expiré. Veuillez demander un nouveau code.']);
+                ->withErrors(['code' => 'Ce code a expirÃƒÂ©. Veuillez demander un nouveau code.']);
         }
 
         // Verify the code
@@ -88,6 +88,11 @@ class NewPasswordController extends Controller
         // Log the user in
         Auth::login($user);
 
-        return redirect()->route('dashboard')->with('status', 'Mot de passe réinitialisé avec succès');
+        return redirect()->route('dashboard')->with('status', 'Mot de passe rÃƒÂ©initialisÃƒÂ© avec succÃƒÂ¨s');
     }
 }
+
+
+
+
+

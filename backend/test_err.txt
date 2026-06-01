@@ -1,0 +1,633 @@
+
+   PASS  Tests\Unit\ExampleTest
+  ✓ that true i… 0.01s  
+
+   FAIL  Tests\Feature\Auth\AuthenticationTest
+  ⨯ login screen can be rendered
+  ⨯ users can authenticate using the login screen
+  ⨯ users can not authenticate with invalid password
+  ⨯ users can logout
+
+   FAIL  Tests\Feature\Auth\EmailVerificationTest
+  ⨯ email verification screen can be rendered
+  ⨯ email can be verified
+  ⨯ email is not verified with invalid hash
+
+   FAIL  Tests\Feature\Auth\PasswordConfirmationTest
+  ⨯ confirm password screen can be rendered
+  ⨯ password can be confirmed
+  ⨯ password is not confirmed with invalid password
+
+   FAIL  Tests\Feature\Auth\PasswordResetTest
+  ⨯ reset password link screen can be rendered
+  ⨯ reset password link can be requested
+  ⨯ reset password screen can be rendered
+  ⨯ password can be reset with valid token
+
+   FAIL  Tests\Feature\Auth\PasswordUpdateTest
+  ⨯ password can be updated
+  ⨯ correct password must be provided to update password
+
+   FAIL  Tests\Feature\Auth\RegistrationTest
+  ⨯ registration screen can be rendered
+  ⨯ new users can register
+
+   FAIL  Tests\Feature\ConsumableRequestTest
+  ⨯ user can create consumable request
+  ⨯ responsable cannot approve request
+  ⨯ directeur approves full quantity for pdg requester
+  ⨯ directeur caps quantity to two for normal employee
+  ⨯ user cannot approve request
+  ⨯ unauthenticated user cannot create request
+  ⨯ directeur sees all requests
+  ⨯ employee sees only own requests
+
+   FAIL  Tests\Feature\ExampleTest
+  ⨯ it returns a successful response
+
+   FAIL  Tests\Feature\ProfileTest
+  ⨯ profile page is displayed
+  ⨯ profile information can be updated
+  ⨯ email verification status is unchanged when the email address is unchanged
+  ⨯ user can delete their account
+  ⨯ correct password must be provided to delete account
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+  ────────────────────  
+   F…  QueryException   
+  SQLSTATE[HY000]: General error: 1 near "SET": syntax error (Connection: sqlite, Database: :memory:, SQL: SET FOREIGN_KEY_CHECKS=0;)
+
+  at vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+    574▕             if ($this->pretending()) {
+    575▕                 return true;
+    576▕             }
+    577▕ 
+  ➜ 578▕             $statement = $this->getPdo()->prepare($query);
+    579▕ 
+    580▕             $this->bindValues($statement, $this->prepareBindings($bindings));
+    581▕ 
+    582▕             $this->recordsHaveBeenModified();
+
+  1   vendor\laravel\framework\src\Illuminate\Database\Connection.php:578
+  2   vendor\laravel\framework\src\Illuminate\Database\Connection.php:827
+
+
+  Tests:    32 failed, 1 passed (1 assertions)
+  Duration: 4.76s
+

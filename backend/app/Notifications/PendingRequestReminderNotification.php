@@ -32,9 +32,9 @@ class PendingRequestReminderNotification extends Notification
             ->subject("Rappel: {$this->count} demande(s) en attente depuis plus de 2 jours")
             ->greeting("Bonjour {$notifiable->nomprenom},")
             ->line("Rappel automatique: vous avez {$this->count} demande(s) en attente de validation/traitement depuis plus de 2 jours.")
-            ->line("Profil concerné: {$this->roleLabel}.")
+            ->line("Profil concernÃ©: {$this->roleLabel}.")
             ->action('Ouvrir les demandes', $this->targetUrl)
-            ->salutation("Cordialement,\nL'équipe");
+            ->salutation("Cordialement,\nL'Ã©quipe");
     }
 
     public function toArray(object $notifiable): array

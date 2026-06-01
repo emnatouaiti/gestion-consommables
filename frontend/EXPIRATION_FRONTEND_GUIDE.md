@@ -1,4 +1,4 @@
-# 🎨 Frontend Integration - Afficher le Cycle de Vie dans Angular
+﻿# 🎨 Frontend Integration - Afficher le Cycle de Vie dans Angular
 
 ## 📍 Où Ajouter cette Fonctionnalité
 
@@ -29,7 +29,7 @@ import { Observable } from 'rxjs';
   providedIn: 'root'
 })
 export class AdminExpirationService {
-  private apiUrl = '/api/admin/expirations';
+  private apiUrl = '/api/expirations';
 
   constructor(private http: HttpClient) {}
 
@@ -50,7 +50,7 @@ export class AdminExpirationService {
 
   // Vérifier le statut d'un stock
   checkStockStatus(stockId: number): Observable<any> {
-    return this.http.get(`/api/admin/product-stocks/${stockId}/expiration-status`);
+    return this.http.get(`/api/product-stocks/${stockId}/expiration-status`);
   }
 
   // Marquer une alerte comme traitée
@@ -769,7 +769,7 @@ export class AdminModule { }
 ### À Créer:
 
 ```
-frontend/src/app/features/admin/
+frontend/src/app/features/
 ├── services/
 │   └── admin-expiration.service.ts                    (NOUVEAU)
 ├── models/
@@ -794,7 +794,7 @@ frontend/src/app/features/admin/
 ```
 frontend/src/app/
 ├── app.module.ts                                      (Ajouter imports)
-├── features/admin/
+├── features/
 │   ├── pages/
 │   │   └── product-detail.component.html              (Ajouter widgets)
 │   └── components/
@@ -818,4 +818,5 @@ frontend/src/app/
 - [ ] Implémenter modal Force Consume
 
 **Temps d'implémentation: 3-4 heures**
+
 

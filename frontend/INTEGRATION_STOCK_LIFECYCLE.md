@@ -1,9 +1,9 @@
-# 🎯 Guide d'Intégration - Ajouter le Cycle de Vie dans le Détail Produit
+﻿# 🎯 Guide d'Intégration - Ajouter le Cycle de Vie dans le Détail Produit
 
 ## 📋 Fichiers Créés
 
 ```
-frontend/src/app/features/admin/components/
+frontend/src/app/features/components/
 ├── stock-form/
 │   ├── stock-form.component.ts           ✅ NOUVEAU
 │   ├── stock-form.component.html         ✅ NOUVEAU
@@ -20,7 +20,7 @@ frontend/src/app/features/admin/components/
 
 ### 1️⃣ Importer les Composants dans le Module
 
-**Fichier: `frontend/src/app/features/admin/admin.module.ts`**
+**Fichier: `frontend/src/app/features/admin.module.ts`**
 
 ```typescript
 import { StockFormComponent } from './components/stock-form/stock-form.component';
@@ -50,7 +50,7 @@ export class AdminModule { }
 
 ### 2️⃣ Modifier la Page `product-detail.component.ts`
 
-**Fichier: `frontend/src/app/features/admin/pages/product-detail/product-detail.component.ts`**
+**Fichier: `frontend/src/app/features/pages/product-detail/product-detail.component.ts`**
 
 ```typescript
 import { Component, OnInit } from '@angular/core';
@@ -131,7 +131,7 @@ export class ProductDetailComponent implements OnInit {
 
 ### 3️⃣ Modifier le Template `product-detail.component.html`
 
-**Fichier: `frontend/src/app/features/admin/pages/product-detail/product-detail.component.html`**
+**Fichier: `frontend/src/app/features/pages/product-detail/product-detail.component.html`**
 
 ```html
 <div class="product-detail-container">
@@ -331,7 +331,7 @@ export class ProductDetailComponent implements OnInit {
 
 ### 4️⃣ Ajouter les Services (si n'existant pas)
 
-**Fichier: `frontend/src/app/features/admin/services/admin-expiration.service.ts`**
+**Fichier: `frontend/src/app/features/services/admin-expiration.service.ts`**
 
 (Voir le guide EXPIRATION_FRONTEND_GUIDE.md - Ajouter la classe AdminExpirationService)
 
@@ -410,7 +410,7 @@ export class ProductDetailComponent implements OnInit {
 
 ## 🎨 CSS à Ajouter (Optionnel)
 
-**Fichier: `frontend/src/app/features/admin/pages/product-detail/product-detail.component.scss`**
+**Fichier: `frontend/src/app/features/pages/product-detail/product-detail.component.scss`**
 
 ```scss
 .product-detail-container {
@@ -561,4 +561,5 @@ export class ProductDetailComponent implements OnInit {
 - [ ] Graphique des expirations par mois
 - [ ] Notification push pour alertes urgentes
 - [ ] Historique des mouvements par batch
+
 

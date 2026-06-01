@@ -1,5 +1,5 @@
 <?php
-$url = 'http://localhost:8000/api/admin/documents';
+$url = 'http://localhost:8000/api/documents';
 $ch = curl_init($url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, [

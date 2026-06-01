@@ -1,32 +1,32 @@
-# 🎯 Quick Reference - Cheat Sheet
+﻿# 🎯 Quick Reference - Cheat Sheet
 
 ## API Endpoints (8 routes)
 
 ```bash
 # ✅ Vérifier toutes les expirations (cron ou manuel)
-POST /api/admin/expirations/check
+POST /api/expirations/check
 
 # 📋 Lister les produits EXPIRÉÉS
-GET /api/admin/expirations/expired?page=1
+GET /api/expirations/expired?page=1
 
 # ⚠️ Lister les produits EXPIRANT BIENTÔT (7j)
-GET /api/admin/expirations/expiring-soon?days=7
+GET /api/expirations/expiring-soon?days=7
 
 # 🔔 Lister les ALERTES EN ATTENTE
-GET /api/admin/expirations/alerts?page=1
+GET /api/expirations/alerts?page=1
 
 # 📊 Historique COMPLET des expirations
-GET /api/admin/expirations/history?page=1
+GET /api/expirations/history?page=1
 
 # 📈 Statistiques KPIs
-GET /api/admin/expirations/stats
+GET /api/expirations/stats
 
 # ✔️ Marquer une ALERTE comme traitée
-POST /api/admin/expirations/{id}/acknowledge
+POST /api/expirations/{id}/acknowledge
 { "status": "acknowledged", "notes": "..." }
 
 # 🆘 FORCER consommation produit expiré (admin only)
-POST /api/admin/expirations/{stockId}/force-consume
+POST /api/expirations/{stockId}/force-consume
 { "quantity": 5, "justification": "Patient critique..." }
 ```
 
@@ -241,19 +241,19 @@ ACTIF (green)
 
 ### Test 1: Check Expirations
 ```
-POST localhost:8000/api/admin/expirations/check
+POST localhost:8000/api/expirations/check
 Authorization: Bearer TOKEN
 ```
 
 ### Test 2: List Expired
 ```
-GET localhost:8000/api/admin/expirations/expired?page=1
+GET localhost:8000/api/expirations/expired?page=1
 Authorization: Bearer TOKEN
 ```
 
 ### Test 3: Acknowledge Alert
 ```
-POST localhost:8000/api/admin/expirations/1/acknowledge
+POST localhost:8000/api/expirations/1/acknowledge
 Authorization: Bearer TOKEN
 Content-Type: application/json
 
@@ -265,7 +265,7 @@ Content-Type: application/json
 
 ### Test 4: Force Consume
 ```
-POST localhost:8000/api/admin/expirations/1/force-consume
+POST localhost:8000/api/expirations/1/force-consume
 Authorization: Bearer TOKEN
 Content-Type: application/json
 
@@ -409,7 +409,7 @@ php artisan migrate --force && php artisan db:seed
 php artisan cache:clear && php artisan config:cache
 
 # Test une requête
-curl -X GET http://localhost:8000/api/admin/expirations/stats
+curl -X GET http://localhost:8000/api/expirations/stats
 
 # View logs
 tail -f storage/logs/laravel.log

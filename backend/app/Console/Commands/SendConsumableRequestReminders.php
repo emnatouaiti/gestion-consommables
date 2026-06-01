@@ -46,7 +46,7 @@ class SendConsumableRequestReminders extends Command
                 $director->notify(new PendingRequestReminderNotification(
                     'Directeur',
                     $requests->count(),
-                    $frontend . '/admin/validation-demandes'
+                    $frontend . '/validation-demandes'
                 ));
             }
         }
@@ -71,12 +71,12 @@ class SendConsumableRequestReminders extends Command
                 $manager->notify(new PendingRequestReminderNotification(
                     'Responsable',
                     $requests->count(),
-                    $frontend . '/admin/validation-demandes'
+                    $frontend . '/validation-demandes'
                 ));
             }
         }
 
-        $this->info('Rappels demandes consommables envoyés.');
+        $this->info('Rappels demandes consommables envoyÃ©s.');
         return self::SUCCESS;
     }
 }

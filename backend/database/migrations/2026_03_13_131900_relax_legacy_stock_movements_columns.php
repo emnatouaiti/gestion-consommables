@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration {
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Some environments already had a "ledger-style" stock_movements table with NOT NULL fields.
         // Our current implementation uses header + lines; relax legacy NOT NULL constraints to avoid 500s.
         if (Schema::hasTable('stock_movements')) {

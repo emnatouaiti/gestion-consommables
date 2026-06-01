@@ -1,0 +1,93 @@
+﻿
+   ErrorException 
+
+  include(C:\Users\emnat\OneDrive\Desktop\consotrack\backend\vendor\composer/../../app/Http/Controllers/Auth2/AuthController.php): Failed to open stream: No such file or directory
+
+  at vendor\composer\ClassLoader.php:576
+    572Γûò          * @param  string $file
+    573Γûò          * @return void
+    574Γûò          */
+    575Γûò         self::$includeFile = \Closure::bind(static function($file) {
+  Γ₧£ 576Γûò             include $file;
+    577Γûò         }, null, null);
+    578Γûò     }
+    579Γûò }
+    580Γûò
+
+  1   vendor\composer\ClassLoader.php:576
+  2   vendor\composer\ClassLoader.php:427
+
+  3   [internal]:0
+      Composer\Autoload\ClassLoader::loadClass("App\Http\Controllers\Auth2\AuthController")
+  4   vendor\laravel\framework\src\Illuminate\Routing\Route.php:1125
+
+  5   vendor\laravel\framework\src\Illuminate\Routing\Route.php:1062
+      Illuminate\Routing\Route::controllerMiddleware()
+
+  6   vendor\laravel\framework\src\Illuminate\Routing\Router.php:834
+      Illuminate\Routing\Route::gatherMiddleware()
+
+  7   vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:212
+      Illuminate\Routing\Router::gatherRouteMiddleware(Object(Illuminate\Routing\Route))
+
+  8   vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:148
+      Illuminate\Foundation\Console\RouteListCommand::getMiddleware(Object(Illuminate\Routing\Route))
+
+  9   vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:117
+      Illuminate\Foundation\Console\RouteListCommand::getRouteInformation(Object(Illuminate\Routing\Route))
+
+  10  [internal]:0
+      Illuminate\Foundation\Console\RouteListCommand::Illuminate\Foundation\Console\{closure}(Object(Illuminate\Routing\Route))
+  11  vendor\laravel\framework\src\Illuminate\Collections\Arr.php:841
+
+  12  vendor\laravel\framework\src\Illuminate\Collections\Collection.php:829
+      Illuminate\Support\Arr::map(Object(Closure))
+
+  13  vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:117
+      Illuminate\Support\Collection::map(Object(Closure))
+
+  14  vendor\laravel\framework\src\Illuminate\Foundation\Console\RouteListCommand.php:102
+      Illuminate\Foundation\Console\RouteListCommand::getRoutes()
+
+  15  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:36
+      Illuminate\Foundation\Console\RouteListCommand::handle()
+
+  16  vendor\laravel\framework\src\Illuminate\Container\Util.php:43
+      Illuminate\Container\BoundMethod::Illuminate\Container\{closure}()
+
+  17  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:96
+      Illuminate\Container\Util::unwrapIfClosure(Object(Closure))
+
+  18  vendor\laravel\framework\src\Illuminate\Container\BoundMethod.php:35
+      Illuminate\Container\BoundMethod::callBoundMethod(Object(Illuminate\Foundation\Application), Object(Closure))
+
+  19  vendor\laravel\framework\src\Illuminate\Container\Container.php:799
+      Illuminate\Container\BoundMethod::call(Object(Illuminate\Foundation\Application), [])
+
+  20  vendor\laravel\framework\src\Illuminate\Console\Command.php:211
+      Illuminate\Container\Container::call()
+
+  21  vendor\symfony\console\Command\Command.php:341
+      Illuminate\Console\Command::execute(Object(Symfony\Component\Console\Input\ArgvInput), Object(Illuminate\Console\OutputStyle))
+
+  22  vendor\laravel\framework\src\Illuminate\Console\Command.php:180
+      Symfony\Component\Console\Command\Command::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Illuminate\Console\OutputStyle))
+
+  23  vendor\symfony\console\Application.php:1117
+      Illuminate\Console\Command::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  24  vendor\symfony\console\Application.php:356
+      Symfony\Component\Console\Application::doRunCommand(Object(Illuminate\Foundation\Console\RouteListCommand), Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  25  vendor\symfony\console\Application.php:195
+      Symfony\Component\Console\Application::doRun(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  26  vendor\laravel\framework\src\Illuminate\Foundation\Console\Kernel.php:198
+      Symfony\Component\Console\Application::run(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  27  vendor\laravel\framework\src\Illuminate\Foundation\Application.php:1235
+      Illuminate\Foundation\Console\Kernel::handle(Object(Symfony\Component\Console\Input\ArgvInput), Object(Symfony\Component\Console\Output\ConsoleOutput))
+
+  28  artisan:16
+      Illuminate\Foundation\Application::handleCommand(Object(Symfony\Component\Console\Input\ArgvInput))
+

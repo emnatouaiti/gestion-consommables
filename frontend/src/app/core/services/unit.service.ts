@@ -7,18 +7,19 @@ export class UnitService {
   constructor(private api: ApiService) {}
 
   list(): Observable<any[]> {
-    return this.api.get('admin/units');
+    return this.api.get('units');
   }
 
   create(payload: any): Observable<any> {
-    return this.api.post('admin/units', payload);
+    return this.api.post('units', payload);
   }
 
   update(id: number, payload: any): Observable<any> {
-    return this.api.put(`admin/units/${id}`, payload);
+    return this.api.put(`units/${id}`, payload);
   }
 
   delete(id: number): Observable<any> {
-    return this.api.delete(`admin/units/${id}`);
+    return this.api.delete(`units/${id}`);
   }
 }
+

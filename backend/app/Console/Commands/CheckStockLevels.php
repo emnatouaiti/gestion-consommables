@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 class CheckStockLevels extends Command
 {
     protected $signature = 'stock:alert';
-    protected $description = 'Vérifie les produits dont le stock est inférieur au seuil minimum et alerte les responsables';
+    protected $description = 'VÃ©rifie les produits dont le stock est infÃ©rieur au seuil minimum et alerte les responsables';
 
     public function handle()
     {
-        $this->info('🔍 Vérification des seuils de stock...');
+        $this->info('ðŸ” VÃ©rification des seuils de stock...');
 
         // Trouver les produits sous le seuil (et actifs)
         $lowStockProducts = Product::where('status', 'active')
@@ -31,7 +31,7 @@ class CheckStockLevels extends Command
             })->toArray();
 
         if (empty($lowStockProducts)) {
-            $this->info('✅ Aucun produit en stock critique.');
+            $this->info('âœ… Aucun produit en stock critique.');
             Log::info("Scan Stock : Aucun produit sous le seuil minimum.");
             return;
         }
@@ -46,17 +46,17 @@ class CheckStockLevels extends Command
         ])->get();
 
         if ($responsables->isEmpty()) {
-            $this->error("Aucun responsable trouvé pour l'alerte stock.");
-            Log::warning("Alerte Stock : Aucun utilisateur trouvé pour recevoir les alertes.");
+            $this->error("Aucun responsable trouvÃ© pour l'alerte stock.");
+            Log::warning("Alerte Stock : Aucun utilisateur trouvÃ© pour recevoir les alertes.");
             return;
         }
 
-        Log::info("Envoi d'alertes stock critique à : " . $responsables->pluck('email')->implode(', '));
+        Log::info("Envoi d'alertes stock critique Ã  : " . $responsables->pluck('email')->implode(', '));
 
         foreach ($responsables as $user) {
             $user->notify(new LowStockAlertNotification($lowStockProducts));
         }
 
-        $this->info(count($lowStockProducts) . ' produits en stock critique. Notifications envoyées.');
+        $this->info(count($lowStockProducts) . ' produits en stock critique. Notifications envoyÃ©es.');
     }
 }

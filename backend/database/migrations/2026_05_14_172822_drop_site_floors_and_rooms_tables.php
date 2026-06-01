@@ -11,12 +11,12 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
 
         Schema::dropIfExists('site_rooms');
         Schema::dropIfExists('site_floors');
 
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
     }
 
     /**

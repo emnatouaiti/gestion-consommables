@@ -12,6 +12,7 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (DB::getDriverName() === 'sqlite') { return; }
         // MySQL : modifier un ENUM en ajoutant les nouvelles valeurs
         DB::statement("
             ALTER TABLE expiration_events
@@ -30,6 +31,7 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (DB::getDriverName() === 'sqlite') { return; }
         // Revenir à l'enum d'origine (sans les nouvelles valeurs)
         DB::statement("
             ALTER TABLE expiration_events

@@ -50,7 +50,7 @@ class SyncRequestDocuments extends Command
                         $titlePrefix = 'Refus de demande';
                     } elseif ($indStatus === 'approved_pending_exit') {
                         $docType = 'demande_approuvee';
-                        $titlePrefix = 'Demande approuvée';                    } elseif ($indStatus === 'partiellement_accepte') {
+                        $titlePrefix = 'Demande approuvÃ©e';                    } elseif ($indStatus === 'partiellement_accepte') {
                         $docType = 'demande_partielle';
                         $titlePrefix = 'Approbation partielle';                    }
 

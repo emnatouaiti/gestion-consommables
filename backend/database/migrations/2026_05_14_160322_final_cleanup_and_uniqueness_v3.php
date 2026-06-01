@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Disable foreign key checks
-        DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\Schema::disableForeignKeyConstraints();
 
         // 1. Drop obsolete tables
         Schema::dropIfExists('audit_logs');
@@ -67,7 +67,7 @@ return new class extends Migration
         }
 
         // Re-enable foreign key checks
-        DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+        \Illuminate\Support\Facades\Schema::enableForeignKeyConstraints();
     }
 
     private function dropColumnIfExists($table, $column)

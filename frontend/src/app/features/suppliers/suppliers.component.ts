@@ -1,1 +1,538 @@
-export { SuppliersComponent } from '../admin/suppliers/suppliers.component';
+﻿import { Component, OnInit, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { isPlatformBrowser } from '@angular/common';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { SupplierService } from '../../core/services/supplier.service';
+import { Supplier } from '../../core/models/supplier.model';
+import { SupplierContact } from '../../core/models/supplier-contact.model';
+import { ApiService } from '../../core/services/api.service';
+
+@Component({
+    selector: 'app-suppliers',
+    standalone: true,
+    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    templateUrl: './suppliers.component.html',
+    styleUrls: ['./suppliers.component.css']
+})
+export class SuppliersComponent implements OnInit {
+    suppliers: Supplier[] = [];
+    filteredSuppliers: Supplier[] = [];
+    searchQuery = '';
+    isLoading = false;
+    showModal = false;
+    editingSupplierId: number | null = null;
+    selectedSupplier: Supplier | null = null;
+    showProductsModal = false;
+    availableProducts: any[] = [];
+    selectedProductIds: number[] = [];
+
+    showContactsModal = false;
+    contactsSupplierId: number | null = null;
+    contactsSupplierName = '';
+    supplierContacts: SupplierContact[] = [];
+    showContactModal = false;
+    editingContactId: number | null = null;
+    isContactsLoading = false;
+    viewMode: 'grid' | 'list' = 'grid';
+    page = 1;
+    perPage = 10;
+    readonly perPageOptions = [5, 10, 20];
+
+    supplierForm!: FormGroup;
+    contactForm!: FormGroup;
+
+    photoPreview: string | null = null;
+    successMessage = '';
+    errorMessage = '';
+
+    newReviewContent = '';
+    newReviewRating: number | undefined = 5;
+    supplierDocuments: Record<number, any[]> = {};
+    showDocsModal = false;
+    docsForSupplier: any[] = [];
+    docsSupplierName = '';
+
+    constructor(
+        private supplierService: SupplierService,
+        private http: HttpClient,
+        private api: ApiService,
+        private readonly cdr: ChangeDetectorRef,
+        private readonly fb: FormBuilder,
+        @Inject(PLATFORM_ID) private readonly platformId: Object
+    ) {
+        this.initForms();
+    }
+
+    private initForms(): void {
+        this.supplierForm = this.fb.group({
+            name: ['', [Validators.required, Validators.minLength(2)]],
+            notes: [''],
+            phone: ['', [Validators.pattern('^[0-9+ ]{8,20}$')]],
+            email: ['', [Validators.email]],
+            photo: [null]
+        });
+
+        this.contactForm = this.fb.group({
+            name: ['', [Validators.required, Validators.minLength(2)]],
+            role: [''],
+            phone: ['', [Validators.pattern('^[0-9+ ]{8,20}$')]],
+            email: ['', [Validators.email]],
+            notes: ['']
+        });
+    }
+
+    ngOnInit(): void {
+        if (!isPlatformBrowser(this.platformId)) {
+            return;
+        }
+        this.loadSuppliers();
+        this.loadAvailableProducts();
+        this.loadDocuments();
+    }
+
+    loadAvailableProducts(): void {
+        if (!isPlatformBrowser(this.platformId)) {
+            return;
+        }
+        this.supplierService.getProductsList().subscribe({
+            next: (res: any) => {
+                const products = res.data || res;
+                this.availableProducts = products.map((p: any) => ({ ...p, selected: false }));
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading products', err);
+            }
+        });
+    }
+
+    loadSuppliers(): void {
+        if (!isPlatformBrowser(this.platformId)) {
+            return;
+        }
+        this.isLoading = true;
+        this.supplierService.getSuppliers().subscribe({
+            next: (data) => {
+                this.suppliers = data;
+                this.filteredSuppliers = [...data];
+                this.page = 1;
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading suppliers', err);
+                this.isLoading = false;
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors du chargement des fournisseurs');
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    onSearch(): void {
+        const query = this.searchQuery.toLowerCase().trim();
+        if (!query) {
+            this.filteredSuppliers = [...this.suppliers];
+        } else {
+            this.filteredSuppliers = this.suppliers.filter(supplier => 
+                supplier.name.toLowerCase().includes(query) ||
+                supplier.phone?.toLowerCase().includes(query) ||
+                supplier.email?.toLowerCase().includes(query)
+            );
+        }
+        this.page = 1;
+        this.cdr.detectChanges();
+    }
+
+    loadDocuments(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        this.http.get('/api/documents').subscribe({
+            next: (docs: any) => {
+                const arr = Array.isArray(docs) ? docs : [];
+                this.supplierDocuments = arr.reduce((acc: Record<number, any[]>, d: any) => {
+                    if (d.supplier_id) {
+                        (acc[d.supplier_id] ??= []).push(d);
+                    }
+                    return acc;
+                }, {});
+                this.cdr.detectChanges();
+            },
+            error: () => {}
+        });
+    }
+
+    getDocCount(id: number): number {
+        return (this.supplierDocuments[id] || []).length;
+    }
+
+    openDocsModal(supplier: Supplier): void {
+        this.docsForSupplier = this.supplierDocuments[supplier.id] || [];
+        this.docsSupplierName = supplier.name;
+        this.showDocsModal = true;
+    }
+
+    closeDocsModal(): void {
+        this.showDocsModal = false;
+        this.docsForSupplier = [];
+        this.docsSupplierName = '';
+    }
+
+    downloadDoc(doc: any): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const cleanPath = doc?.path ? doc.path.replace(/^[/\\]+/, '').replace(/^storage\//, '') : null;
+        const url = cleanPath ? `http://localhost:8000/api/docs/${cleanPath}` : null;
+        if (!url) return;
+        const a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.download = doc?.title || 'document';
+        a.rel = 'noopener noreferrer';
+        a.click();
+    }
+
+    supplierImageUrl(path: string | null | undefined): string {
+        if (!path) return 'assets/images/placeholder-supplier.png';
+        const cleanPath = String(path).replace(/^[/\\]+/, '').replace(/^storage\//, '');
+        return `http://localhost:8000/api/docs/${cleanPath}`;
+    }
+
+    clearSearch(): void {
+        this.searchQuery = '';
+        this.filteredSuppliers = [...this.suppliers];
+        this.page = 1;
+        this.cdr.detectChanges();
+    }
+
+    setViewMode(mode: 'grid' | 'list'): void {
+        this.viewMode = mode;
+        this.page = 1;
+    }
+
+    get pagedSuppliers(): Supplier[] {
+        const start = (this.page - 1) * this.perPage;
+        return this.filteredSuppliers.slice(start, start + this.perPage);
+    }
+
+    get totalPages(): number {
+        return Math.max(1, Math.ceil(this.filteredSuppliers.length / this.perPage));
+    }
+
+    onPerPageChange(): void {
+        this.page = 1;
+    }
+
+    prevPage(): void {
+        if (this.page > 1) {
+            this.page--;
+        }
+    }
+
+    nextPage(): void {
+        if (this.page < this.totalPages) {
+            this.page++;
+        }
+    }
+
+    viewProducts(supplier: Supplier): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        this.isLoading = true;
+        this.supplierService.getSupplier(supplier.id).subscribe({
+            next: (data) => {
+                this.selectedSupplier = data;
+                this.showProductsModal = true;
+                this.isLoading = false;
+                this.ensureSupplierContactsLoaded();
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading supplier products', err);
+                this.isLoading = false;
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors du chargement des produits');
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    closeProductsModal(): void {
+        this.showProductsModal = false;
+        this.selectedSupplier = null;
+    }
+
+    openContacts(supplier: Supplier): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        this.contactsSupplierId = supplier.id;
+        this.contactsSupplierName = supplier.name;
+        this.showContactsModal = true;
+        this.loadSupplierContacts(supplier.id);
+    }
+
+    closeContactsModal(): void {
+        this.showContactsModal = false;
+        this.contactsSupplierId = null;
+        this.contactsSupplierName = '';
+        this.supplierContacts = [];
+        this.closeContactModal();
+    }
+
+    private ensureSupplierContactsLoaded(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const supplier = this.selectedSupplier;
+        if (!supplier) return;
+        if (Array.isArray(supplier.contacts)) return;
+        this.loadSupplierContacts(supplier.id);
+    }
+
+    private loadSupplierContacts(supplierId: number): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        this.isContactsLoading = true;
+        this.supplierService.getSupplierContacts(supplierId).subscribe({
+            next: (contacts) => {
+                if (this.selectedSupplier?.id === supplierId) {
+                    this.selectedSupplier = { ...this.selectedSupplier, contacts: contacts || [] };
+                }
+                if (this.contactsSupplierId === supplierId) {
+                    this.supplierContacts = contacts || [];
+                }
+                this.isContactsLoading = false;
+                this.cdr.detectChanges();
+            },
+            error: (err) => {
+                console.error('Error loading supplier contacts', err);
+                this.isContactsLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    openAddContactModal(): void {
+        this.editingContactId = null;
+        this.contactForm.reset();
+        this.showContactModal = true;
+    }
+
+    openEditContactModal(contact: SupplierContact): void {
+        this.editingContactId = contact.id;
+        this.contactForm.patchValue({
+            name: contact.name || '',
+            role: contact.role || '',
+            phone: contact.phone || '',
+            email: contact.email || '',
+            notes: contact.notes || ''
+        });
+        this.showContactModal = true;
+    }
+
+    closeContactModal(): void {
+        this.showContactModal = false;
+        this.editingContactId = null;
+        this.contactForm.reset();
+    }
+
+    saveContact(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const supplierId = this.contactsSupplierId ?? this.selectedSupplier?.id ?? null;
+        if (!supplierId) return;
+
+        if (this.contactForm.invalid) {
+            this.contactForm.markAllAsTouched();
+            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
+            return;
+        }
+
+        this.isLoading = true;
+        const request = this.editingContactId
+            ? this.supplierService.updateSupplierContact(supplierId, this.editingContactId, this.contactForm.value)
+            : this.supplierService.createSupplierContact(supplierId, this.contactForm.value);
+
+        request.subscribe({
+            next: () => {
+                this.loadSupplierContacts(supplierId);
+                this.closeContactModal();
+                this.successMessage = this.editingContactId ? 'Contact mis � jour' : 'Contact ajout�';
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+            },
+            error: (err) => {
+                console.error('Error saving contact', err);
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l�enregistrement du contact');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    deleteContact(contactId: number): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const supplierId = this.contactsSupplierId ?? this.selectedSupplier?.id ?? null;
+        if (!supplierId) return;
+
+        if (!confirm('�tes-vous s�r de vouloir supprimer ce contact ?')) return;
+
+        this.isLoading = true;
+        this.supplierService.deleteSupplierContact(supplierId, contactId).subscribe({
+            next: () => {
+                this.loadSupplierContacts(supplierId);
+                this.successMessage = 'Contact supprim�';
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+            },
+            error: (err) => {
+                console.error('Error deleting contact', err);
+                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le contact');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    openAddModal(): void {
+        this.editingSupplierId = null;
+        this.selectedProductIds = [];
+        this.availableProducts = this.availableProducts.map(p => ({ ...p, selected: false }));
+        this.resetForm();
+        this.showModal = true;
+    }
+
+    openEditModal(supplier: Supplier): void {
+        this.editingSupplierId = supplier.id;
+        this.supplierForm.patchValue({
+            name: supplier.name,
+            notes: supplier.notes || '',
+            phone: supplier.phone || '',
+            email: supplier.email || '',
+            photo: null
+        });
+        this.photoPreview = supplier.image_path ? this.supplierImageUrl(supplier.image_path) : null;
+        this.selectedProductIds = supplier.products?.map((p: any) => p.id) || [];
+        this.availableProducts = this.availableProducts.map(p => ({
+            ...p,
+            selected: this.selectedProductIds.includes(p.id)
+        }));
+        this.showModal = true;
+    }
+
+    closeModal(): void {
+        this.showModal = false;
+        this.resetForm();
+    }
+
+    resetForm(): void {
+        this.supplierForm.reset();
+        this.photoPreview = null;
+        this.editingSupplierId = null;
+    }
+
+    onFileChange(event: any): void {
+        const file = event.target.files[0];
+        if (file) {
+            this.supplierForm.get('photo')?.setValue(file);
+            const reader = new FileReader();
+            reader.onload = () => { this.photoPreview = reader.result as string; };
+            reader.readAsDataURL(file);
+        }
+    }
+
+    saveSupplier(): void {
+        if (this.supplierForm.invalid) {
+            this.supplierForm.markAllAsTouched();
+            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
+            return;
+        }
+
+        const val = this.supplierForm.value;
+        const formData = new FormData();
+        formData.append('name', val.name);
+        if (val.notes) formData.append('notes', val.notes);
+        if (val.phone) formData.append('phone', val.phone);
+        if (val.email) formData.append('email', val.email);
+        
+        if (this.selectedProductIds.length > 0) {
+            this.selectedProductIds.forEach(id => formData.append('product_ids[]', id.toString()));
+        }
+        if (val.photo) formData.append('photo', val.photo);
+
+        this.isLoading = true;
+        const request = this.editingSupplierId
+            ? this.supplierService.updateSupplier(this.editingSupplierId, formData)
+            : this.supplierService.createSupplier(formData);
+
+        request.subscribe({
+            next: () => {
+                this.loadSuppliers();
+                this.closeModal();
+                this.successMessage = this.editingSupplierId ? 'Fournisseur mis � jour' : 'Fournisseur cr��';
+                this.isLoading = false;
+                this.cdr.detectChanges();
+                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+            },
+            error: (err) => {
+                console.error('Error saving supplier', err);
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l\'enregistrement');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    deleteSupplier(id: number): void {
+        if (!confirm('�tes-vous s�r de vouloir supprimer ce fournisseur ?')) return;
+        this.supplierService.deleteSupplier(id).subscribe({
+            next: () => {
+                this.loadSuppliers();
+                this.successMessage = 'Fournisseur supprim�';
+                setTimeout(() => this.successMessage = '', 3000);
+            },
+            error: (err) => {
+                console.error('Error deleting supplier', err);
+                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le fournisseur');
+            }
+        });
+    }
+
+    submitReview(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        const supplier = this.selectedSupplier as any;
+        if (!supplier || !this.newReviewContent.trim()) return;
+
+        this.isLoading = true;
+        this.supplierService.addReview(supplier.id, {
+            content: this.newReviewContent,
+            rating: this.newReviewRating
+        }).subscribe({
+            next: (review) => {
+                if (!supplier.reviews) supplier.reviews = [];
+                supplier.reviews.unshift(review);
+                this.newReviewContent = '';
+                this.newReviewRating = 5;
+                this.isLoading = false;
+                this.successMessage = 'Avis publi� !';
+                this.cdr.detectChanges();
+                setTimeout(() => this.successMessage = '', 3000);
+            },
+            error: (err) => {
+                console.error('Error submitting review', err);
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la publication de l\'avis');
+                this.isLoading = false;
+                this.cdr.detectChanges();
+            }
+        });
+    }
+
+    onProductToggle(product: any): void {
+        if (product.selected) {
+            if (!this.selectedProductIds.includes(product.id)) {
+                this.selectedProductIds.push(product.id);
+            }
+        } else {
+            this.selectedProductIds = this.selectedProductIds.filter(id => id !== product.id);
+        }
+    }
+
+    getStars(rating: number | undefined): number[] {
+        if (!rating) return [];
+        return Array(rating).fill(0);
+    }
+}

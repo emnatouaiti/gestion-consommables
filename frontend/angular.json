@@ -1,4 +1,4 @@
-{
+﻿{
   "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
   "version": 1,
   "cli": {
@@ -73,7 +73,7 @@
         "serve": {
           "builder": "@angular/build:dev-server",
           "options": {
-            "proxyConfig": "proxy.conf.json"
+            "proxyConfig": "proxy.conf.cjs"
           },
           "configurations": {
             "production": {
@@ -81,7 +81,7 @@
             },
             "development": {
               "buildTarget": "consotrack1:build:development",
-              "proxyConfig": "proxy.conf.json"
+              "proxyConfig": "proxy.conf.cjs"
             }
           },
           "defaultConfiguration": "development"

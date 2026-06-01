@@ -1,8 +1,8 @@
-# Corrections Appliquées - Système de Fournisseurs V2 (21 Février 2026)
+﻿# Corrections Appliquées - Système de Fournisseurs V2 (21 Février 2026)
 
 ## 🔧 Problèmes Corrigés
 
-### 1. **Erreur 500 sur POST /api/admin/suppliers/{supplier}/reviews**
+### 1. **Erreur 500 sur POST /api/suppliers/{supplier}/reviews**
 **Cause**: Exception non gérée dans `addReview()`
 **Solution**: 
 - ✅ Ajout try-catch pour logger l'erreur exacte
@@ -32,9 +32,9 @@ return response()->json($review, 201);
 
 **Fichiers modifiés**:
 - `app/Http/Controllers/API/SupplierController.php` - store() et update()
-- `src/app/features/admin/suppliers/suppliers.component.ts` - ajout selectedProductIds, loadAvailableProducts()
-- `src/app/features/admin/suppliers/suppliers.component.html` - ajout du formulaire de sélection
-- `src/app/features/admin/suppliers/suppliers.component.css` - styles pour les checkboxes
+- `src/app/features/suppliers/suppliers.component.ts` - ajout selectedProductIds, loadAvailableProducts()
+- `src/app/features/suppliers/suppliers.component.html` - ajout du formulaire de sélection
+- `src/app/features/suppliers/suppliers.component.css` - styles pour les checkboxes
 - `src/app/core/services/supplier.service.ts` - ajout getProductsList()
 
 ## 📋 Nouvelles Fonctionnalités
@@ -47,7 +47,7 @@ return response()->json($review, 201);
 
 ### Changements Backend
 
-**POST /api/admin/suppliers** - Créer un fournisseur
+**POST /api/suppliers** - Créer un fournisseur
 ```json
 {
   "name": "Fournisseur ABC",
@@ -59,7 +59,7 @@ return response()->json($review, 201);
 }
 ```
 
-**PUT /api/admin/suppliers/{supplier}** - Modifier un fournisseur
+**PUT /api/suppliers/{supplier}** - Modifier un fournisseur
 ```json
 {
   "name": "Fournisseur ABC",
@@ -121,7 +121,7 @@ La relation est bidirectionnelle:
 2. Modifier un fournisseur et changer les produits
    - Vérifier la synchronisation
    
-3. Ajouter un avis (POST /api/admin/suppliers/1/reviews)
+3. Ajouter un avis (POST /api/suppliers/1/reviews)
    - Vérifier pas d'erreur 500
    - Vérifier l'avis s'affiche avec le nom de l'utilisateur
    
@@ -135,7 +135,7 @@ La relation est bidirectionnelle:
 
 - **Laravel**: http://127.0.0.1:8001 (ou port 8000)
 - **Angular**: http://localhost:4300 (ou 4200)
-- **Route API**: http://localhost:8001/api/admin/suppliers
+- **Route API**: http://localhost:8001/api/suppliers
 
 ## 📝 Logs à Vérifier
 

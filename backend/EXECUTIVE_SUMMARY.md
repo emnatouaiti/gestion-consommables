@@ -1,4 +1,4 @@
-# 🚀 Résumé Exécutif - Cycle de Vie des Produits
+﻿# 🚀 Résumé Exécutif - Cycle de Vie des Produits
 
 ## 🎯 Vision
 
@@ -32,14 +32,14 @@ expiration_events table (Audit):
 
 ### ✅ **API Endpoints (8 routes)**
 ```
-GET    /api/admin/expirations/expired
-GET    /api/admin/expirations/expiring-soon
-GET    /api/admin/expirations/alerts
-GET    /api/admin/expirations/history
-GET    /api/admin/expirations/stats
-POST   /api/admin/expirations/check
-POST   /api/admin/expirations/{id}/acknowledge
-POST   /api/admin/expirations/{id}/force-consume
+GET    /api/expirations/expired
+GET    /api/expirations/expiring-soon
+GET    /api/expirations/alerts
+GET    /api/expirations/history
+GET    /api/expirations/stats
+POST   /api/expirations/check
+POST   /api/expirations/{id}/acknowledge
+POST   /api/expirations/{id}/force-consume
 ```
 
 ### ✅ **Documentation (5 guides)**
@@ -129,7 +129,7 @@ public function expirationEvents()
 ## 📈 Statistiques Disponibles
 
 ```
-API Endpoint: GET /api/admin/expirations/stats
+API Endpoint: GET /api/expirations/stats
 
 Retourne:
 ├─ total_expired_events: 45

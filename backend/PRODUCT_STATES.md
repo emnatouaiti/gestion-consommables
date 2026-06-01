@@ -1,4 +1,4 @@
-# 🎯 États & Transitions des Produits
+﻿# 🎯 États & Transitions des Produits
 
 ## Diagramme d'États
 

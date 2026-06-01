@@ -37,17 +37,17 @@ class ResetPasswordNotification extends Notification implements ShouldQueue
     public function toMail($notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Réinitialisation de votre mot de passe - ETAP')
+            ->subject('RÃ©initialisation de votre mot de passe - ETAP')
             ->greeting('Bonjour,')
-            ->line('Vous avez demandé une réinitialisation de votre mot de passe. Voici votre code :')
+            ->line('Vous avez demandÃ© une rÃ©initialisation de votre mot de passe. Voici votre code :')
             ->line('')
-            ->line('**Code de vérification : ' . $this->code . '**')
+            ->line('**Code de vÃ©rification : ' . $this->code . '**')
             ->line('')
             ->line('Ce code expirera dans **15 minutes**.')
             ->line('')
             ->line('Si vous n\'avez pas fait cette demande, ignorez cet email.')
             ->salutation('Cordialement,')
-            ->salutation('L\'équipe ETAP');
+            ->salutation('L\'Ã©quipe ETAP');
     }
 
     /**

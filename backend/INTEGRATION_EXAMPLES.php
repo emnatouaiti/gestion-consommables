@@ -28,8 +28,8 @@ class ProductStockController extends Controller
     /**
      * EXEMPLE - Créer/mettre à jour un stock avec date d'expiration
      *
-     * POST /api/admin/product-stocks
-     * PUT /api/admin/product-stocks/{id}
+     * POST /api/product-stocks
+     * PUT /api/product-stocks/{id}
      */
     public function store(Request $request): JsonResponse
     {
@@ -63,7 +63,7 @@ class ProductStockController extends Controller
     /**
      * EXEMPLE - Obtenir un stock avec infos d'expiration
      *
-     * GET /api/admin/product-stocks/{id}
+     * GET /api/product-stocks/{id}
      */
     public function show(int $id): JsonResponse
     {
@@ -89,7 +89,7 @@ class ProductStockController extends Controller
     /**
      * EXEMPLE - Lister les stocks avec filtres d'expiration
      *
-     * GET /api/admin/product-stocks
+     * GET /api/product-stocks
      *     ?product_id=5
      *     &warehouse_location_id=2
      *     &filter=expired           // Filtrer les expirations
@@ -232,12 +232,12 @@ class ConsumableRequestController extends Controller
 
 // Vérifier si un stock peut être consumé
 Route::get(
-    '/admin/product-stocks/{id}/can-consume',
+    '/product-stocks/{id}/can-consume',
     [ProductStockController::class, 'checkCanConsume']
 )->name('product-stocks.check-can-consume');
 
 // Avec le filtre d'expiration
-Route::get('/admin/product-stocks', [ProductStockController::class, 'index'])
+Route::get('/product-stocks', [ProductStockController::class, 'index'])
     // ?filter=expired
     // ?filter=expiring_soon
     // ?filter=valid
@@ -295,27 +295,27 @@ export class AdminStockService {
 
   checkCanConsume(stockId: number) {
     return this.http.get<any>(
-      `/api/admin/product-stocks/${stockId}/can-consume`
+      `/api/product-stocks/${stockId}/can-consume`
     );
   }
 
   getExpiringProducts(params?: { days?: number }) {
-    return this.http.get<any>('/api/admin/expirations/expiring-soon', {
+    return this.http.get<any>('/api/expirations/expiring-soon', {
       params: params,
     });
   }
 
   getExpiredProducts() {
-    return this.http.get<any>('/api/admin/expirations/expired');
+    return this.http.get<any>('/api/expirations/expired');
   }
 
   getPendingAlerts() {
-    return this.http.get<any>('/api/admin/expirations/alerts');
+    return this.http.get<any>('/api/expirations/alerts');
   }
 
   acknowledgeAlert(alertId: number, status: string, notes?: string) {
     return this.http.post<any>(
-      `/api/admin/expirations/${alertId}/acknowledge`,
+      `/api/expirations/${alertId}/acknowledge`,
       { status, notes }
     );
   }

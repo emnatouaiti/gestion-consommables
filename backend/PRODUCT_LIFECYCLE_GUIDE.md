@@ -1,4 +1,4 @@
-# 📅 Cycle de Vie des Produits - Guide Complet
+﻿# 📅 Cycle de Vie des Produits - Guide Complet
 
 ## 📊 Schéma Visuel du Cycle de Vie
 
@@ -159,42 +159,42 @@ $message = $service->getExpirationStatus($stock);
 
 **Vérifier toutes les expirations (admin/cron)**
 ```http
-POST /api/admin/expirations/check
+POST /api/expirations/check
 ```
 
 **Lister les produits expiréés**
 ```http
-GET /api/admin/expirations/expired?page=1&per_page=15
+GET /api/expirations/expired?page=1&per_page=15
 ```
 
 **Lister les produits expirant bientôt**
 ```http
-GET /api/admin/expirations/expiring-soon?days=7
+GET /api/expirations/expiring-soon?days=7
 ```
 
 **Lister les alertes non traitées**
 ```http
-GET /api/admin/expirations/alerts?page=1
+GET /api/expirations/alerts?page=1
 ```
 
 **Historique complet des expirations**
 ```http
-GET /api/admin/expirations/history?page=1&per_page=50
+GET /api/expirations/history?page=1&per_page=50
 ```
 
 **Statistiques sur les expirations**
 ```http
-GET /api/admin/expirations/stats
+GET /api/expirations/stats
 ```
 
 **Vérifier un stock particulier**
 ```http
-GET /api/admin/product-stocks/{id}/expiration-status
+GET /api/product-stocks/{id}/expiration-status
 ```
 
 **Marquer une alerte comme traitée**
 ```http
-POST /api/admin/expirations/{id}/acknowledge
+POST /api/expirations/{id}/acknowledge
 Content-Type: application/json
 
 {
@@ -205,7 +205,7 @@ Content-Type: application/json
 
 **Admin: Forcer consommation d'un produit expiré**
 ```http
-POST /api/admin/expirations/{stockId}/force-consume
+POST /api/expirations/{stockId}/force-consume
 Content-Type: application/json
 
 {
@@ -257,7 +257,7 @@ php artisan expirations:cleanup --months=12
 - Stock archivé
 
 **Si urgent: Admin override**
-- Admin appelle: `POST /api/admin/expirations/{stockId}/force-consume`
+- Admin appelle: `POST /api/expirations/{stockId}/force-consume`
 - Justification obligatoire: "Cas d'urgence - patient critique"
 - Consommation forcée logged comme: `event_type='consumed_expired'`
 - Traçabilité complète conservée
@@ -357,3 +357,4 @@ Route::middleware(['auth:sanctum', 'permission:manage-stock'])->group(function (
 5. ⏳ Implémenter les notifications
 6. ⏳ Configurer le cron job
 7. ⏳ Tester le workflow complet
+
