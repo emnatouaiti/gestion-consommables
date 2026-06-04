@@ -41,9 +41,7 @@ class CheckStockLevels extends Command
             $query->whereRaw("LOWER(name) IN (?, ?, ?, ?, ?)", [
                 'administrateur', 'responsable de stock', 'responsable', 'gestionnaire', 'validateur'
             ]);
-        })->orWhereRaw("LOWER(role) IN (?, ?, ?, ?, ?)", [
-            'administrateur', 'responsable de stock', 'responsable', 'gestionnaire', 'validateur'
-        ])->get();
+        })->get();
 
         if ($responsables->isEmpty()) {
             $this->error("Aucun responsable trouvÃ© pour l'alerte stock.");

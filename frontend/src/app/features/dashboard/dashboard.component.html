@@ -6,6 +6,9 @@
       <p class="welcome-desc">{{ dashboardDescription }}</p>
     </div>
     <div class="header-actions">
+      <select class="period-selector" [(ngModel)]="selectedPeriod" (change)="onPeriodChange(selectedPeriod)">
+        <option *ngFor="let option of periodOptions" [value]="option.value">{{ option.label }}</option>
+      </select>
       <button class="btn-refresh" (click)="refreshData()" [class.spinning]="isLoading">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -19,16 +22,33 @@
   </header>
 
   <div class="content-container" *ngIf="!isLoading">
+    <!-- Alertes Critiques -->
+    <div class="critical-alerts" *ngIf="criticalAlerts.length > 0 && showCriticalAlerts">
+      <div class="alert-banner" *ngFor="let alert of criticalAlerts" [class.severity-high]="alert.severity === 'high'">
+        <span class="alert-icon">{{ alert.icon }}</span>
+        <span class="alert-message">{{ alert.message }}</span>
+        <button class="alert-dismiss" (click)="toggleCriticalAlerts()">✕</button>
+      </div>
+    </div>
+
     <div class="stats-bento">
       <div
         class="stat-card p-stats"
         *ngFor="let card of dashboardCards"
         [class.critical]="card.critical"
+        [class.pulse-animation]="card.critical"
+        [attr.tabindex]="0"
       >
         <div class="stat-icon-wrap" [ngClass]="'bg-' + card.color">{{ card.icon }}</div>
         <div class="stat-info">
           <span class="stat-label">{{ card.label }}</span>
           <h2 class="stat-value">{{ card.value }}</h2>
+          <div class="stat-trend" *ngIf="card.trend !== undefined">
+            <span class="trend-indicator" [class.trend-up]="card.trend > 0" [class.trend-down]="card.trend < 0">
+              {{ card.trend > 0 ? '↑' : '↓' }}
+            </span>
+            <span class="trend-label">{{ card.trendLabel }}</span>
+          </div>
         </div>
         <a *ngIf="card.route" [routerLink]="card.route" class="stat-action">Ouvrir →</a>
         <div class="stat-decoration"></div>
@@ -37,12 +57,40 @@
 
     <div class="main-layout">
       <div class="monitoring-column">
-        <section class="glass-card">
+        <!-- Section spécifique pour l'admin -->
+        <section class="glass-card" *ngIf="isAdmin">
           <div class="section-header">
-            <h3>Flux d activites</h3>
-            <span class="badge ghost">Temps reel</span>
+            <h3>Statistiques des rôles</h3>
+            <span class="badge ghost">{{ roles.length }} rôles</span>
           </div>
-          <div class="activity-feed">
+          <div class="roles-grid">
+            <div class="role-entry" *ngFor="let role of roles">
+              <div class="role-top">
+                <span class="role-name">{{ role.name }}</span>
+                <span class="role-count">{{ role.count }} utilisateurs</span>
+              </div>
+              <div class="role-progress-bg">
+                <div class="role-progress-fill" [style.width.%]="role.percentage"></div>
+              </div>
+              <span class="role-percentage">{{ role.percentage }}%</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section pour les autres rôles -->
+        <section class="glass-card" *ngIf="!isAdmin">
+          <div class="section-header">
+            <h3>Flux d'activités</h3>
+            <div class="header-actions-inline">
+              <span class="badge ghost">Temps réel</span>
+              <button class="btn-mini" (click)="refreshData()" title="Rafraîchir">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="activity-feed" role="log" aria-live="polite">
             <div class="activity-entry" *ngFor="let activity of recentActivities">
               <div class="entry-marker" [ngClass]="activity.type"></div>
               <div class="entry-icon">{{ activity.icon }}</div>
@@ -54,30 +102,53 @@
           </div>
         </section>
 
-        <div class="comparison-grid">
+        <div class="comparison-grid" *ngIf="!isAdmin">
           <div class="glass-card compact trend-card">
             <div class="section-header">
               <h3>Mouvements (7 jours)</h3>
+              <div class="trend-legend">
+                <span class="legend-item"><span class="legend-dot blue"></span>Mouvements</span>
+                <span class="legend-item"><span class="legend-dot green"></span>Sorties</span>
+              </div>
             </div>
-            <div class="trend-chart">
-              <div class="trend-bar-wrapper" *ngFor="let m of movementsTrend">
+            <div class="trend-chart interactive">
+              <div class="trend-bar-wrapper" *ngFor="let m of movementsTrend" (click)="showTrendDetails(m)" [class.active]="selectedTrendDay === m.day">
                 <div class="trend-bar" [style.height.px]="m.count * 10 + 5" [title]="m.count + ' mouvements'">
                   <span class="bar-val" *ngIf="m.count > 0">{{ m.count }}</span>
                 </div>
                 <span class="trend-label">{{ m.day }}</span>
               </div>
             </div>
+            <div class="trend-details" *ngIf="selectedTrendDetails">
+              <div class="trend-detail-item">
+                <span class="detail-label">Date:</span>
+                <span class="detail-value">{{ selectedTrendDetails.date }}</span>
+              </div>
+              <div class="trend-detail-item">
+                <span class="detail-label">Mouvements:</span>
+                <span class="detail-value">{{ selectedTrendDetails.count }}</span>
+              </div>
+            </div>
           </div>
 
           <div class="glass-card compact">
             <div class="section-header">
-              <h3>Top categories</h3>
+              <h3>Top catégories</h3>
+              <span class="badge ghost">{{ categoryStock.length }} catégories</span>
             </div>
-            <div class="cat-list">
-              <div class="cat-item" *ngFor="let cat of categoryStock">
-                <span class="cat-name">{{ cat.name }}</span>
+            <div class="cat-list" *ngIf="categoryStock.length > 0">
+              <div class="cat-item" *ngFor="let cat of categoryStock; let i = index" [style.animation-delay]="i * 0.1 + 's'">
+                <div class="cat-info">
+                  <span class="cat-name">{{ cat.name }}</span>
+                  <div class="cat-progress">
+                    <div class="cat-progress-bar" [style.width.%]="(cat.count / getMaxCategoryCount()) * 100"></div>
+                  </div>
+                </div>
                 <span class="cat-pill">{{ cat.count }}</span>
               </div>
+            </div>
+            <div class="empty-state" *ngIf="categoryStock.length === 0">
+              <p>Aucune catégorie disponible</p>
             </div>
           </div>
         </div>
@@ -85,7 +156,7 @@
 
       <div class="side-column">
         <section class="glass-card actions-section">
-          <h3>Acces rapides</h3>
+          <h3>Accès rapides</h3>
           <div class="action-tiles">
             <a *ngFor="let link of quickLinks" [routerLink]="link.route" class="tile">
               <div class="tile-icon">{{ link.icon }}</div>
@@ -100,10 +171,10 @@
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <button class="btn-confirm" (click)="downloadReport('stock')" [disabled]="isDownloadingReport">
-              {{ isDownloadingReport ? 'Generation...' : 'Etat du Stock (CSV)' }}
+              {{ isDownloadingReport ? 'Génération...' : 'État du Stock (CSV)' }}
             </button>
             <button class="btn-confirm" (click)="downloadReport('movements')" [disabled]="isDownloadingReport">
-              {{ isDownloadingReport ? 'Generation...' : 'Mouvements (CSV)' }}
+              {{ isDownloadingReport ? 'Génération...' : 'Mouvements (CSV)' }}
             </button>
           </div>
         </section>
@@ -134,22 +205,22 @@
 
               <a class="mini-user-item" *ngIf="isDirector" routerLink="/validation-demandes">
                 <div class="mu-info">
-                  <span class="mu-name">Demandes a valider</span>
-                  <span class="mu-email">Acceder aux validations sans passer par la connexion</span>
+                  <span class="mu-name">Demandes à valider</span>
+                  <span class="mu-email">Accéder aux validations sans passer par la connexion</span>
                 </div>
               </a>
 
               <a class="mini-user-item" *ngIf="isManager" routerLink="/mouvements-stock">
                 <div class="mu-info">
                   <span class="mu-name">Mouvements de stock</span>
-                  <span class="mu-email">Suivre les entrees, sorties et transferts</span>
+                  <span class="mu-email">Suivre les entrées, sorties et transferts</span>
                 </div>
               </a>
 
               <a class="mini-user-item" *ngIf="!isAdmin" routerLink="/chat">
                 <div class="mu-info">
                   <span class="mu-name">Chat interne</span>
-                  <span class="mu-email">Contacter rapidement votre equipe</span>
+                  <span class="mu-email">Contacter rapidement votre équipe</span>
                 </div>
               </a>
 
@@ -162,6 +233,6 @@
 
   <div class="loading-overlay" *ngIf="isLoading">
     <div class="loading-spinner"></div>
-    <p>Synchronisation des donnees...</p>
+    <p>Synchronisation des données...</p>
   </div>
 </div>

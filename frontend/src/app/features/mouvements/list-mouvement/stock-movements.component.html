@@ -86,14 +86,14 @@
           </td>
           <td>
             <div class="location-flow">
-              <span *ngIf="m.source_warehouse_location" class="location-tag source">
-                {{ locationLabel(m.source_warehouse_location) }}
+              <span *ngIf="m.source_warehouse_location || m.source_cabinet" class="location-tag source">
+                {{ locationLabel(m.source_warehouse_location || m.source_cabinet) }}
               </span>
-              <i *ngIf="m.source_warehouse_location && m.destination_warehouse_location" class="icon-arrow-right"></i>
-              <span *ngIf="m.destination_warehouse_location" class="location-tag dest">
-                {{ locationLabel(m.destination_warehouse_location) }}
+              <i *ngIf="(m.source_warehouse_location || m.source_cabinet) && (m.destination_warehouse_location || m.destination_cabinet)" class="icon-arrow-right"></i>
+              <span *ngIf="m.destination_warehouse_location || m.destination_cabinet" class="location-tag dest">
+                {{ locationLabel(m.destination_warehouse_location || m.destination_cabinet) }}
               </span>
-              <span *ngIf="!m.destination_warehouse_location && m.destination_text" class="location-text">
+              <span *ngIf="!m.destination_warehouse_location && !m.destination_cabinet && m.destination_text" class="location-text">
                 → {{ m.destination_text }}
               </span>
             </div>
@@ -308,7 +308,7 @@
                 <select (change)="onSourceSelectionChange($event)" name="sloc">
                   <option [value]="null">Choisir...</option>
                   <optgroup label="Emplacements" *ngIf="sourceLocations.length > 0">
-                    <option *ngFor="let l of sourceLocations" [value]="'location:' + l.id" 
+                    <option *ngFor="let l of sourceLocations" [value]="'location:' + l.id"
                             [selected]="l.id === newMovement.source_warehouse_location_id">
                       📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
                     </option>
@@ -347,7 +347,7 @@
                 <select (change)="onDestSelectionChange($event)" name="dloc">
                   <option [value]="null">Choisir...</option>
                   <optgroup label="Emplacements" *ngIf="destLocations.length > 0">
-                    <option *ngFor="let l of destLocations" [value]="'location:' + l.id" 
+                    <option *ngFor="let l of destLocations" [value]="'location:' + l.id"
                             [selected]="l.id === newMovement.destination_warehouse_location_id"
                             [disabled]="l.capacity_units > 0 && l.current_units >= l.capacity_units">
                       📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}

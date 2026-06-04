@@ -34,10 +34,12 @@ class StockMovementController extends Controller
                 'creator',
                 'validator',
                 'destinationUser',
-                'supplier',
-                'document',
-                'sourceWarehouseLocation.room.warehouse',
-                'destinationWarehouseLocation.room.warehouse',
+            'supplier',
+            'document',
+            'sourceWarehouseLocation.room.warehouse',
+            'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
             ])
             ->latest();
 
@@ -52,7 +54,7 @@ class StockMovementController extends Controller
         if ($request->filled('status')) {
             $query->where('status', $request->input('status'));
         }
-        
+
         $user = Auth::user();
         if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['Administrateur'])) {
             $depotId = (int) $user->depot_id;
@@ -128,6 +130,8 @@ class StockMovementController extends Controller
             'document',
             'sourceWarehouseLocation.room.warehouse',
             'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
         ])->findOrFail($id);
         return response()->json($movement);
     }
@@ -171,7 +175,15 @@ class StockMovementController extends Controller
             }
         });
 
-        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
+        return response()->json($movement->fresh([
+            'lines.product',
+            'creator',
+            'validator',
+            'sourceWarehouseLocation.room.warehouse',
+            'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
+        ]));
     }
 
     /**
@@ -207,7 +219,15 @@ class StockMovementController extends Controller
 
         });
 
-        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
+        return response()->json($movement->fresh([
+            'lines.product',
+            'creator',
+            'validator',
+            'sourceWarehouseLocation.room.warehouse',
+            'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
+        ]));
     }
 
     /**
@@ -246,7 +266,15 @@ class StockMovementController extends Controller
 
         });
 
-        return response()->json($movement->fresh(['lines.product', 'creator', 'validator']));
+        return response()->json($movement->fresh([
+            'lines.product',
+            'creator',
+            'validator',
+            'sourceWarehouseLocation.room.warehouse',
+            'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
+        ]));
     }
 
     /**
@@ -482,7 +510,15 @@ class StockMovementController extends Controller
             Log::error('Stock Movement Notification failed', ['err' => $e->getMessage()]);
         }
 
-        return response()->json($movement->load('lines.product', 'creator', 'validator'), 201);
+        return response()->json($movement->load(
+            'lines.product',
+            'creator',
+            'validator',
+            'sourceWarehouseLocation.room.warehouse',
+            'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet'
+        ), 201);
     }
 
     /**
@@ -504,7 +540,7 @@ class StockMovementController extends Controller
                 $sourceStock = null;
                 $sourceLoc = $line->warehouse_location_id ?? $movement->source_warehouse_location_id;
                 $sourceCab = $line->cabinet_id ?? $movement->source_cabinet_id;
-                
+
                 if ($sourceLoc) {
                     $sourceStock = ProductStock::where('product_id', $product->id)
                         ->where('warehouse_location_id', $sourceLoc)
@@ -535,7 +571,7 @@ class StockMovementController extends Controller
                 $destStock = null;
                 $destLoc = $line->warehouse_location_id ?? $movement->destination_warehouse_location_id;
                 $destCab = $line->cabinet_id ?? $movement->destination_cabinet_id;
-                
+
                 $query = ProductStock::where('product_id', $product->id);
 
                 if ($destLoc) {
@@ -664,6 +700,8 @@ class StockMovementController extends Controller
             'supplier',
             'sourceWarehouseLocation.room.warehouse',
             'destinationWarehouseLocation.room.warehouse',
+            'sourceCabinet',
+            'destinationCabinet',
         ]));
     }
 

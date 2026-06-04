@@ -287,9 +287,9 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     for (const group of this.sortedByDate) {
       const items = Array.isArray(group?.items) && group.items.length > 0 ? group.items : [group];
       const pendingItems = items.filter((it: any) => String(it?.status || '').toLowerCase() === 'approved_pending_exit');
-      
+
       if (pendingItems.length === 0) continue;
-      
+
       const groupId = group.batch_code || group.id;
       if (seen.has(groupId)) continue;
       seen.add(groupId);
@@ -533,11 +533,10 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       request$ = this.consumableRequestService.updateRequest(this.editingRequestId, {
         product_id: l.product_id || null,
         item_name: p ? p.title : l.searchTerm,
-        requested_quantity: l.requested_quantity,
-        status: 'pending'
+        requested_quantity: l.requested_quantity
       });
     } else {
-      // Create new request or Edit a batch request (which will replace the batch via createRequest)
+      // Create new request or edit a batch request (which will replace the batch via createRequest)
       const payload: any = {
         batch_code: this.currentBatchCode,
         items: validLines.map(l => {
@@ -547,15 +546,14 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
             item_name: p ? p.title : l.searchTerm,
             requested_quantity: l.requested_quantity
           };
-        }),
-        status: 'pending'
+        })
       };
       request$ = this.consumableRequestService.createRequest(payload);
     }
 
     this.loading = true;
     this.closeRequestModal(); // Fermer la modal immediatement
-    
+
     request$.subscribe({
       next: () => {
         this.message = this.requestModalEditMode ? 'Demande modifiée avec succès.' : 'demande ajouter avec succes non traite';
