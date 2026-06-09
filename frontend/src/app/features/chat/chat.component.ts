@@ -1,4 +1,4 @@
-﻿import {
+import {
   Component, OnDestroy, OnInit, ChangeDetectorRef,
   ViewChild, ElementRef, AfterViewChecked
 } from '@angular/core';
@@ -65,7 +65,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.msgSub?.unsubscribe();
   }
 
-  /* --- S�lection conversation --- */
+  /* --- Sélection conversation --- */
   selectConversation(conv: any): void {
     this.selectedUser = { ...conv.user };
     this.chatState?.setActive?.({ id: conv.user.id, name: conv.user.name });
@@ -114,7 +114,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectedFile = null;
   }
 
-  /* --- Helpers pr�sence --- */
+  /* --- Helpers présence --- */
   isOnline(lastSeen: string | null | undefined): boolean {
     if (!lastSeen) return false;
     const d = new Date(lastSeen).getTime();
@@ -126,7 +126,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
    *  - "En ligne"              si < 5 min
    *  - "Vu a 14:32"           si aujourd'hui mais > 5 min
    *  - "Vu hier a 14:32"      si hier
-   *  - "Vu avant-hier �..."   si avant-hier
+   *  - "Vu avant-hier é..."   si avant-hier
    *  - "Vu le 12/03 a 14:32"  sinon
    */
   presenceLabel(lastSeen: string | null | undefined): string {
@@ -140,10 +140,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const diffDays = Math.floor(diffMs / 86_400_000);
     const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-    if (diffDays === 0) return `Vu a ${time}`;
-    if (diffDays === 1) return `Vu hier a ${time}`;
-    if (diffDays === 2) return `Vu avant-hier a ${time}`;
-    return `Vu le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} a ${time}`;
+    if (diffDays === 0) return `Connecté à ${time}`;
+    if (diffDays === 1) return `Connecté hier à ${time}`;
+    if (diffDays === 2) return `Connecté avant-hier à ${time}`;
+    return `Connecté le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à ${time}`;
   }
 
   statusLabel(): string {
@@ -159,7 +159,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return conv?.last_read_at ? 'Vu' : 'Non vu';
   }
 
-  /* --- S�parateurs de jours dans les messages --- */
+  /* --- Séparateurs de jours dans les messages --- */
   get messagesWithSeparators(): any[] {
     const result: any[] = [];
     let lastDay = '';
@@ -184,8 +184,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Formate une date pour les s�parateurs ou les horodatages sidebar.
-   * @param full  true = texte complet pour s�parateur ("Aujourd'hui", "Hier"�)
+   * Formate une date pour les séparateurs ou les horodatages sidebar.
+   * @param full  true = texte complet pour séparateur ("Aujourd'hui", "Hier"é)
    *              false = version courte pour sidebar ("14:32", "Hier", "12/03")
    */
   smartDate(dateStr: string | null | undefined, full = false): string {
@@ -275,7 +275,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return `le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} a ${time}`;
   }
 
-  /* --- Priv� --- */
+  /* --- Privé --- */
   private startConversationsPolling(): void {
     this.convSub?.unsubscribe();
     this.convSub = this.chat.pollConversations().subscribe({
@@ -322,9 +322,12 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.msgSub?.unsubscribe();
     this.msgSub = this.chat.pollMessages(this.selectedUser.id).subscribe({
       next: (data) => {
+        const isNew = !this.messages || this.messages.length !== data.length;
         this.messages = data;
         this.loadingMessages = false;
-        this.shouldScroll = true;
+        if (isNew) {
+            this.shouldScroll = true;
+        }
         this.cdr.detectChanges();
       },
       error: () => { this.loadingMessages = false; }

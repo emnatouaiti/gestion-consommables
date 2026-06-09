@@ -71,12 +71,12 @@ export class ReferencesComponent implements OnInit {
 
   addModele(): void {
     if (!this.selectedMarque) {
-      alert('Veuillez s�lectionner une marque d\'abord.');
+      alert('Veuillez sélectionner une marque d\'abord.');
       return;
     }
     this.modalType = 'modele';
     this.modalMode = 'add';
-    this.modalTitle = `Nouveau Mod�le (${this.selectedMarque.name})`;
+    this.modalTitle = `Nouveau Modéle (${this.selectedMarque.name})`;
     this.modalInput = '';
     this.editingItem = null;
     this.showModal = true;
@@ -85,7 +85,7 @@ export class ReferencesComponent implements OnInit {
   editModele(mo: any): void {
     this.modalType = 'modele';
     this.modalMode = 'edit';
-    this.modalTitle = 'Modifier le Mod�le';
+    this.modalTitle = 'Modifier le Modéle';
     this.modalInput = mo.name;
     this.editingItem = mo;
     this.showModal = true;
@@ -119,5 +119,5 @@ export class ReferencesComponent implements OnInit {
 
   deleteMarque(m: any): void { if (!confirm('Supprimer cette marque ?')) return; this.svc.deleteMarque(m.id).subscribe({ next: ()=> { this.loadMarques(); this.modeles = []; this.selectedMarque = null; }, error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
 
-  deleteModele(mo: any): void { if (!confirm('Supprimer ce mod�le ?')) return; this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
+  deleteModele(mo: any): void { if (!confirm('Supprimer ce modéle ?')) return; this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
 }

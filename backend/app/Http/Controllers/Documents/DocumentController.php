@@ -222,7 +222,7 @@ class DocumentController extends Controller
                 'name'  => $supplierName ?? ($supplierEmail ?? 'Fournisseur OCR'),
                 'email' => $supplierEmail,
                 'phone' => null,
-                'notes' => 'CrÃ©Ã© automatiquement depuis OCR',
+                'notes' => 'CrÃÃ automatiquement depuis OCR',
             ]);
             $supplierId = $newSupplier->id;
         }
@@ -252,7 +252,7 @@ class DocumentController extends Controller
             $document->direction = 'in';
         }
         if (($document->direction === 'in' || $document->type === 'bon_livraison') && !$document->supplier_id) {
-            return response()->json(['message' => 'SÃ©lectionnez un fournisseur avant d\'appliquer ce bon de livraison.'], 422);
+            return response()->json(['message' => 'SÃlectionnez un fournisseur avant d\'appliquer ce bon de livraison.'], 422);
         }
 
         $items = $request->input('items');
@@ -350,14 +350,14 @@ class DocumentController extends Controller
         }
         if (count($missingProducts) > 0) {
             return response()->json([
-                'message' => 'Des produits sont introuvables. Choisissez une catÃ©gorie pour chacun.',
+                'message' => 'Des produits sont introuvables. Choisissez une catÃgorie pour chacun.',
                 'suggested_products' => $missingProducts,
             ], 409);
         }
 
         $allowAutoProduct = $request->boolean('auto_create_product', false);
         if (!$allowAutoProduct && count(array_filter($prepareActions, fn($a) => $a['product'] === null)) > 0) {
-            return response()->json(['message' => 'Produit introuvable, confirmation nÃ©cessaire avant crÃ©ation.'], 409);
+            return response()->json(['message' => 'Produit introuvable, confirmation nÃcessaire avant crÃation.'], 409);
         }
 
         $validSupplierId = null;
@@ -384,13 +384,13 @@ class DocumentController extends Controller
         foreach ($locDeltas as $locId => $delta) {
             $loc = \App\Models\WarehouseLocation::find($locId);
             if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $delta) > $loc->capacity_units) {
-                return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour l\'emplacement '.$loc->name], 422);
+                return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour l\'emplacement '.$loc->name], 422);
             }
         }
         foreach ($cabDeltas as $cabId => $delta) {
             $cab = \App\Models\WarehouseCabinet::find($cabId);
             if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $delta) > $cab->capacity_units) {
-                return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour l\'armoire '.$cab->name], 422);
+                return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour l\'armoire '.$cab->name], 422);
             }
         }
 
@@ -498,7 +498,7 @@ class DocumentController extends Controller
                 'source_warehouse_location_id'      => $movementType === 'out' ? $firstLocId : null,
                 'destination_cabinet_id'            => $movementType === 'in'  ? $firstCabId : null,
                 'source_cabinet_id'                 => $movementType === 'out' ? $firstCabId : null,
-                'notes' => 'GÃ©nÃ©rÃ© par OCR Document: ' . $document->title,
+                'notes' => 'GÃnÃrÃ par OCR Document: ' . $document->title,
             ]);
 
             foreach ($prepareActions as $action) {
@@ -535,7 +535,7 @@ class DocumentController extends Controller
             }
         });
 
-        $msg = $isManager ? 'Document appliquÃ©' : 'Application soumise Ã  validation';
+        $msg = $isManager ? 'Document appliquÃ' : 'Application soumise Ã  validation';
         return response()->json(['message' => $msg, 'document' => $document->fresh()]);
     }
 
@@ -596,9 +596,9 @@ class DocumentController extends Controller
         }
         $text = Str::lower($ocrText);
         if (str_contains($text, 'bon de livraison') || $guessedType === 'bon_livraison') return 'Bon de livraison';
-        if (str_contains($text, 'bon de reception') || str_contains($text, 'bon de rÃ©ception')) return 'Bon de rÃ©ception';
+        if (str_contains($text, 'bon de reception') || str_contains($text, 'bon de rÃception')) return 'Bon de rÃception';
         if (str_contains($text, 'bon de sortie')) return 'Bon de sortie';
-        if (str_contains($text, 'rÃ©ception de marchandise') || str_contains($text, 'reception de marchandise')) return 'Bon de rÃ©ception';
+        if (str_contains($text, 'rÃception de marchandise') || str_contains($text, 'reception de marchandise')) return 'Bon de rÃception';
         if (str_contains($text, 'facture')) return 'Facture';
         $first = $this->firstLine($ocrText);
         return $first ?: $fallbackName;
@@ -723,7 +723,7 @@ class DocumentController extends Controller
         if ($t === '' || mb_strlen($t) < 3) return false;
 
         // Must contain letters
-        if (!preg_match('/[a-zÃ Ã¢Ã¤Ã©Ã¨ÃªÃ«Ã®Ã¯Ã´Ã¶Ã¹Ã»Ã¼Ã§]/iu', $t)) return false;
+        if (!preg_match('/[a-zÃ Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼Ã§]/iu', $t)) return false;
 
         // Reject metadata-like lines
         if (preg_match('/gmail|email|date|numero|bon de livraison|client|adresse|livraison|destinataire|recu|regu|contact|phone/i', $t)) {
@@ -731,11 +731,11 @@ class DocumentController extends Controller
         }
 
         // Reject highly noisy fragments with too many symbols
-        $symbols = preg_match_all('/[^a-z0-9Ã Ã¢Ã¤Ã©Ã¨ÃªÃ«Ã®Ã¯Ã´Ã¶Ã¹Ã»Ã¼Ã§\s\-]/iu', $t);
+        $symbols = preg_match_all('/[^a-z0-9Ã Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼Ã§\s\-]/iu', $t);
         if ($symbols !== false && $symbols > 3) return false;
 
         // Very short vowel-less gibberish
-        if (mb_strlen($t) <= 8 && !preg_match('/[aeiouyÃ Ã¢Ã¤Ã©Ã¨ÃªÃ«Ã®Ã¯Ã´Ã¶Ã¹Ã»Ã¼]/iu', $t)) return false;
+        if (mb_strlen($t) <= 8 && !preg_match('/[aeiouyÃ Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼]/iu', $t)) return false;
 
         return true;
     }
@@ -830,11 +830,11 @@ class DocumentController extends Controller
         $signals = 0;
 
         // Reference column header variants
-        if (preg_match('/r[eÃ©iÃ®]?f[eÃ©iÃ®]?[rn]?[eÃ©iÃ®]?[nc]?[ec]?[eo]?|rif/i', $t)) $signals++;
+        if (preg_match('/r[eÃiÃ]?f[eÃiÃ]?[rn]?[eÃiÃ]?[nc]?[ec]?[eo]?|rif/i', $t)) $signals++;
         // Description / produit column header variants
         if (preg_match('/descri?p?ti?[o0]?n?|produit|descriptiond[anu]produit|descr|prod/i', $t)) $signals++;
         // Quantity column header variants
-        if (preg_match('/quan?ti?[tdÃ©]?[eÃ©]?|qte|qty|ouanti|uanti/i', $t)) $signals++;
+        if (preg_match('/quan?ti?[tdÃ]?[eÃ]?|qte|qty|ouanti|uanti/i', $t)) $signals++;
         // Observations / Notes column
         if (preg_match('/observ|notes?/', $t)) $signals++;
         // Metadata signals
@@ -919,29 +919,29 @@ class DocumentController extends Controller
         // Sort rows top-to-bottom
         usort($rows, fn($a, $b) => (int)min(array_column($a, 'top')) <=> (int)min(array_column($b, 'top')));
 
-        // Locate the header row (Reference + QuantitÃ© columns)
+        // Locate the header row (Reference + QuantitÃ columns)
         $headerRowIdx  = null;
         $refColEnd     = null;
         $qtyColStart   = null;
         $qtyColEnd     = null;
-        $qtyPrimaryStart = null; // "QuantitÃ© LivrÃ©e" when present
+        $qtyPrimaryStart = null; // "QuantitÃ LivrÃe" when present
         $qtyPrimaryEnd   = null;
         $titleColStart = null;
         $titleColEnd   = null;
 
         foreach ($rows as $idx => $row) {
             $rowText  = strtolower(implode(' ', array_column($row, 'text')));
-            $hasRef   = preg_match('/r[eÃ©iÃ®]?f/', $rowText) === 1;
-            $hasQty   = preg_match('/quan?ti?[tdÃ©]?[eÃ©]?|qty|qte/', $rowText) === 1;
+            $hasRef   = preg_match('/r[eÃiÃ]?f/', $rowText) === 1;
+            $hasQty   = preg_match('/quan?ti?[tdÃ]?[eÃ]?|qty|qte/', $rowText) === 1;
             $hasDescr = preg_match('/descri?p?ti?[o0]?n?|produit/', $rowText) === 1;
 
             if ($hasRef && ($hasQty || $hasDescr)) {
                 $headerRowIdx = $idx;
                 foreach ($row as $word) {
-                    if (preg_match('/r[eÃ©iÃ®]?f[eÃ©iÃ®]?[rn]?[eÃ©iÃ®]?[nc]?[ec]?[eo]?/i', $word['text'])) {
+                    if (preg_match('/r[eÃiÃ]?f[eÃiÃ]?[rn]?[eÃiÃ]?[nc]?[ec]?[eo]?/i', $word['text'])) {
                         $refColEnd = $word['right'] + 80;
                     }
-                    if (preg_match('/quan?ti?[tdÃ©]?[eÃ©]?/i', $word['text'])) {
+                    if (preg_match('/quan?ti?[tdÃ]?[eÃ]?/i', $word['text'])) {
                         // FIX-4: widen boundary by 150 px to the left to absorb OCR drift
                         $qtyColStart = $word['left'] - 150;
                         $qtyColEnd   = $word['right'] + 120;
@@ -949,7 +949,7 @@ class DocumentController extends Controller
                     if (preg_match('/descri?p?ti?[o0]?n?|produit/i', $word['text'])) {
                         $titleColStart = $word['left'] - 20;
                     }
-                    if (preg_match('/livr[Ã©e]e?/i', $word['text'])) {
+                    if (preg_match('/livr[Ãe]e?/i', $word['text'])) {
                         $qtyPrimaryStart = $word['left'] - 40;
                         $qtyPrimaryEnd   = $word['right'] + 80;
                     }
@@ -1031,7 +1031,7 @@ class DocumentController extends Controller
                     $ref = 'INV-' . $m[1];
                     break;
                 }
-                // Generic numeric row references (1, 2, 3...) for table formats with "RÃ©f."
+                // Generic numeric row references (1, 2, 3...) for table formats with "RÃf."
                 if (preg_match('/^\d{1,3}$/', $tok)) {
                     $ref = 'REF-' . ltrim($tok, '0');
                     if ($ref === 'REF-') $ref = 'REF-0';
@@ -1100,7 +1100,7 @@ class DocumentController extends Controller
                 }
             }
 
-            // If document has two quantity columns (commandÃ©e/livrÃ©e), prefer right-most (livrÃ©e).
+            // If document has two quantity columns (commandÃe/livrÃe), prefer right-most (livrÃe).
             if (!empty($qtyTokens)) {
                 $qtyFromRightMost = null;
                 $rightZone = [];
@@ -1459,7 +1459,7 @@ class DocumentController extends Controller
                 $cmd = $binArg . ' ' . $fileArg . ' stdout -l ' . $lang
                     . ' --psm ' . $psm . ' --oem 1'
                     . ' -c preserve_interword_spaces=1'
-                    . ' -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789Ã©Ã¨ÃªÃ Ã¢Ã¹Ã»Ã§Ã‰ÃˆÃŠÃ€Ã‚Ã™Ã›Ã‡.:/_-,"()Â°+*%@\' '
+                    . ' -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ÃÃ¨ÃªÃ Ã¢Ã¹Ã»Ã§Ã‰ÃˆÃŠÃ€Ã‚ÃÃ›Ã‡.:/_-,"()Â°+*%@\' '
                     . ' -c user_defined_dpi=300';
 
                 $tdp = env('TESSDATA_PREFIX');
@@ -1559,7 +1559,7 @@ class DocumentController extends Controller
             
             // Skip clear metadata lines
             if (preg_match('/adresse|livraison|destinataire|client|nom du|contact|phone|email|tel:|fax:|site web|gmail|hotmail|yahoo/i', $lowLine)) continue;
-            if (preg_match('/bon de livraison|numero de bon|rÃ©fÃ©rence n/i', $lowLine)) continue;
+            if (preg_match('/bon de livraison|numero de bon|rÃfÃrence n/i', $lowLine)) continue;
 
             if ($this->isHeaderRow($line) || str_contains($lowLine, 'ref')) {
                 $headerFound = true;
@@ -1728,12 +1728,12 @@ class DocumentController extends Controller
             foreach ($lines as $line) {
                 $low = mb_strtolower($line);
                 if ($low === '') continue;
-                if (preg_match('/rÃ©f|ref|dÃ©signation|quantitÃ©|commandÃ©e|livrÃ©e|livree/i', $low)) continue;
+                if (preg_match('/rÃf|ref|dÃsignation|quantitÃ|commandÃe|livrÃe|livree/i', $low)) continue;
                 if (preg_match('/client|adresse|date|bon|livraison|recu|regu|email|gmail/i', $low)) continue;
 
                 $clean = preg_replace('/\s+/', ' ', trim($line));
 
-                // Pattern: "1 gel Ã  main 20 20" -> qty = last (livrÃ©e)
+                // Pattern: "1 gel Ã  main 20 20" -> qty = last (livrÃe)
                 if (preg_match('/^\s*(\d{1,3})\s+(.+?)\s+(\d{1,4})\s+(\d{1,4})\s*$/u', $clean, $m)) {
                     $title = $this->fixOcrTitleNoise(trim($m[2]));
                     if (!$this->isLikelyValidTitle($title)) continue;
@@ -1858,7 +1858,7 @@ class DocumentController extends Controller
     private function guessDirection(string $text): string
     {
         $t = Str::lower($text);
-        if (preg_match('/bon\s*de\s*livraison|bondelivraison|r[eÃ©]ception|entree|entr[eÃ©]/iu', $t)) return 'in';
+        if (preg_match('/bon\s*de\s*livraison|bondelivraison|r[eÃ]ception|entree|entr[eÃ]/iu', $t)) return 'in';
         if (preg_match('/bon\s*de\s*sortie|bonsortie|sortie/iu', $t)) return 'out';
         return 'unknown';
     }
@@ -1974,7 +1974,7 @@ class DocumentController extends Controller
         $user        = $request->user();
         $warehouseId = $request->input('warehouse_id');
         if (!$warehouseId && $user && $user->depot_id) $warehouseId = $user->depot_id;
-        if (!$warehouseId) return response()->json(['message' => 'Aucun dÃ©pÃ´t trouvÃ© pour cet utilisateur.'], 404);
+        if (!$warehouseId) return response()->json(['message' => 'Aucun dÃpÃ´t trouvÃ pour cet utilisateur.'], 404);
 
         $quantity = (int) ($request->input('quantity') ?? 1);
 
@@ -2041,7 +2041,7 @@ class DocumentController extends Controller
 
         return response()->json([
             'found'              => false,
-            'message'            => 'Aucun emplacement ou armoire disponible avec la capacitÃ© requise.',
+            'message'            => 'Aucun emplacement ou armoire disponible avec la capacitÃ requise.',
             'quantity_requested' => $quantity,
             'warehouse_id'       => $warehouseId,
         ], 404);
@@ -2052,7 +2052,7 @@ class DocumentController extends Controller
         $user        = $request->user();
         $warehouseId = $request->input('warehouse_id');
         if (!$warehouseId && $user && $user->depot_id) $warehouseId = $user->depot_id;
-        if (!$warehouseId) return response()->json(['message' => 'Aucun dÃ©pÃ´t trouvÃ© pour cet utilisateur.'], 404);
+        if (!$warehouseId) return response()->json(['message' => 'Aucun dÃpÃ´t trouvÃ pour cet utilisateur.'], 404);
 
         $locations = \App\Models\WarehouseLocation::join('warehouse_rooms', 'warehouse_locations.room_id', '=', 'warehouse_rooms.id')
             ->where('warehouse_rooms.warehouse_id', $warehouseId)

@@ -10,7 +10,11 @@ export class AuthGuard implements CanActivate {
     constructor(private authService: AuthService, private router: Router) { }
 
     canActivate(): boolean | UrlTree {
-        if (this.authService.isAuthenticated()) {
+        // Vérifier à la fois le token ET que l'utilisateur est chargé
+        const hasToken = this.authService.isAuthenticated();
+        const hasUser = this.authService.getCurrentUserSnapshot() !== null;
+
+        if (hasToken && hasUser) {
             return true;
         }
 

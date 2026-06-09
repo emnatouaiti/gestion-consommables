@@ -888,22 +888,52 @@
 .alert-banner {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1rem 1.5rem;
+  gap: 0;
+  padding: 0;
+  padding-right: 0.5rem;
   border-radius: 0.75rem;
   margin-bottom: 0.75rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
+  background: linear-gradient(135deg, #eff6ff 0%, #e0e7ff 100%);
+  border: 1px solid #c7d2fe;
   animation: slideInDown 0.4s ease-out;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.alert-banner:hover {
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
+  transform: translateY(-1px);
 }
 
 .alert-banner.severity-high {
   background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-  border: 2px solid #fca5a5;
+  border: 1.5px solid #fca5a5;
+}
+
+.alert-banner.severity-high:hover {
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.alert-link {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex: 1;
+  padding: 1rem 1.25rem;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  transition: all 0.2s;
 }
 
 .alert-icon {
   font-size: 1.25rem;
+  color: var(--p-primary);
+  flex-shrink: 0;
+}
+
+.severity-high .alert-icon {
+  color: #dc2626;
   animation: alertPulse 1.5s ease-in-out infinite;
 }
 
@@ -923,19 +953,48 @@
   font-size: 0.9375rem;
 }
 
+.alert-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.35rem 0.85rem;
+  background: var(--p-primary);
+  color: white;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.severity-high .alert-action-btn {
+  background: #dc2626;
+}
+
+.alert-link:hover .alert-action-btn {
+  transform: translateX(2px);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+}
+
+.severity-high .alert-link:hover .alert-action-btn {
+  box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+}
+
 .alert-dismiss {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border: none;
   background: rgba(0, 0, 0, 0.05);
   border-radius: 50%;
   cursor: pointer;
-  font-size: 0.875rem;
+  font-size: 0.75rem;
   color: var(--p-text-dim);
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 0.25rem;
 }
 
 .alert-dismiss:hover {

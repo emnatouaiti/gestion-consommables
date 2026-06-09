@@ -40,7 +40,7 @@ class ProductController extends Controller
             'unit:id,name,code',
         ]);
 
-        // Filtrage par dÃ©pÃ´t pour les responsables/agents
+        // Filtrage par dÃpÃ´t pour les responsables/agents
         $user = auth()->user();
         if ($user && (($user->role?->name ?? '') === 'responsable' || ($user->role?->name ?? '') === 'agent') && $user->depot_id) {
             $depotId = $user->depot_id;
@@ -199,9 +199,9 @@ class ProductController extends Controller
 
             if ($existingDuplicate) {
                 return response()->json([
-                    'message' => 'Ce produit (Titre + Marque + ModÃ¨le) existe dÃ©jÃ .',
+                    'message' => 'Ce produit (Titre + Marque + ModÃ¨le) existe dÃjÃ .',
                     'errors' => [
-                        'title' => ['Un produit identique est dÃ©jÃ  enregistrÃ©.'],
+                        'title' => ['Un produit identique est dÃjÃ  enregistrÃ.'],
                     ],
                     'existing_product' => $existingDuplicate,
                 ], 422);
@@ -435,14 +435,14 @@ class ProductController extends Controller
         if ($apiKey) {
             \Illuminate\Support\Facades\Log::info("Attempting Gemini AI generation for: {$title}");
             try {
-                $prompt = "GÃ©nÃ¨re une description courte (environ 150 caractÃ¨res) et une description longue et dÃ©taillÃ©e (environ 500-1000 caractÃ¨res) RÃ‰DIGÃ‰ES EXCLUSIVEMENT EN FRANÃ‡AIS pour le produit suivant : \n";
+                $prompt = "GÃnÃ¨re une description courte (environ 150 caractÃ¨res) et une description longue et dÃtaillÃe (environ 500-1000 caractÃ¨res) RÃ‰DIGÃ‰ES EXCLUSIVEMENT EN FRANÃ‡AIS pour le produit suivant : \n";
                 $prompt .= "Titre: {$title}\n";
                 if ($marque) $prompt .= "Marque: {$marque}\n";
                 if ($model) $prompt .= "ModÃ¨le: {$model}\n";
                 $prompt .= "\nInstructions :\n";
                 $prompt .= "1. Le ton doit Ãªtre professionnel et technique.\n";
-                $prompt .= "2. DÃ©cris l'utilitÃ©, les caractÃ©ristiques et les avantages du produit.\n";
-                $prompt .= "3. RÃ©ponds UNIQUEMENT au format JSON brut suivant (pas de texte avant ou aprÃ¨s) :\n";
+                $prompt .= "2. DÃcris l'utilitÃ, les caractÃristiques et les avantages du produit.\n";
+                $prompt .= "3. RÃponds UNIQUEMENT au format JSON brut suivant (pas de texte avant ou aprÃ¨s) :\n";
                 $prompt .= "{\"short_description\": \"...\", \"description\": \"...\"}";
 
                 $response = \Illuminate\Support\Facades\Http::post("https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key={$apiKey}", [
@@ -495,21 +495,21 @@ class ProductController extends Controller
 
         $short = "{$title}";
         if ($marque) $short .= " ({$marque})";
-        if ($categoryName) $short .= " - CatÃ©gorie: {$categoryName}";
+        if ($categoryName) $short .= " - CatÃgorie: {$categoryName}";
         $short .= ". Consommable fiable pour usage intensif.";
 
         $description = "Le produit \"{$title}\"";
         if ($marque) $description .= " sous la marque {$marque}";
         if ($model) $description .= " (ModÃ¨le: {$model})";
         
-        $description .= " est une solution de haute qualitÃ©";
+        $description .= " est une solution de haute qualitÃ";
         if ($categoryName) $description .= " dans la gamme des {$categoryName}";
         
-        $description .= ". Ce consommable a Ã©tÃ© sÃ©lectionnÃ© pour sa performance constante et sa durabilitÃ©. ";
-        $description .= "Il s'intÃ¨gre parfaitement dans vos processus opÃ©rationnels quotidiens, garantissant une efficacitÃ© optimale et une gestion simplifiÃ©e de votre stock.";
+        $description .= ". Ce consommable a ÃtÃ sÃlectionnÃ pour sa performance constante et sa durabilitÃ. ";
+        $description .= "Il s'intÃ¨gre parfaitement dans vos processus opÃrationnels quotidiens, garantissant une efficacitÃ optimale et une gestion simplifiÃe de votre stock.";
         
         if ($categoryName == 'Informatique' || $categoryName == 'Bureautique') {
-            $description .= " Compatible avec les standards du secteur, il rÃ©pond aux exigences techniques les plus strictes.";
+            $description .= " Compatible avec les standards du secteur, il rÃpond aux exigences techniques les plus strictes.";
         }
 
         return response()->json([

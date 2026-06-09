@@ -111,7 +111,7 @@ export class WarehousesComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.errorMessage = 'Impossible de charger les d�p�ts.';
+        this.errorMessage = 'Impossible de charger les dépôts.';
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -171,10 +171,10 @@ export class WarehousesComponent implements OnInit {
           }
           this.cdr.detectChanges();
         } else {
-          console.warn('Adresse non trouv�e sur la carte');
+          console.warn('Adresse non trouvée sur la carte');
         }
       })
-      .catch(err => console.error('Erreur de g�ocodage:', err));
+      .catch(err => console.error('Erreur de géocodage:', err));
   }
 
   initMap(lat = 36.8065, lng = 10.1815, retryCount = 0): void {
@@ -212,7 +212,7 @@ export class WarehousesComponent implements OnInit {
     try {
       this.map = L.map('warehouseMap').setView([initialLat, initialLng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '� OpenStreetMap'
+        attribution: 'é OpenStreetMap'
       }).addTo(this.map);
 
       this.marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(this.map);
@@ -276,7 +276,7 @@ export class WarehousesComponent implements OnInit {
 
       this.consultMap = L.map('consultMap').setView([lat, lng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '� OpenStreetMap'
+        attribution: 'é OpenStreetMap'
       }).addTo(this.consultMap);
 
       if (warehouse.latitude && warehouse.longitude) {
@@ -308,7 +308,7 @@ export class WarehousesComponent implements OnInit {
 
   saveWarehouse(): void {
     if (!this.warehouseForm.name) {
-      this.errorMessage = 'Le nom du d�p�t est obligatoire.';
+      this.errorMessage = 'Le nom du dépôt est obligatoire.';
       return;
     }
 
@@ -320,7 +320,7 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingWarehouseId ? 'D�p�t mis � jour !' : 'D�p�t cr�� !';
+        this.successMessage = this.editingWarehouseId ? 'Dépôt mis é jour !' : 'Dépôt créé !';
         this.closeWarehouseModal();
         this.loadWarehouses();
         setTimeout(() => this.successMessage = '', 3000);
@@ -343,7 +343,7 @@ export class WarehousesComponent implements OnInit {
 
     this.warehouseService.deleteWarehouse(id).subscribe({
       next: () => {
-        this.successMessage = 'D�p�t supprim� !';
+        this.successMessage = 'Dépôt supprimé !';
         this.loadWarehouses();
         this.selectedWarehouse = null;
         this.rooms = [];
@@ -351,7 +351,7 @@ export class WarehousesComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer ce d�p�t.');
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer ce dépôt.');
         this.cdr.detectChanges();
       }
     });
@@ -400,7 +400,7 @@ export class WarehousesComponent implements OnInit {
 
   openAddRoomModal(): void {
     if (!this.selectedWarehouse) {
-      this.errorMessage = 'Veuillez s�lectionner un d�p�t d\'abord.';
+      this.errorMessage = 'Veuillez sélectionner un dépôt d\'abord.';
       return;
     }
     this.resetRoomForm();
@@ -430,7 +430,7 @@ export class WarehousesComponent implements OnInit {
     }
 
     if (!this.selectedWarehouse) {
-      this.errorMessage = 'D�p�t non s�lectionn�.';
+      this.errorMessage = 'Dépôt non sélectionné.';
       return;
     }
 
@@ -447,7 +447,7 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingRoomId ? 'Salle mise � jour !' : 'Salle cr��e !';
+        this.successMessage = this.editingRoomId ? 'Salle mise é jour !' : 'Salle créée !';
         this.closeRoomModal();
         this.loadRooms();
         setTimeout(() => this.successMessage = '', 3000);
@@ -470,7 +470,7 @@ export class WarehousesComponent implements OnInit {
 
     this.warehouseService.deleteRoom(id).subscribe({
       next: () => {
-        this.successMessage = 'Salle supprim�e !';
+        this.successMessage = 'Salle supprimée !';
         this.loadRooms();
         this.selectedRoom = null;
         this.locations = [];
@@ -510,7 +510,7 @@ export class WarehousesComponent implements OnInit {
 
   openAddLocationModal(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Veuillez s�lectionner une salle d\'abord.';
+      this.errorMessage = 'Veuillez sélectionner une salle d\'abord.';
       return;
     }
     this.resetLocationForm();
@@ -540,7 +540,7 @@ export class WarehousesComponent implements OnInit {
     }
 
     if (!this.selectedRoom) {
-      this.errorMessage = 'Salle non s�lectionn�e.';
+      this.errorMessage = 'Salle non sélectionnée.';
       return;
     }
 
@@ -557,7 +557,7 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingLocationId ? 'Emplacement mis � jour !' : 'Emplacement cr�� !';
+        this.successMessage = this.editingLocationId ? 'Emplacement mis é jour !' : 'Emplacement créé !';
         this.closeLocationModal();
         this.loadLocations();
         setTimeout(() => this.successMessage = '', 3000);
@@ -580,7 +580,7 @@ export class WarehousesComponent implements OnInit {
 
     this.warehouseService.deleteLocation(id).subscribe({
       next: () => {
-        this.successMessage = 'Emplacement supprim� !';
+        this.successMessage = 'Emplacement supprimé !';
         this.loadLocations();
         setTimeout(() => this.successMessage = '', 3000);
       },
@@ -618,7 +618,7 @@ export class WarehousesComponent implements OnInit {
 
   openAddCabinetModal(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Veuillez s�lectionner une salle d\'abord.';
+      this.errorMessage = 'Veuillez sélectionner une salle d\'abord.';
       return;
     }
     this.resetCabinetForm();
@@ -643,7 +643,7 @@ export class WarehousesComponent implements OnInit {
 
   saveCabinet(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Salle non s�lectionn�e.';
+      this.errorMessage = 'Salle non sélectionnée.';
       return;
     }
 
@@ -665,7 +665,7 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingCabinetId ? 'Armoire mise � jour !' : 'Armoire cr��e !';
+        this.successMessage = this.editingCabinetId ? 'Armoire mise é jour !' : 'Armoire créée !';
         this.closeCabinetModal();
         this.loadCabinets();
         setTimeout(() => this.successMessage = '', 3000);
@@ -688,7 +688,7 @@ export class WarehousesComponent implements OnInit {
 
     this.warehouseService.deleteCabinet(id).subscribe({
       next: () => {
-        this.successMessage = 'Armoire supprim�e !';
+        this.successMessage = 'Armoire supprimée !';
         this.loadCabinets();
         setTimeout(() => this.successMessage = '', 3000);
       },

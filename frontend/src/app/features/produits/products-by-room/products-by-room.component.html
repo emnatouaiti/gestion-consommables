@@ -51,7 +51,7 @@
             </td>
             <td><span class="stock-badge" [ngClass]="p.stock_quantity <= 0 ? 'rupture' : (p.seuil_min && p.stock_quantity <= p.seuil_min ? 'faible' : 'ok')">{{ p.stock_quantity }}</span></td>
             <td>
-              <button class="btn-stocks" (click)="manageProductStocks(p)" title="Voir les stocks">📊 Stocks</button>
+              <button class="btn-stocks" (click)="manageProductStocks(p)" title="Voir les stocks"> Stocks</button>
             </td>
           </tr>
         </tbody>

@@ -215,7 +215,7 @@
                                 <span class="no-products" *ngIf="!supplier.products_count">0</span>
                             </td>
 
-                            <!-- ✅ Colonne Documents -->
+                            <!--  Colonne Documents -->
                             <td class="col-docs">
                                 <button class="docs-cell-btn"
                                     (click)="openDocsModal(supplier)"
@@ -342,10 +342,10 @@
                     <div class="review-controls">
                         <select [(ngModel)]="newReviewRating" class="form-control rating-select">
                             <option [ngValue]="5">5 étoiles (Excellent)</option>
-                            <option [ngValue]="4">⭐⭐⭐⭐ (4)</option>
-                            <option [ngValue]="3">⭐⭐⭐ (3)</option>
-                            <option [ngValue]="2">⭐⭐ (2)</option>
-                            <option [ngValue]="1">⭐ (1)</option>
+                            <option [ngValue]="4"> (4)</option>
+                            <option [ngValue]="3"> (3)</option>
+                            <option [ngValue]="2"> (2)</option>
+                            <option [ngValue]="1"> (1)</option>
                         </select>
                         <button class="btn primary sm" (click)="submitReview()"
                             [disabled]="isLoading || !newReviewContent.trim()">
@@ -370,7 +370,7 @@
                             <span class="review-date">{{ rev.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
                         </div>
                         <div class="review-rating" *ngIf="rev.rating">
-                            <span class="stars">{{ '⭐'.repeat(rev.rating) }}</span>
+                            <span class="stars">{{ ''.repeat(rev.rating) }}</span>
                         </div>
                         <p class="review-content">{{ rev.content }}</p>
                     </div>

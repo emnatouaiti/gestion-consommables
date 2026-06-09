@@ -22,14 +22,14 @@ use Illuminate\Support\Facades\DB;
  * ContrÃ´leur pour la gestion des expirations et alertes
  *
  * Endpoints:
- * GET    /api/expirations/check           - Scanner et vÃ©rifier toutes les expirations
- * GET    /api/expirations/expired         - Lister les produits expirÃ©Ã©s
+ * GET    /api/expirations/check           - Scanner et vÃrifier toutes les expirations
+ * GET    /api/expirations/expired         - Lister les produits expirÃÃs
  * GET    /api/expirations/expiring-soon   - Lister les produits expirant bientÃ´t
- * GET    /api/expirations/alerts          - Lister les alertes non traitÃ©es
+ * GET    /api/expirations/alerts          - Lister les alertes non traitÃes
  * GET    /api/expirations/history         - Historique complet
- * POST   /api/expirations/{id}/acknowledge - Marquer une alerte comme traitÃ©e
+ * POST   /api/expirations/{id}/acknowledge - Marquer une alerte comme traitÃe
  * POST   /api/expirations/{id}/force-consume - Admin: forcer consommation
- * GET    /api/product-stocks/{id}/status - VÃ©rifier le statut d'expiration d'un stock
+ * GET    /api/product-stocks/{id}/status - VÃrifier le statut d'expiration d'un stock
  */
 class ExpirationController extends Controller
 {
@@ -42,15 +42,15 @@ class ExpirationController extends Controller
 
     /**
      * GET /api/expirations/check
-     * Scanner et vÃ©rifier toutes les expirations
-     * GÃ©nÃ©ralement appelÃ© par un cron job
+     * Scanner et vÃrifier toutes les expirations
+     * GÃnÃralement appelÃ par un cron job
      */
     public function checkAllExpirations(): JsonResponse
     {
         $metrics = $this->expirationService->checkAllExpirations();
 
         return response()->json([
-            'message' => 'VÃ©rification des expirations complÃ©tÃ©e',
+            'message' => 'VÃrification des expirations complÃtÃe',
             'metrics' => $metrics,
             'timestamp' => now()->toIso8601String(),
         ]);
@@ -58,7 +58,7 @@ class ExpirationController extends Controller
 
     /**
      * GET /api/expirations/expired?page=1
-     * Lister tous les produits expirÃ©Ã©s
+     * Lister tous les produits expirÃÃs
      */
     public function getExpiredProducts(Request $request): JsonResponse
     {
@@ -96,7 +96,7 @@ class ExpirationController extends Controller
 
     /**
      * GET /api/expirations/alerts?page=1
-     * Lister les alertes non traitÃ©es
+     * Lister les alertes non traitÃes
      */
     public function getPendingAlerts(Request $request): JsonResponse
     {
@@ -136,7 +136,7 @@ class ExpirationController extends Controller
 
     /**
      * GET /api/product-stocks/{id}/expiration-status
-     * VÃ©rifier le statut d'expiration d'un stock particulier
+     * VÃrifier le statut d'expiration d'un stock particulier
      */
     public function checkStatus(int $id): JsonResponse
     {
@@ -155,7 +155,7 @@ class ExpirationController extends Controller
 
     /**
      * POST /api/expirations/{id}/acknowledge
-     * Marquer une alerte comme traitÃ©e
+     * Marquer une alerte comme traitÃe
      */
     public function acknowledgeAlert(int $id, Request $request): JsonResponse
     {
@@ -179,7 +179,7 @@ class ExpirationController extends Controller
 
     /**
      * POST /api/expirations/{stockId}/force-consume
-     * Admin only: Forcer la consommation d'un produit expirÃ© (cas d'urgence)
+     * Admin only: Forcer la consommation d'un produit expirÃ (cas d'urgence)
      */
     public function forceConsumeExpired(int $stockId, Request $request): JsonResponse
     {
@@ -199,7 +199,7 @@ class ExpirationController extends Controller
             );
 
             return response()->json([
-                'message' => 'Consommation forcÃ©e enregistrÃ©e',
+                'message' => 'Consommation forcÃe enregistrÃe',
                 'event' => $event,
                 'remaining_quantity' => $stock->fresh()->quantity,
             ]);
@@ -212,7 +212,7 @@ class ExpirationController extends Controller
 
     /**
      * POST /api/expirations/{stockId}/eliminate
-     * Ã‰liminer un lot expirÃ© ou endommagÃ©
+     * Ã‰liminer un lot expirÃ ou endommagÃ
      */
     public function eliminateBatch(int $stockId, Request $request): JsonResponse
     {
@@ -234,7 +234,7 @@ class ExpirationController extends Controller
         $document = null;
         $movement = null;
 
-        // â”€â”€ CrÃ©er un mouvement de stock pour l'historique â”€â”€
+        // â”€â”€ CrÃer un mouvement de stock pour l'historique â”€â”€
         try {
             DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
@@ -243,7 +243,7 @@ class ExpirationController extends Controller
                     'created_by'    => auth()->id(),
                     'validated_by'  => auth()->id(),
                     'status'        => 'executed',
-                    'notes'         => 'Ã‰limination de lot: ' . ($stock->batch_number ?? 'Sans numÃ©ro') . ' - Justification: ' . $validated['justification'],
+                    'notes'         => 'Ã‰limination de lot: ' . ($stock->batch_number ?? 'Sans numÃro') . ' - Justification: ' . $validated['justification'],
                     'source_warehouse_location_id' => $stock->warehouse_location_id,
                     'source_cabinet_id'            => $stock->cabinet_id,
                     'executed_at'   => now(),
@@ -255,7 +255,7 @@ class ExpirationController extends Controller
                     'quantity'          => $originalQuantity,
                 ]);
 
-                // â”€â”€ GÃ©nÃ©rer le PV d'Ã©limination â”€â”€
+                // â”€â”€ GÃnÃrer le PV d'Ãlimination â”€â”€
                 $pdf = Pdf::loadView('pdf.elimination', [
                     'stock'         => $stock,
                     'justification' => $validated['justification'],
@@ -280,7 +280,7 @@ class ExpirationController extends Controller
                     'status'      => 'applied',
                 ]);
 
-                // Associer le document au mouvement et Ã  l'Ã©vÃ©nement
+                // Associer le document au mouvement et Ã  l'ÃvÃnement
                 $movement->update(['document_id' => $document->id]);
                 $event->update(['document_id' => $document->id]);
 
@@ -294,7 +294,7 @@ class ExpirationController extends Controller
         }
 
         return response()->json([
-            'message'            => 'Lot Ã©liminÃ© avec succÃ¨s',
+            'message'            => 'Lot ÃliminÃ avec succÃ¨s',
             'event'              => $event,
             'document'           => $document,
             'movement'           => $movement,
@@ -318,7 +318,7 @@ class ExpirationController extends Controller
             'justification' => 'required|string|min:5',
         ]);
 
-        // â”€â”€ Ã‰tape critique : mettre Ã  jour le stock et crÃ©er l'Ã©vÃ©nement â”€â”€
+        // â”€â”€ Ã‰tape critique : mettre Ã  jour le stock et crÃer l'ÃvÃnement â”€â”€
         $event = $this->expirationService->returnToSupplierBatch(
             stock: $stock,
             userId: auth()->id() ?? 1,
@@ -328,7 +328,7 @@ class ExpirationController extends Controller
         $document = null;
         $movement = null;
 
-        // â”€â”€ CrÃ©er un mouvement de stock pour l'historique â”€â”€
+        // â”€â”€ CrÃer un mouvement de stock pour l'historique â”€â”€
         try {
             DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
@@ -337,7 +337,7 @@ class ExpirationController extends Controller
                     'created_by'    => auth()->id(),
                     'validated_by'  => auth()->id(),
                     'status'        => 'executed',
-                    'notes'         => 'Retour au fournisseur: ' . ($stock->batch_number ?? 'Sans numÃ©ro') . ' - Justification: ' . $validated['justification'],
+                    'notes'         => 'Retour au fournisseur: ' . ($stock->batch_number ?? 'Sans numÃro') . ' - Justification: ' . $validated['justification'],
                     'supplier_id'   => $stock->supplier_id,
                     'source_warehouse_location_id' => $stock->warehouse_location_id,
                     'source_cabinet_id'            => $stock->cabinet_id,
@@ -350,7 +350,7 @@ class ExpirationController extends Controller
                     'quantity'          => $originalQuantity,
                 ]);
 
-                // â”€â”€ GÃ©nÃ©rer le bon de retour â”€â”€
+                // â”€â”€ GÃnÃrer le bon de retour â”€â”€
                 $pdf = Pdf::loadView('pdf.return_supplier', [
                     'stock'         => $stock,
                     'supplier'      => $stock->supplier,
@@ -376,7 +376,7 @@ class ExpirationController extends Controller
                     'status'      => 'applied',
                 ]);
 
-                // Associer le document au mouvement et Ã  l'Ã©vÃ©nement
+                // Associer le document au mouvement et Ã  l'ÃvÃnement
                 $movement->update(['document_id' => $document->id]);
                 $event->update(['document_id' => $document->id]);
 
@@ -404,7 +404,7 @@ class ExpirationController extends Controller
         }
 
         return response()->json([
-            'message'            => 'Lot retournÃ© au fournisseur avec succÃ¨s',
+            'message'            => 'Lot retournÃ au fournisseur avec succÃ¨s',
             'event'              => $event,
             'document'           => $document,
             'movement'           => $movement,
@@ -451,9 +451,9 @@ class ExpirationController extends Controller
     {
         $query = ProductStock::where('product_id', $productId)
             ->whereNotNull('expiration_date')
-            ->whereIn('batch_status', ['active', 'expired']); // On masque les lots Ã©liminÃ©s/retournÃ©s ici
+            ->whereIn('batch_status', ['active', 'expired']); // On masque les lots ÃliminÃs/retournÃs ici
 
-        // Filtrage par dÃ©pÃ´t pour les responsables/agents
+        // Filtrage par dÃpÃ´t pour les responsables/agents
         $user = auth()->user();
         if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
             $depotId = $user->depot_id;
@@ -526,12 +526,12 @@ class ExpirationController extends Controller
         $query = ExpirationEvent::with(['document', 'acknowledgedBy', 'createdBy'])
             ->where('product_id', $productId);
 
-        // Filtrage par dÃ©pÃ´t pour les responsables/agents
+        // Filtrage par dÃpÃ´t pour les responsables/agents
         $user = auth()->user();
         if ($user && ($user->role === 'responsable' || $user->role === 'agent') && $user->depot_id) {
             $depotId = $user->depot_id;
             $query->where(function($q) use ($depotId) {
-                // Filtrer via le stock associÃ©
+                // Filtrer via le stock associÃ
                 $q->whereHas('productStock', function($sq) use ($depotId) {
                     $sq->whereHas('warehouseLocation.room', function($ssq) use ($depotId) {
                         $ssq->where('warehouse_id', $depotId);
@@ -539,7 +539,7 @@ class ExpirationController extends Controller
                         $ssq->where('warehouse_id', $depotId);
                     });
                 })
-                // OU via le document associÃ© (qui a un warehouse_id)
+                // OU via le document associÃ (qui a un warehouse_id)
                 ->orWhereHas('document', function($sq) use ($depotId) {
                     $sq->where('warehouse_id', $depotId);
                 });

@@ -76,7 +76,7 @@ class SendConsumableRequestReminders extends Command
             }
         }
 
-        $this->info('Rappels demandes consommables envoyÃ©s.');
+        $this->info('Rappels demandes consommables envoyÃs.');
         return self::SUCCESS;
     }
 }

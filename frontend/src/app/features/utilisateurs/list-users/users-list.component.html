@@ -1,4 +1,4 @@
-﻿<div class="page-header">
+<div class="page-header">
   <h1 class="page-title">Utilisateurs</h1>
   <span class="page-count" *ngIf="!isLoading">{{ displayedUsers.length }} utilisateur(s)</span>
   <div class="page-size-control" *ngIf="!isLoading && displayedUsers.length > 0">
@@ -76,7 +76,7 @@
     {{ errorMessage }}
   </div>
 
-  <!-- Succ�s -->
+  <!-- Succés -->
   <div class="success-msg" *ngIf="successMessage">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="2">
@@ -124,7 +124,7 @@
           <td>
             <span class="role-badge"
               [class.admin]="roleNames(u).toLowerCase().includes('admin')">
-              {{ roleNames(u) || '�' }}
+              {{ roleNames(u) || '-' }}
             </span>
           </td>
           <td>{{ u.service || '-' }}</td>
@@ -161,7 +161,7 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <p>Aucun utilisateur trouv�.</p>
+              <p>Aucun utilisateur trouvé.</p>
             </div>
           </td>
         </tr>
@@ -194,7 +194,7 @@
   </div>
 </div>
 
-<!-- --- Modal Ajouter/�diter Utilisateur ----------------------------- -->
+<!-- --- Modal Ajouter/éditer Utilisateur ----------------------------- -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
   <div class="modal-box">
     <div class="modal-header">

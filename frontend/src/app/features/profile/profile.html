@@ -1,4 +1,4 @@
-﻿<!-- -- En-t�te page ---------------------------------------------------- -->
+﻿<!-- -- En-téte page ---------------------------------------------------- -->
 <div class="page-header">
   <div class="page-badge">Mon compte</div>
   <h1 class="page-title">Mon Profil</h1>
@@ -13,7 +13,7 @@
 <div class="profile-layout" *ngIf="!isLoading">
 
   <!-- ----------------------------------------------------------------
-       COLONNE GAUCHE � Photo
+       COLONNE GAUCHE é Photo
   ----------------------------------------------------------------- -->
   <div class="profile-sidebar">
     <div class="avatar-card">
@@ -62,12 +62,12 @@
           (change)="onPhotoSelected($event)" class="file-input" />
       </label>
 
-      <p class="upload-hint">JPG, PNG, WebP � max 5 Mo</p>
+      <p class="upload-hint">JPG, PNG, WebP é max 5 Mo</p>
     </div>
   </div>
 
   <!-- ----------------------------------------------------------------
-       COLONNE DROITE � Formulaires
+       COLONNE DROITE é Formulaires
   ----------------------------------------------------------------- -->
   <div class="profile-main">
 
@@ -124,7 +124,7 @@
                 </svg>
               </span>
               <input id="nomprenom" type="text" formControlName="nomprenom"
-                placeholder="Nom et pr�nom" class="form-input" />
+                placeholder="Nom et prénom" class="form-input" />
             </div>
             <div class="field-error"
               *ngIf="profileForm.get('nomprenom')?.invalid && profileForm.get('nomprenom')?.touched">
@@ -167,13 +167,13 @@
                 </svg>
               </span>
               <input id="adresse" type="text" formControlName="adresse"
-                placeholder="Adresse compl�te (optionnel)" class="form-input" />
+                placeholder="Adresse compléte (optionnel)" class="form-input" />
             </div>
           </div>
 
-          <!-- T�l�phone -->
+          <!-- Téléphone -->
           <div class="form-group">
-            <label class="form-label" for="telephone">T�l�phone</label>
+            <label class="form-label" for="telephone">Téléphone</label>
             <div class="input-wrapper">
               <span class="input-icon">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -216,7 +216,7 @@
           </svg>
         </span>
         <div>
-          <div class="card-title">S�curit�</div>
+          <div class="card-title">Sécurité</div>
           <div class="card-sub">Modifiez votre mot de passe</div>
         </div>
       </div>
@@ -280,11 +280,11 @@
                 </svg>
               </span>
               <input id="newPassword" type="password" formControlName="newPassword"
-                placeholder="Minimum 6 caract�res" class="form-input" />
+                placeholder="Minimum 6 caractéres" class="form-input" />
             </div>
             <div class="field-error"
               *ngIf="passwordForm.get('newPassword')?.invalid && passwordForm.get('newPassword')?.touched">
-              Le mot de passe doit contenir au moins 6 caract�res.
+              Le mot de passe doit contenir au moins 6 caractéres.
             </div>
           </div>
 
@@ -302,7 +302,7 @@
                 </svg>
               </span>
               <input id="confirmPassword" type="password" formControlName="confirmPassword"
-                placeholder="R�p�tez le nouveau mot de passe" class="form-input" />
+                placeholder="Répétez le nouveau mot de passe" class="form-input" />
             </div>
             <div class="field-error"
               *ngIf="passwordForm.get('confirmPassword')?.hasError('required') && passwordForm.get('confirmPassword')?.touched">
@@ -323,7 +323,7 @@
               <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
-            {{ isChangingPassword ? 'Mise � jour...' : 'Mettre � jour le mot de passe' }}
+            {{ isChangingPassword ? 'Mise é jour...' : 'Mettre é jour le mot de passe' }}
           </button>
         </div>
       </form>

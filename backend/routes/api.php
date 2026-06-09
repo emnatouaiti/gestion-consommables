@@ -236,8 +236,10 @@ Route::prefix('api')->group(function () {
             Route::get('reports/movements', [ReportController::class, 'exportMovements']);
         });
 
-        Route::middleware('role:Administrateur|Directeur|Validateur')->group(function () {
-            Route::get('dashboard', [AdminController::class, 'dashboard']);
+        // Le dashboard filtre lui-même les données selon le rôle
+        Route::get('dashboard', [AdminController::class, 'dashboard']);
+
+        Route::middleware('role:Administrateur|Directeur|Validateur|Responsable de stock|Responsable|Gestionnaire|Agent de stock|Agent')->group(function () {
             Route::get('recommendations', [AdminController::class, 'recommendations']);
         });
 
@@ -268,7 +270,7 @@ Route::prefix('api')->group(function () {
         });
     });
 
-    // Proxy simplifiÃ© pour les documents et images
+    // Proxy simplifiÃ pour les documents et images
     Route::get('docs/{path}', function($path) {
         $disk  = \Storage::disk('public');
         $clean = ltrim((string) $path, '/\\');

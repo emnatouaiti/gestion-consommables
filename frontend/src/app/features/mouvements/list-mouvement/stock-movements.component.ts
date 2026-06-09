@@ -509,7 +509,7 @@ export class StockMovementsComponent implements OnInit {
         id: l.id, 
         name: l.name, 
         type: 'location', 
-        label: isFull ? `📦 ${l.name} (PLEIN)` : `📦 ${l.name}`,
+        label: isFull ? ` ${l.name} (PLEIN)` : ` ${l.name}`,
         disabled: false // Never disable source, even if full
       };
     });
@@ -519,7 +519,7 @@ export class StockMovementsComponent implements OnInit {
         id: c.id, 
         name: c.name, 
         type: 'cabinet', 
-        label: isFull ? `🗄️ ${c.name} (PLEIN)` : `🗄️ ${c.name}`,
+        label: isFull ? `️ ${c.name} (PLEIN)` : `️ ${c.name}`,
         disabled: false
       };
     });
@@ -593,7 +593,7 @@ export class StockMovementsComponent implements OnInit {
         id: l.id, 
         name: l.name, 
         type: 'location', 
-        label: isFull ? `📦 ${l.name} (PLEIN)` : `📦 ${l.name}`,
+        label: isFull ? ` ${l.name} (PLEIN)` : ` ${l.name}`,
         disabled: isFull 
       };
     });
@@ -603,7 +603,7 @@ export class StockMovementsComponent implements OnInit {
         id: c.id, 
         name: c.name, 
         type: 'cabinet', 
-        label: isFull ? `🗄️ ${c.name} (PLEIN)` : `🗄️ ${c.name}`,
+        label: isFull ? `️ ${c.name} (PLEIN)` : `️ ${c.name}`,
         disabled: isFull 
       };
     });
@@ -639,7 +639,7 @@ export class StockMovementsComponent implements OnInit {
     const product = this.products.find(p => Number(p?.id) === Number(line?.product_id));
     if (!product) return '';
     const available = Number(product?.stock_quantity ?? 0);
-    return Number(line.quantity) > available ? `⚠ Stock dispo: ${available}` : '';
+    return Number(line.quantity) > available ? ` Stock dispo: ${available}` : '';
   }
 
   onDocumentChange(event: Event): void {

@@ -13,7 +13,7 @@ import { AdminExpirationService } from '../../../core/services/admin-expiration.
 interface BatchLifecycle {
   batch_number: string;
   expiration_date: string;
-  status: string; // "✅ Valide" | "⚠️ Expire" | "❌ Expiré"
+  status: string; // " Valide" | "️ Expire" | " Expiré"
   color: string; // "success" | "warning" | "danger"
   daysLeft: number;
   quantity: number; // Total des stocks avec cette date

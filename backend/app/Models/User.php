@@ -121,7 +121,10 @@ class User extends Authenticatable
         if (is_array($role)) {
             return $this->hasAnyRole($role);
         }
-        return \Illuminate\Support\Str::lower($this->role?->name ?? '') === \Illuminate\Support\Str::lower($role);
+        $relRole = \Illuminate\Support\Str::lower($this->role?->name ?? '');
+        $strRole = \Illuminate\Support\Str::lower($this->attributes['role'] ?? '');
+        $target = \Illuminate\Support\Str::lower($role);
+        return $relRole === $target || $strRole === $target;
     }
 
     /**
@@ -130,8 +133,10 @@ class User extends Authenticatable
     public function hasAnyRole(array $roles): bool
     {
         $userRole = \Illuminate\Support\Str::lower($this->role?->name ?? '');
+        $strRole = \Illuminate\Support\Str::lower($this->attributes['role'] ?? '');
         foreach ($roles as $role) {
-            if ($userRole === \Illuminate\Support\Str::lower($role)) {
+            $target = \Illuminate\Support\Str::lower($role);
+            if ($userRole === $target || $strRole === $target) {
                 return true;
             }
         }

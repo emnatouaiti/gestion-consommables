@@ -310,13 +310,13 @@
                   <optgroup label="Emplacements" *ngIf="sourceLocations.length > 0">
                     <option *ngFor="let l of sourceLocations" [value]="'location:' + l.id"
                             [selected]="l.id === newMovement.source_warehouse_location_id">
-                      📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
+                       {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
                     </option>
                   </optgroup>
                   <optgroup label="Armoires" *ngIf="sourceCabinets.length > 0">
                     <option *ngFor="let c of sourceCabinets" [value]="'cabinet:' + c.id"
                             [selected]="c.id === newMovement.source_cabinet_id">
-                      🗄️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
+                      ️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
                     </option>
                   </optgroup>
                 </select>
@@ -350,14 +350,14 @@
                     <option *ngFor="let l of destLocations" [value]="'location:' + l.id"
                             [selected]="l.id === newMovement.destination_warehouse_location_id"
                             [disabled]="l.capacity_units > 0 && l.current_units >= l.capacity_units">
-                      📦 {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
+                       {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
                     </option>
                   </optgroup>
                   <optgroup label="Armoires" *ngIf="destCabinets.length > 0">
                     <option *ngFor="let c of destCabinets" [value]="'cabinet:' + c.id"
                             [selected]="c.id === newMovement.destination_cabinet_id"
                             [disabled]="c.capacity_units > 0 && c.current_units >= c.capacity_units">
-                      🗄️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
+                      ️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
                     </option>
                   </optgroup>
                 </select>

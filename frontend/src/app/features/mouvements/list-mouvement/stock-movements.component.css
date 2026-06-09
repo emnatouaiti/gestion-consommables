@@ -558,14 +558,19 @@ td {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--frost);
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
 }
 
 .page-info {
+  font-weight: 700;
   font-size: 13px;
-  color: var(--mist);
-  font-weight: 600;
+  color: var(--e-600);
+  padding: 6px 14px;
+  background: var(--e-50);
+  border-radius: 50px;
+  border: 1px solid var(--e-100);
 }
 
 /* ══════════════════════════════════════════════════════════════

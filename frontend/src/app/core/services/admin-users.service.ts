@@ -14,7 +14,13 @@ export class AdminUsersService {
   deleteUser(id: number) { return this.api.delete(`users/${id}`); }
 
   roles() { return this.api.get('roles'); }
-  list(q: any, perPage: any, status: any) { return this.api.get('users', <any>{ q, perPage, status }); }
+  list(q: any, perPage: any, status: any) { 
+    let params = new HttpParams();
+    if (q) params = params.set('q', q);
+    if (perPage) params = params.set('per_page', perPage);
+    if (status) params = params.set('status', status);
+    return this.api.get('users', params); 
+  }
   create(payload: any) { return this.createUser(payload); }
   update(id: number, payload: any) { return this.updateUser(id, payload); }
   delete(id: number) { return this.deleteUser(id); }

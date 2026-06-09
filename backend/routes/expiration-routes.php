@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Route;
 Route::post('/expirations/check', [ExpirationController::class, 'checkAllExpirations'])
     ->name('expirations.check');
 
-// Lister les produits expirÃ©Ã©s
+// Lister les produits expirÃÃs
 Route::get('/expirations/expired', [ExpirationController::class, 'getExpiredProducts'])
     ->name('expirations.expired');
 
@@ -38,19 +38,19 @@ Route::get('/expirations/history', [ExpirationController::class, 'getHistory'])
 Route::get('/expirations/stats', [ExpirationController::class, 'getStats'])
     ->name('expirations.stats');
 
-// VÃ©rifier le statut d'un stock
+// VÃrifier le statut d'un stock
 Route::get('/product-stocks/{id}/expiration-status', [ExpirationController::class, 'checkStatus'])
     ->name('expirations.check-status');
 
-// Marquer une alerte comme traitÃ©e (acknowledge/resolve)
+// Marquer une alerte comme traitÃe (acknowledge/resolve)
 Route::post('/expirations/{id}/acknowledge', [ExpirationController::class, 'acknowledgeAlert'])
     ->name('expirations.acknowledge');
 
-// Admin only: Forcer la consommation d'un produit expirÃ©
+// Admin only: Forcer la consommation d'un produit expirÃ
 Route::post('/expirations/{stockId}/force-consume', [ExpirationController::class, 'forceConsumeExpired'])
     ->name('expirations.force-consume');
 
-// Admin only: Ã‰liminer un lot expirÃ©/endommagÃ©
+// Admin only: Ã‰liminer un lot expirÃ/endommagÃ
 Route::post('/expirations/{stockId}/eliminate', [ExpirationController::class, 'eliminateBatch'])
     ->name('expirations.eliminate');
 

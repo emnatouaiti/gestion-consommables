@@ -40,7 +40,7 @@ class WarehouseRoomController extends Controller
         $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
         if ($warehouse->max_rooms > 0 && $warehouse->rooms()->count() >= $warehouse->max_rooms) {
             return response()->json([
-                'message' => "Le dÃ©pÃ´t '{$warehouse->name}' a atteint sa capacitÃ© maximale de {$warehouse->max_rooms} salles."
+                'message' => "Le dépôt '{$warehouse->name}' a atteint sa capacité maximale de {$warehouse->max_rooms} salles."
             ], 422);
         }
 
@@ -88,7 +88,7 @@ class WarehouseRoomController extends Controller
         $products = $stockEntries->map(function ($s) use ($room) {
             $loc = $s->warehouseLocation;
             $cab = $s->warehouseCabinet;
-            
+
             return array_merge($s->product->toArray(), [
                 'stock_quantity' => $s->quantity,
                 'location_id' => $loc?->id,

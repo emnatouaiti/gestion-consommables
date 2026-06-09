@@ -134,7 +134,7 @@ class SupplierController extends Controller
         }
         catch (\Exception $e) {
             Log::error('Erreur addReview: ' . $e->getMessage());
-            return response()->json(['error' => 'Erreur lors de la crÃ©ation de l\'avis', 'message' => $e->getMessage()], 500);
+            return response()->json(['error' => 'Erreur lors de la crÃation de l\'avis', 'message' => $e->getMessage()], 500);
         }
     }
 

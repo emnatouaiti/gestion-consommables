@@ -14,7 +14,7 @@ class AdminController extends Controller
 
         // Check if user has admin-like roles for global stats
         $isAdmin = in_array($userRole, ['administrateur', 'admin']);
-        $isDirector = in_array($userRole, ['directeur', 'directeur gÃ©nÃ©ral', 'dg']);
+        $isDirector = in_array($userRole, ['directeur', 'directeur gÃnÃral', 'dg']);
         $isManager = in_array($userRole, ['responsable', 'responsable de stock', 'gestionnaire', 'agent']);
         $isStandardUser = !$isAdmin && !$isDirector && !$isManager;
 
@@ -104,7 +104,7 @@ class AdminController extends Controller
 
             if ($userId && $user && $user->depot_id) {
                 // For managers with depot assignment, show only activities related to their depot
-                $recentActivitiesQuery->whereHas('warehouseLocation', function($q) use ($user) {
+                $recentActivitiesQuery->whereHas('warehouseLocation.room', function($q) use ($user) {
                     $q->where('warehouse_id', $user->depot_id);
                 });
             }
@@ -117,7 +117,7 @@ class AdminController extends Controller
                 $locCode = $loc ? $loc->code : ($ps->warehouseCabinet ? $ps->warehouseCabinet->code : 'Empl. inconnu');
                 return [
                 'type' => 'stock',
-                'icon' => 'ðŸ“¦',
+                'icon' => 'fas fa-box',
                 'description' => "{$ps->quantity}x {$ps->product->title} -> {$locCode}",
                 'created_at' => $ps->created_at,
                 'notes' => $ps->notes
@@ -138,6 +138,25 @@ class AdminController extends Controller
                 'percentage' => $activeUsers > 0 ? round(($r->count / $activeUsers) * 100) : 0
                 ];
             });
+        }
+
+        // Recent user requests for standard users
+        $recentRequests = [];
+        if ($isStandardUser && $userId) {
+            $recentRequests = \App\Models\ConsumableRequest::with('product')
+                ->where('user_id', $userId)
+                ->orderBy('created_at', 'desc')
+                ->take(5)
+                ->get()
+                ->map(function ($req) {
+                    $item = $req->product ? $req->product->title : ($req->item_name ?? 'Produit inconnu');
+                    return [
+                        'reference' => 'REQ-'.$req->id,
+                        'status' => $req->status,
+                        'created_at' => $req->created_at,
+                        'items_summary' => $item . ' (x' . $req->requested_quantity . ')'
+                    ];
+                });
         }
 
         // Stock distribution by category (only for managers/directors)
@@ -194,7 +213,8 @@ class AdminController extends Controller
             'recentActivities' => $recentActivities,
             'roles' => $roles,
             'categoryStock' => $categoryStock,
-            'movementsTrend' => $movementsTrend
+            'movementsTrend' => $movementsTrend,
+            'recentRequests' => $recentRequests
         ]);
     }
 
@@ -233,7 +253,7 @@ class AdminController extends Controller
                 if ($daysLeft < 14) {
                     $highRisk[] = $product;
                     $events[] = [
-                        'title' => 'Rupture probable dÃ©tectÃ©e',
+                        'title' => 'Rupture probable dÃtectÃe',
                         'meta' => $product->title . ' (Reste ~' . intval($daysLeft) . ' jours)',
                         'level' => 'critical'
                     ];
@@ -246,7 +266,7 @@ class AdminController extends Controller
                     if (count($overStock) < 4) {
                         $events[] = [
                             'title' => 'Sur-stock / Produit dormant',
-                            'meta' => $product->title . ' (Aucun mvt rÃ©cent)',
+                            'meta' => $product->title . ' (Aucun mvt rÃcent)',
                             'level' => 'info'
                         ];
                     }
@@ -271,8 +291,8 @@ class AdminController extends Controller
         return response()->json([
             'stats' => [
                 ['label' => 'Produits Ã  risque (<14j)', 'value' => count($highRisk), 'trend' => 'Action requise'],
-                ['label' => 'Produits dormants', 'value' => count($overStock), 'trend' => 'Capital immobilisÃ©'],
-                ['label' => 'Confiance algorithmique', 'value' => '85%', 'trend' => 'BasÃ©e sur 30j']
+                ['label' => 'Produits dormants', 'value' => count($overStock), 'trend' => 'Capital immobilisÃ'],
+                ['label' => 'Confiance algorithmique', 'value' => '85%', 'trend' => 'BasÃe sur 30j']
             ],
             'events' => $events,
             'rows' => $rows

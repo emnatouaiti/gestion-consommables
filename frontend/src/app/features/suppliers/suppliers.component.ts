@@ -349,14 +349,14 @@ export class SuppliersComponent implements OnInit {
             next: () => {
                 this.loadSupplierContacts(supplierId);
                 this.closeContactModal();
-                this.successMessage = this.editingContactId ? 'Contact mis � jour' : 'Contact ajout�';
+                this.successMessage = this.editingContactId ? 'Contact mis é jour' : 'Contact ajouté';
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
                 console.error('Error saving contact', err);
-                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l�enregistrement du contact');
+                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de léenregistrement du contact');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -368,13 +368,13 @@ export class SuppliersComponent implements OnInit {
         const supplierId = this.contactsSupplierId ?? this.selectedSupplier?.id ?? null;
         if (!supplierId) return;
 
-        if (!confirm('�tes-vous s�r de vouloir supprimer ce contact ?')) return;
+        if (!confirm('étes-vous sér de vouloir supprimer ce contact ?')) return;
 
         this.isLoading = true;
         this.supplierService.deleteSupplierContact(supplierId, contactId).subscribe({
             next: () => {
                 this.loadSupplierContacts(supplierId);
-                this.successMessage = 'Contact supprim�';
+                this.successMessage = 'Contact supprimé';
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
@@ -463,7 +463,7 @@ export class SuppliersComponent implements OnInit {
             next: () => {
                 this.loadSuppliers();
                 this.closeModal();
-                this.successMessage = this.editingSupplierId ? 'Fournisseur mis � jour' : 'Fournisseur cr��';
+                this.successMessage = this.editingSupplierId ? 'Fournisseur mis é jour' : 'Fournisseur créé';
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
@@ -478,11 +478,11 @@ export class SuppliersComponent implements OnInit {
     }
 
     deleteSupplier(id: number): void {
-        if (!confirm('�tes-vous s�r de vouloir supprimer ce fournisseur ?')) return;
+        if (!confirm('étes-vous sér de vouloir supprimer ce fournisseur ?')) return;
         this.supplierService.deleteSupplier(id).subscribe({
             next: () => {
                 this.loadSuppliers();
-                this.successMessage = 'Fournisseur supprim�';
+                this.successMessage = 'Fournisseur supprimé';
                 setTimeout(() => this.successMessage = '', 3000);
             },
             error: (err) => {
@@ -508,7 +508,7 @@ export class SuppliersComponent implements OnInit {
                 this.newReviewContent = '';
                 this.newReviewRating = 5;
                 this.isLoading = false;
-                this.successMessage = 'Avis publi� !';
+                this.successMessage = 'Avis publié !';
                 this.cdr.detectChanges();
                 setTimeout(() => this.successMessage = '', 3000);
             },

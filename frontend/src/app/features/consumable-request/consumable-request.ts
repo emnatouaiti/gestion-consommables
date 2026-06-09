@@ -1,4 +1,4 @@
-﻿import { ChangeDetectorRef, Component, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core'; // Refresh
+import { ChangeDetectorRef, Component, Inject, NgZone, OnDestroy, OnInit, PLATFORM_ID } from '@angular/core'; // Refresh
 import { CommonModule, DatePipe, isPlatformBrowser } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -199,7 +199,12 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     if (this.viewMode === 'request') params.own = 1;
     this.consumableRequestService.getRequests(params).subscribe({
       next: (data: any) => {
-        this.requests = Array.isArray(data) ? data : [];
+        const reqs = Array.isArray(data) ? data : [];
+        this.requests = reqs.sort((a, b) => {
+          const da = new Date(a?.created_at || 0).getTime();
+          const db = new Date(b?.created_at || 0).getTime();
+          return db - da;
+        });
         this.loading = false;
       },
       error: () => {
@@ -237,7 +242,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   get tabs(): Array<{ id: NavTab; label: string; count?: number }> {
     const tabs: Array<{ id: NavTab; label: string; count?: number }> = [];
 
-    // Only show "Demandes ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â  valider" for directors, not for responsables
+    // Only show "Demandes ÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â  valider" for directors, not for responsables
     const isDirector = this.isDirectorUser(this.currentUser);
     if (this.viewMode === 'validation' && isDirector) {
       tabs.push({ id: 'pending', label: 'Demandes a valider', count: this.pendingValidationRequests.length });
@@ -256,11 +261,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   // Sorted & filtered lists
 
   private get sortedByDate(): any[] {
-    return [...this.requests].sort((a, b) => {
-      const da = new Date(a?.created_at || 0).getTime();
-      const db = new Date(b?.created_at || 0).getTime();
-      return db - da;
-    });
+    return this.requests; // already sorted in loadRequests
   }
 
   get pendingValidationRequests(): any[] {
@@ -303,11 +304,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       });
     }
 
-    return rows.sort((a, b) => {
-      const da = new Date(a?.created_at || 0).getTime();
-      const db = new Date(b?.created_at || 0).getTime();
-      return db - da;
-    });
+    return rows;
   }
 
   get historyRequests(): any[] {
@@ -320,13 +317,11 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       return data;
     }
 
-    // Directeur: ne jamais afficher les demandes "Livre / Termine"
-    if (isDirector) {
-      data = data.filter(r => String(r?.status || '').toLowerCase() !== 'approved');
-    }
+    // Directeur: peut maintenant voir les demandes "Livre / Termine"
+    // (filter removed to allow directors to see delivered status)
 
     if (this.viewMode === 'validation') {
-      data = data.filter(r => r.status !== 'pending');
+      data = data.filter(r => r.status !== 'pending' && r.status !== 'draft');
     }
 
     if (this.statusFilter !== 'all') {
@@ -848,13 +843,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         // Handle depot warnings
         if (res?.depot_warnings && res.depot_warnings.length > 0) {
           this.depotWarnings = res.depot_warnings;
-          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©pÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â´ts.';
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€Ãƒâ€šÃ‚ÂpÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â´ts.';
         }
         if (res?.insufficient_warnings?.length > 0) {
           const details = res.insufficient_warnings
             .map((w: any) => `${w.product}: manque ${w.missing}`)
             .join(', ');
-          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â©.`;
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â.`;
         }
 
         this.message = res?.status === 'validated_by_manager'

@@ -45,7 +45,13 @@ class ConsumableRequestController extends Controller
                 });
             } elseif ($this->isStockManager($user)) {
                 if ($user->depot_id) {
-                    $query->where('depot_id', $user->depot_id);
+                    $query->where(function ($q) use ($user) {
+                        $q->where('depot_id', $user->depot_id)
+                          ->orWhere(function ($q2) {
+                              $q2->whereNull('depot_id')
+                                 ->where('status', 'approved_pending_exit');
+                          });
+                    });
                 } else {
                     $query->whereRaw('1 = 0');
                 }
@@ -111,7 +117,7 @@ class ConsumableRequestController extends Controller
     {
         $user = Auth::user();
 
-        if (!$this->userHasAnyRole($user, ['utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employÃ©', 'directeur', 'pdg'])) {
+        if (!$this->userHasAnyRole($user, ['utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employÃ', 'directeur', 'pdg'])) {
             return response()->json(['message' => 'Seuls les utilisateurs metier peuvent creer une demande.'], 403);
         }
 
@@ -135,10 +141,12 @@ class ConsumableRequestController extends Controller
                     $initialStatus = 'draft';
                 }
 
-                if ($this->isStockManager($user) && $initialStatus === 'pending') {
+                if ($this->isStockManager($user)) {
+                    // Stock managers skip validation entirely
                     $initialStatus = 'approved_pending_exit';
                     $payload['approved_quantity'] = $payload['requested_quantity'];
-                } elseif ($isDirector && $initialStatus === 'pending') {
+                } elseif ($isDirector) {
+                    // Directors auto-approve their own requests (skip draft and pending)
                     $initialStatus = 'approved_pending_exit';
                     $payload['approved_quantity'] = $payload['requested_quantity'];
                 }
@@ -526,7 +534,7 @@ class ConsumableRequestController extends Controller
                 }
             }
 
-            // SÃ©parer approuvÃ©s et rejetÃ©s aprÃ¨s la premiÃ¨re passe
+            // SÃparer approuvÃs et rejetÃs aprÃ¨s la premiÃ¨re passe
             $approvedRequests = $requestsToApprove->filter(
                 fn($r) => in_array($r->status, ['approved_pending_exit', 'validated_by_manager', 'approved'])
             );
@@ -535,7 +543,7 @@ class ConsumableRequestController extends Controller
             }
             $rejectedRequests = $requestsToApprove->filter(fn($r) => $r->status === 'rejected');
 
-            // Approbation partielle : certains approuvÃ©s, certains rejetÃ©s
+            // Approbation partielle : certains approuvÃs, certains rejetÃs
             if ($approvedRequests->count() > 0 && $rejectedRequests->count() > 0) {
                 $finalStatus = 'partiellement_accepte';
             }
@@ -543,7 +551,7 @@ class ConsumableRequestController extends Controller
             $batchUser = $requestsToApprove->first()?->user;
             $bc        = $requestsToApprove->first()?->batch_code;
 
-            // --- GÃ©nÃ©rer PDF pour les items APPROUVÃ‰S ---
+            // --- GÃnÃrer PDF pour les items APPROUVÃ‰S ---
             $approvedPdfPath = null;
             if ($approvedRequests->count() > 0 && $batchUser) {
                 try {
@@ -564,7 +572,7 @@ class ConsumableRequestController extends Controller
                 }
             }
 
-            // --- GÃ©nÃ©rer PDF pour les items REJETÃ‰S ---
+            // --- GÃnÃrer PDF pour les items REJETÃ‰S ---
             $rejectedPdfPath = null;
             if ($rejectedRequests->count() > 0 && $batchUser) {
                 try {
@@ -616,8 +624,8 @@ class ConsumableRequestController extends Controller
         // Add depot warnings if products are in multiple depots (request was split)
         if (!empty($depotWarnings)) {
             $responseData['depot_warnings'] = $depotWarnings;
-            $responseData['warning_message'] = 'Certains produits sont disponibles dans plusieurs dÃ©pÃ´ts. La demande a Ã©tÃ© divisÃ©e selon la disponibilitÃ© dans chaque dÃ©pÃ´t.';
-            $responseData['split_info'] = 'La demande a Ã©tÃ© automatiquement divisÃ©e et chaque responsable de dÃ©pÃ´t recevra uniquement les quantitÃ©s disponibles dans son dÃ©pÃ´t.';
+            $responseData['warning_message'] = 'Certains produits sont disponibles dans plusieurs dÃpÃ´ts. La demande a ÃtÃ divisÃe selon la disponibilitÃ dans chaque dÃpÃ´t.';
+            $responseData['split_info'] = 'La demande a ÃtÃ automatiquement divisÃe et chaque responsable de dÃpÃ´t recevra uniquement les quantitÃs disponibles dans son dÃpÃ´t.';
         }
 
         if (!empty($insufficientWarnings)) {
@@ -659,7 +667,7 @@ class ConsumableRequestController extends Controller
         if ($user->depot_id) {
             $batchRequests = $batchRequests->filter(fn($r) => !$r->depot_id || (int) $r->depot_id === (int) $user->depot_id);
             if ($batchRequests->isEmpty()) {
-                return response()->json(['message' => 'Cette demande est assignÃ©e Ã  un autre dÃ©pÃ´t.'], 403);
+                return response()->json(['message' => 'Cette demande est assignÃe Ã  un autre dÃpÃ´t.'], 403);
             }
         }
 
@@ -704,13 +712,13 @@ class ConsumableRequestController extends Controller
                     if ($sourceLocationId) {
                         $loc = \App\Models\WarehouseLocation::with('room')->find($sourceLocationId);
                         if (!$loc || !$loc->room || (int) $loc->room->warehouse_id !== (int) $user->depot_id) {
-                            throw ValidationException::withMessages(['message' => 'Emplacement source hors de votre dÃ©pÃ´t pour le produit ' . $req->item_name]);
+                            throw ValidationException::withMessages(['message' => 'Emplacement source hors de votre dÃpÃ´t pour le produit ' . $req->item_name]);
                         }
                     }
                     if ($sourceCabinetId) {
                         $cab = \App\Models\WarehouseCabinet::with('room')->find($sourceCabinetId);
                         if (!$cab || !$cab->room || (int) $cab->room->warehouse_id !== (int) $user->depot_id) {
-                            throw ValidationException::withMessages(['message' => 'Armoire source hors de votre dÃ©pÃ´t pour le produit ' . $req->item_name]);
+                            throw ValidationException::withMessages(['message' => 'Armoire source hors de votre dÃpÃ´t pour le produit ' . $req->item_name]);
                         }
                     }
                 }
@@ -788,7 +796,7 @@ class ConsumableRequestController extends Controller
                 $hasPartial = $approvedReqs->count() > 0 && $rejectedReqs->count() > 0;
 
                 if ($hasPartial) {
-                    // --- PDF sÃ©parÃ© pour les items LIVRÃ‰S (bon de sortie) ---
+                    // --- PDF sÃparÃ pour les items LIVRÃ‰S (bon de sortie) ---
                     $approvedPdfPath = $this->generateAndSavePdf(
                         $batchUser,
                         $approvedReqs->values()->all(),
@@ -802,7 +810,7 @@ class ConsumableRequestController extends Controller
                         $movement->update(['response_pdf_path' => $approvedPdfPath]);
                     }
 
-                    // --- PDF sÃ©parÃ© pour les items REJETÃ‰S (bon de refus) ---
+                    // --- PDF sÃparÃ pour les items REJETÃ‰S (bon de refus) ---
                     $rejectedPdfPath = $this->generateAndSavePdf(
                         $batchUser,
                         $rejectedReqs->values()->all(),
@@ -837,7 +845,7 @@ class ConsumableRequestController extends Controller
         });
 
         return response()->json([
-            'message' => 'Sortie confirmÃ©e. Stock mis Ã  jour.',
+            'message' => 'Sortie confirmÃe. Stock mis Ã  jour.',
             'request' => $consumableRequest->fresh(['user', 'product', 'depot']),
             'depot_name' => $consumableRequest->depot?->name,
         ]);
@@ -1245,7 +1253,7 @@ class ConsumableRequestController extends Controller
 
         if ($statuses->contains('pending'))               return 'pending';
         if ($statuses->contains('validated_by_manager'))  return 'validated_by_manager';
-        // Cas mixte: au moins un acceptÃ© (en attente ou livrÃ©) et au moins un refusÃ© => toujours partiellement_accepte
+        // Cas mixte: au moins un acceptÃ (en attente ou livrÃ) et au moins un refusÃ => toujours partiellement_accepte
         if (($statuses->contains('approved_pending_exit') || $statuses->contains('approved')) && $statuses->contains('rejected')) {
             return 'partiellement_accepte';
         }
@@ -1262,7 +1270,7 @@ class ConsumableRequestController extends Controller
         if (!$user) return false;
 
         $isBusinessRequester = $this->userHasAnyRole($user, [
-            'utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employÃ©', 'directeur', 'pdg',
+            'utilisateur', 'responsable', 'agent', 'gestionnaire', 'employee', 'employÃ', 'directeur', 'pdg',
         ]);
 
         return $isBusinessRequester && (int) $consumableRequest->user_id === (int) $user->id;
@@ -1288,7 +1296,7 @@ class ConsumableRequestController extends Controller
 
     /**
      * Generer et sauvegarder le PDF.
-     * $suffix : '_approved', '_rejected', ou null (cas gÃ©nÃ©ral).
+     * $suffix : '_approved', '_rejected', ou null (cas gÃnÃral).
      */
     private function generateAndSavePdf(User $user, array $requests, ?string $batchCode, ?string $suffix = null): ?string
     {
@@ -1355,7 +1363,7 @@ class ConsumableRequestController extends Controller
     }
 
     /**
-     * MÃ©thode dÃ©diÃ©e pour gÃ©nÃ©rer et stocker un PDF (alias avec nom explicite).
+     * MÃthode dÃdiÃe pour gÃnÃrer et stocker un PDF (alias avec nom explicite).
      */
     private function generateAndStorePdf($requests, User $user, ?string $batchCode, string $suffix): ?string
     {
@@ -1458,7 +1466,7 @@ class ConsumableRequestController extends Controller
         $requestsWithDepot = $requests->filter(fn($r) => $r->depot_id);
 
         if ($requestsWithDepot->isEmpty()) {
-            // No depot assignÃ©: ne pas diffuser globalement
+            // No depot assignÃ: ne pas diffuser globalement
             return 0;
         }
 
@@ -1581,8 +1589,8 @@ class ConsumableRequestController extends Controller
     }
 
     /**
-     * Notification dÃ©diÃ©e pour l'approbation partielle :
-     * envoie UN seul mail avec les 2 collections (approuvÃ©s + rejetÃ©s)
+     * Notification dÃdiÃe pour l'approbation partielle :
+     * envoie UN seul mail avec les 2 collections (approuvÃs + rejetÃs)
      * afin que la notification puisse attacher les 2 PDFs.
      */
     private function notifyRequesterPartial($approvedRequests, $rejectedRequests): int

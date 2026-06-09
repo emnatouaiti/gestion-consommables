@@ -23,7 +23,7 @@ class ProductStockController extends Controller
             $query->whereIn('batch_status', ['active', 'expired']);
         }
 
-        // Filtrer par dÃ©pÃ´t de l'utilisateur si c'est un responsable/agent
+        // Filtrer par dÃpÃ´t de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
             $isStockManager = $user->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
@@ -45,7 +45,7 @@ class ProductStockController extends Controller
             $wh = $room?->warehouse;
             return array_merge($s->toArray(), [
                 'warehouse_id'   => $wh?->id,
-                'warehouse_name' => $wh?->name ?: 'DÃ©pÃ´t inconnu',
+                'warehouse_name' => $wh?->name ?: 'DÃpÃ´t inconnu',
                 'room_id'        => $room?->id,
                 'room_name'      => $room?->name ?: 'Salle inconnue',
                 'location_label' => $s->warehouseLocation?->code ?: ($s->warehouseCabinet?->name ?: 'Emplacement ' . $s->id)
@@ -87,12 +87,12 @@ class ProductStockController extends Controller
             if (!empty($validated['warehouse_location_id'])) {
                 $loc = \App\Models\WarehouseLocation::find($validated['warehouse_location_id']);
                 if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $quantityDiff) > $loc->capacity_units) {
-                    return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour cet emplacement.'], 422);
+                    return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour cet emplacement.'], 422);
                 }
             } elseif (!empty($validated['cabinet_id'])) {
                 $cab = \App\Models\WarehouseCabinet::find($validated['cabinet_id']);
                 if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $quantityDiff) > $cab->capacity_units) {
-                    return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour cette armoire.'], 422);
+                    return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour cette armoire.'], 422);
                 }
             }
         }
@@ -126,12 +126,12 @@ class ProductStockController extends Controller
         if (!empty($validated['warehouse_location_id'])) {
             $loc = \App\Models\WarehouseLocation::find($validated['warehouse_location_id']);
             if ($loc && $loc->capacity_units > 0 && ($loc->current_units + $validated['quantity']) > $loc->capacity_units) {
-                return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour cet emplacement.'], 422);
+                return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour cet emplacement.'], 422);
             }
         } elseif (!empty($validated['cabinet_id'])) {
             $cab = \App\Models\WarehouseCabinet::find($validated['cabinet_id']);
             if ($cab && $cab->capacity_units > 0 && ($cab->current_units + $validated['quantity']) > $cab->capacity_units) {
-                return response()->json(['message' => 'CapacitÃ© maximale dÃ©passÃ©e pour cette armoire.'], 422);
+                return response()->json(['message' => 'CapacitÃ maximale dÃpassÃe pour cette armoire.'], 422);
             }
         }
 
@@ -273,7 +273,7 @@ class ProductStockController extends Controller
         $query = ProductStock::with('product', 'warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
             ->whereHas('product', fn ($q) => $q->where('status', 'active'));
 
-        // Filtrer par dÃ©pÃ´t de l'utilisateur si c'est un responsable/agent
+        // Filtrer par dÃpÃ´t de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
             $isStockManager = $user->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 

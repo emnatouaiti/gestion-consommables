@@ -43,11 +43,15 @@ class StockMovementController extends Controller
             ])
             ->latest();
 
-        // By default, hide legacy static movements without lines, but keep OCR/document movements.
+        // By default, hide legacy static movements without lines, but keep OCR/document/image movements.
         if (!$request->boolean('include_legacy')) {
             $query->where(function ($q) {
                 $q->whereHas('lines')
-                  ->orWhereNotNull('document_id');
+                  ->orWhereNotNull('document_id')
+                  ->orWhereNotNull('in_image_path')
+                  ->orWhereNotNull('out_image_path')
+                  ->orWhereNotNull('supplier_id')
+                  ->orWhereNotNull('related_request_id');
             });
         }
 
@@ -145,16 +149,16 @@ class StockMovementController extends Controller
         $movement = StockMovement::with('lines.product')->findOrFail($id);
 
         if ($movement->status === 'executed') {
-            return response()->json(['message' => 'Ce mouvement est dÃ©jÃ  exÃ©cutÃ©.'], 400);
+            return response()->json(['message' => 'Ce mouvement est dÃjÃ  exÃcutÃ.'], 400);
         }
 
         // If it's pending_validation, only managers can execute directly
         if ($movement->status === 'pending_validation') {
             if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
-                return response()->json(['message' => 'Ce mouvement doit d\'abord Ãªtre approuvÃ© par un responsable.'], 403);
+                return response()->json(['message' => 'Ce mouvement doit d\'abord Ãªtre approuvÃ par un responsable.'], 403);
             }
         } elseif ($movement->status !== 'approved') {
-             return response()->json(['message' => 'Ce mouvement doit Ãªtre approuvÃ© avant d\'Ãªtre exÃ©cutÃ©.'], 400);
+             return response()->json(['message' => 'Ce mouvement doit Ãªtre approuvÃ avant d\'Ãªtre exÃcutÃ.'], 400);
         }
 
         if ($movement->lines->count() === 0) {
@@ -193,7 +197,7 @@ class StockMovementController extends Controller
     {
         $user = Auth::user();
         if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
-            return response()->json(['message' => 'Non autorisÃ©.'], 403);
+            return response()->json(['message' => 'Non autorisÃ.'], 403);
         }
 
         $movement = StockMovement::findOrFail($id);
@@ -237,7 +241,7 @@ class StockMovementController extends Controller
     {
         $user = Auth::user();
         if (!$this->userHasAnyRole($user, ['Responsable de stock', 'Responsable', 'Administrateur'])) {
-            return response()->json(['message' => 'Non autorisÃ©.'], 403);
+            return response()->json(['message' => 'Non autorisÃ.'], 403);
         }
 
         $movement = StockMovement::findOrFail($id);
@@ -337,7 +341,7 @@ class StockMovementController extends Controller
 
         $movementType = $request->input('movement_type', $request->input('type'));
 
-        // Pour les agents et responsables, assigner automatiquement leur dÃ©pÃ´t
+        // Pour les agents et responsables, assigner automatiquement leur dÃpÃ´t
         $isStockManager = $this->userHasAnyRole($user, ['responsable de stock', 'responsable', 'agent de stock', 'agent']);
         $autoAssignDepot = $isStockManager && $user->depot_id;
 
@@ -345,12 +349,12 @@ class StockMovementController extends Controller
         $productIds = collect($request->input('lines'))->pluck('product_id')->all();
         $inactive = Product::whereIn('id', $productIds)->where('status', '!=', 'active')->pluck('title')->all();
         if (count($inactive) > 0) {
-            throw ValidationException::withMessages(['lines' => ["Produits inactifs dÃ©tectÃ©s : " . implode(', ', $inactive)]]);
+            throw ValidationException::withMessages(['lines' => ["Produits inactifs dÃtectÃs : " . implode(', ', $inactive)]]);
         }
 
         // 2. Logic validations
         if ($movementType === 'in' && !$request->filled('supplier_id')) {
-            throw ValidationException::withMessages(['supplier_id' => ['Le fournisseur est requis pour une entrÃ©e.']]);
+            throw ValidationException::withMessages(['supplier_id' => ['Le fournisseur est requis pour une entrÃe.']]);
         }
         if (in_array($movementType, ['out', 'transfer']) && !$request->filled('source_warehouse_location_id') && !$request->filled('source_cabinet_id')) {
             throw ValidationException::withMessages(['source_warehouse_location_id' => ['L\'emplacement source est requis.']]);
@@ -365,7 +369,7 @@ class StockMovementController extends Controller
             $isManager = $this->userHasAnyRole($user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
             $status = $isManager ? 'executed' : 'pending_validation';
 
-            // Pour les agents/responsables, valider que les emplacements appartiennent Ã  leur dÃ©pÃ´t
+            // Pour les agents/responsables, valider que les emplacements appartiennent Ã  leur dÃpÃ´t
             if ($autoAssignDepot) {
                 $sourceLocationId = $request->input('source_warehouse_location_id');
                 $sourceCabinetId = $request->input('source_cabinet_id');
@@ -375,25 +379,25 @@ class StockMovementController extends Controller
                 if ($sourceLocationId) {
                     $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($sourceLocationId);
                     if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['source_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃ©pÃ´t.']]);
+                        throw ValidationException::withMessages(['source_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃpÃ´t.']]);
                     }
                 }
                 if ($sourceCabinetId) {
                     $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($sourceCabinetId);
                     if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['source_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃ©pÃ´t.']]);
+                        throw ValidationException::withMessages(['source_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃpÃ´t.']]);
                     }
                 }
                 if ($destLocationId) {
                     $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($destLocationId);
                     if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['destination_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃ©pÃ´t.']]);
+                        throw ValidationException::withMessages(['destination_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃpÃ´t.']]);
                     }
                 }
                 if ($destCabinetId) {
                     $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($destCabinetId);
                     if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['destination_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃ©pÃ´t.']]);
+                        throw ValidationException::withMessages(['destination_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃpÃ´t.']]);
                     }
                 }
             }
@@ -462,7 +466,7 @@ class StockMovementController extends Controller
                         'user_id'      => $user ? $user->id : null,
                         'product_id'   => $pid,
                         'supplier_id'  => $movement->supplier_id,
-                        'title'        => ($movement->movement_type === 'in' ? 'Bon d\'entrÃ©e - ' : 'Bon de sortie - ') . $movement->reference,
+                        'title'        => ($movement->movement_type === 'in' ? 'Bon d\'entrÃe - ' : 'Bon de sortie - ') . $movement->reference,
                         'type'         => $movement->movement_type === 'in' ? 'bon_livraison' : 'bon_sortie',
                         'direction'    => in_array($movement->movement_type, ['in', 'out']) ? $movement->movement_type : 'unknown',
                         'status'       => 'applied',
@@ -556,7 +560,7 @@ class StockMovementController extends Controller
                 $available = (int) ($sourceStock?->quantity ?? 0);
                 if ($qty > $available) {
                     throw ValidationException::withMessages([
-                        'lines' => ["Stock insuffisant pour {$product->title} (Disponible: {$available}, DemandÃ©: {$qty})."],
+                        'lines' => ["Stock insuffisant pour {$product->title} (Disponible: {$available}, DemandÃ: {$qty})."],
                     ]);
                 }
 
@@ -566,7 +570,7 @@ class StockMovementController extends Controller
                 }
             }
 
-            // EntrÃ©e / Transfert (Destination)
+            // EntrÃe / Transfert (Destination)
             if (in_array($movement->movement_type, ['in', 'transfer'])) {
                 $destStock = null;
                 $destLoc = $line->warehouse_location_id ?? $movement->destination_warehouse_location_id;

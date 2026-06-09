@@ -82,6 +82,39 @@
   backdrop-filter: blur(4px);
 }
 
+.page-size-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-mid);
+}
+
+.page-size-control select {
+  padding: 6px 30px 6px 12px;
+  border-radius: 50px;
+  border: 1.5px solid var(--border);
+  background-color: white;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dark);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23334155' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: all var(--dur) var(--ease-out);
+}
+
+.page-size-control select:focus {
+  border-color: var(--blue-500);
+  outline: none;
+  box-shadow: var(--shadow-focus);
+}
+
 /* ═══ Card Container ═══ */
 .card {
   background: white;
@@ -866,18 +899,46 @@ select.form-control {
 }
 
 .pagination-controls {
-  margin-top: 16px;
+  margin-top: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px;
-  border: 1px solid #e6edf5;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  justify-content: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  background: linear-gradient(180deg, #f8faff 0%, #ffffff 100%);
+}
+
+.pagination-controls .btn.small {
+  padding: 8px 18px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border-radius: 50px;
+  border: 1.5px solid var(--blue-200);
+  background: white;
+  color: var(--blue-600);
+  transition: all 0.2s ease;
+}
+
+.pagination-controls .btn.small:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--blue-500), var(--blue-700));
+  color: white;
+  border-color: var(--blue-500);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(26, 95, 168, 0.25);
+}
+
+.pagination-controls .btn.small:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .page-info {
-  font-weight: 600;
-  color: #1f4f84;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--blue-700);
+  padding: 6px 14px;
+  background: var(--blue-50);
+  border-radius: 50px;
+  border: 1px solid var(--blue-100);
 }

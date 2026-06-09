@@ -1,4 +1,4 @@
-﻿import { Injectable, signal, Inject, PLATFORM_ID } from '@angular/core';
+import { Injectable, signal, Inject, PLATFORM_ID } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable, tap, switchMap, of } from 'rxjs';
 import { ApiService } from './api.service';
@@ -22,6 +22,15 @@ export class AuthService {
             if (cachedUser) {
                 try { this.currentUser.set(JSON.parse(cachedUser)); } catch {}
             }
+            
+            // Listen for changes in localStorage from other tabs
+            window.addEventListener('storage', (event) => {
+                if (event.key === this.TOKEN_KEY && !event.newValue) {
+                    this.currentUser.set(null);
+                    this.router.navigateByUrl('/login');
+                }
+            });
+
             setTimeout(() => this.loadUser(), 0);
         }
     }

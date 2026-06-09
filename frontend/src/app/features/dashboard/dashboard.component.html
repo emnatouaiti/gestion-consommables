@@ -1,4 +1,4 @@
-﻿<div class="dashboard-wrapper" [class.loading]="isLoading">
+<div class="dashboard-wrapper" [class.loading]="isLoading">
   <header class="dashboard-header">
     <div class="header-content">
       <div class="welcome-badge">{{ dashboardBadge }}</div>
@@ -25,8 +25,11 @@
     <!-- Alertes Critiques -->
     <div class="critical-alerts" *ngIf="criticalAlerts.length > 0 && showCriticalAlerts">
       <div class="alert-banner" *ngFor="let alert of criticalAlerts" [class.severity-high]="alert.severity === 'high'">
-        <span class="alert-icon">{{ alert.icon }}</span>
-        <span class="alert-message">{{ alert.message }}</span>
+        <a [routerLink]="alert.route" class="alert-link">
+          <span class="alert-icon"><i [class]="alert.icon"></i></span>
+          <span class="alert-message">{{ alert.message }}</span>
+          <span class="alert-action-btn">Voir <i class="fas fa-arrow-right"></i></span>
+        </a>
         <button class="alert-dismiss" (click)="toggleCriticalAlerts()">✕</button>
       </div>
     </div>
@@ -39,7 +42,7 @@
         [class.pulse-animation]="card.critical"
         [attr.tabindex]="0"
       >
-        <div class="stat-icon-wrap" [ngClass]="'bg-' + card.color">{{ card.icon }}</div>
+        <div class="stat-icon-wrap" [ngClass]="'bg-' + card.color"><i [class]="card.icon" *ngIf="card.icon"></i></div>
         <div class="stat-info">
           <span class="stat-label">{{ card.label }}</span>
           <h2 class="stat-value">{{ card.value }}</h2>
@@ -78,7 +81,7 @@
         </section>
 
         <!-- Section pour les autres rôles -->
-        <section class="glass-card" *ngIf="!isAdmin">
+        <section class="glass-card" *ngIf="!isAdmin && !isDirector">
           <div class="section-header">
             <h3>Flux d'activités</h3>
             <div class="header-actions-inline">
@@ -93,7 +96,7 @@
           <div class="activity-feed" role="log" aria-live="polite">
             <div class="activity-entry" *ngFor="let activity of recentActivities">
               <div class="entry-marker" [ngClass]="activity.type"></div>
-              <div class="entry-icon">{{ activity.icon }}</div>
+              <div class="entry-icon"><i [class]="activity.icon"></i></div>
               <div class="entry-content">
                 <p class="entry-text">{{ activity.description }}</p>
                 <span class="entry-time">{{ activity.created_at | date:'HH:mm' }}</span>
@@ -102,7 +105,7 @@
           </div>
         </section>
 
-        <div class="comparison-grid" *ngIf="!isAdmin">
+        <div class="comparison-grid" *ngIf="!isAdmin && isManager && !isDirector">
           <div class="glass-card compact trend-card">
             <div class="section-header">
               <h3>Mouvements (7 jours)</h3>
@@ -154,16 +157,7 @@
         </div>
       </div>
 
-      <div class="side-column">
-        <section class="glass-card actions-section">
-          <h3>Accès rapides</h3>
-          <div class="action-tiles">
-            <a *ngFor="let link of quickLinks" [routerLink]="link.route" class="tile">
-              <div class="tile-icon">{{ link.icon }}</div>
-              <span>{{ link.label }}</span>
-            </a>
-          </div>
-        </section>
+      <div class="side-column" *ngIf="!isDirector">
 
         <section class="glass-card" *ngIf="isAdmin" style="margin-bottom: 2rem;">
           <div class="section-header">

@@ -1,4 +1,4 @@
-﻿<div class="layout-root">
+<div class="layout-root">
   <aside class="sidebar">
     <div class="sidebar-orb orb-1"></div>
     <div class="sidebar-orb orb-2"></div>
@@ -69,10 +69,25 @@
         <strong>Notifications</strong>
         <button class="notif-close" (click)="notificationsOpen = false">Fermer</button>
       </div>
-      <div class="notif-body" *ngIf="notificationsLoading">Chargement...</div>
-      <div class="notif-body" *ngIf="!notificationsLoading && notifications.length === 0">Aucune notification.</div>
+      <div class="notif-body" *ngIf="notificationsLoading && notifications.length === 0">Chargement...</div>
+      <div class="notif-body empty-notif" *ngIf="!notificationsLoading && notifications.length === 0">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+        </svg>
+        <span>Aucune notification pour le moment.</span>
+      </div>
       <button class="notif-item" *ngFor="let notification of notifications" (click)="onNotificationClick(notification)">
-        {{ notificationLabel(notification) }}
+        <div class="notif-icon-wrap">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </div>
+        <div class="notif-content">
+          <span class="notif-text">{{ notificationLabel(notification) }}</span>
+          <span class="notif-time">Maintenant</span>
+        </div>
       </button>
     </div>
 

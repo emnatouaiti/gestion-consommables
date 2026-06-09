@@ -74,7 +74,7 @@ class CategoryController extends Controller
 
             if ($level > 3) {
                 return response()->json([
-                    'message' => 'Impossible de crÃ©er plus de 3 niveaux de catÃ©gories.',
+                    'message' => 'Impossible de crÃer plus de 3 niveaux de catÃgories.',
                 ], 422);
             }
 
@@ -87,7 +87,7 @@ class CategoryController extends Controller
         $category = Category::create($data);
 
         return response()->json([
-            'message' => 'CatÃ©gorie crÃ©Ã©e',
+            'message' => 'CatÃgorie crÃÃe',
             'category' => $category->load('recursiveChildren'),
         ], 201);
     }
@@ -121,7 +121,7 @@ class CategoryController extends Controller
             // Prevent setting parent to self or own descendant
             if ($data['parent_id'] == $category->id) {
                 return response()->json([
-                    'message' => 'Une catÃ©gorie ne peut pas Ãªtre son propre parent.',
+                    'message' => 'Une catÃgorie ne peut pas Ãªtre son propre parent.',
                 ], 422);
             }
 
@@ -130,7 +130,7 @@ class CategoryController extends Controller
 
             if ($level > 3) {
                 return response()->json([
-                    'message' => 'Impossible de dÃ©passer 3 niveaux de catÃ©gories.',
+                    'message' => 'Impossible de dÃpasser 3 niveaux de catÃgories.',
                 ], 422);
             }
 
@@ -143,7 +143,7 @@ class CategoryController extends Controller
         $category->update($data);
 
         return response()->json([
-            'message' => 'CatÃ©gorie mise Ã  jour',
+            'message' => 'CatÃgorie mise Ã  jour',
             'category' => $category->load('recursiveChildren'),
         ]);
     }
@@ -154,14 +154,14 @@ class CategoryController extends Controller
 
         if ($category->products_count > 0) {
             return response()->json([
-                'message' => 'Suppression impossible: cette catÃ©gorie contient des produits.',
+                'message' => 'Suppression impossible: cette catÃgorie contient des produits.',
             ], 422);
         }
 
         // Cascade delete is handled by the FK, but warn the user
         $category->delete();
 
-        return response()->json(['message' => 'CatÃ©gorie supprimÃ©e']);
+        return response()->json(['message' => 'CatÃgorie supprimÃe']);
     }
 }
 

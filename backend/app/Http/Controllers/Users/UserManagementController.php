@@ -22,7 +22,7 @@ class UserManagementController extends Controller
 
     $query = User::with('role', 'depot');
 
-    // ðŸ”¥ filtrer explicitement les actifs
+    // filtrer explicitement les actifs
     if ($status === 'active') {
         $query->whereNull('deleted_at');
     } elseif ($status === 'archived') {
@@ -31,7 +31,7 @@ class UserManagementController extends Controller
         $query->withTrashed();
     }
 
-    // ðŸ”¥ recherche seulement si non vide
+    // recherche seulement si non vide
     if (!empty($q)) {
         $query->where(function ($sub) use ($q) {
             $sub->where('nomprenom', 'like', "%{$q}%")
@@ -39,11 +39,11 @@ class UserManagementController extends Controller
         });
     }
 
-    // ðŸ”’ Restriction : Les Admins voient tout. Les Directeurs ne voient que leur siÃ¨ge + staff stock.
+    // Restriction : Les Admins voient tout. Les Directeurs ne voient que leur siège + staff stock.
     $currentUser = auth()->user();
-    $roleName = $currentUser->role?->name ?? '';
 
-    if ($roleName !== 'Administrateur') {
+    // Ne filtrer que si l'utilisateur a un siège défini
+    if (!$currentUser->hasRole('administrateur') && !empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
         $query->where(function($sub) use ($currentUser) {
             $sub->where('siege', $currentUser->siege)
                 ->orWhereHas('role', function($q) {
@@ -74,7 +74,7 @@ class UserManagementController extends Controller
 
         $rolesInput = $request->input('roles');
         $roleName = 'Utilisateur';
-        
+
         if ($rolesInput) {
             if (is_array($rolesInput) && count($rolesInput) > 0) {
                 $roleName = is_array($rolesInput[0]) ? ($rolesInput[0]['name'] ?? 'Utilisateur') : $rolesInput[0];
@@ -104,21 +104,21 @@ class UserManagementController extends Controller
             $userData['poste'] = null;
             $userData['siege'] = null;
         } else {
-            $userData['service'] = $request->input('service', 'Non defini');
-            $userData['poste'] = $request->input('poste', 'Non defini');
-            
-            // ðŸ”’ Restriction Directeur & Administrateur : forcer son siÃ¨ge
+            $userData['service'] = $request->input('service', 'Non défini');
+            $userData['poste'] = $request->input('poste', 'Non défini');
+
+            // Restriction Directeur & Administrateur : forcer son siège
             $currentUser = auth()->user();
             if ($currentUser && (($currentUser->role?->name ?? '') === 'Directeur' || ($currentUser->role?->name ?? '') === 'Administrateur')) {
-                if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
+                if (!empty($currentUser->siege) && $currentUser->siege !== 'Non défini') {
                     $userData['siege'] = $currentUser->siege;
                 } else {
-                    $userData['siege'] = $request->input('siege', 'Non defini');
+                    $userData['siege'] = $request->input('siege', 'Non défini');
                 }
             } else {
-                $userData['siege'] = $request->input('siege', 'Non defini');
+                $userData['siege'] = $request->input('siege', 'Non défini');
             }
-            
+
             $userData['depot_id'] = null;
         }
 
@@ -132,7 +132,7 @@ class UserManagementController extends Controller
         }
 
         return response()->json([
-            'message' => 'Utilisateur cree',
+            'message' => 'Utilisateur créé',
             'user' => $user->load('depot')
         ]);
     }
@@ -171,7 +171,7 @@ class UserManagementController extends Controller
             }
 
         return response()->json([
-            'message' => 'Utilisateur mis a jour',
+            'message' => 'Utilisateur mis à jour',
             'user' => $user->load('depot')
         ]);
     }
@@ -180,21 +180,21 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
         $user->delete();
-        return response()->json(['message' => 'Utilisateur archive']);
+        return response()->json(['message' => 'Utilisateur archivé']);
     }
 
     public function restore($id)
     {
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
-        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('depot')]);
+        return response()->json(['message' => 'Utilisateur restauré', 'user' => $user->load('depot')]);
     }
 
     public function forceDestroy($id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $user->forceDelete();
-        return response()->json(['message' => 'Utilisateur supprime definitivement']);
+        return response()->json(['message' => 'Utilisateur supprimé définitivement']);
     }
 
     public function roles()

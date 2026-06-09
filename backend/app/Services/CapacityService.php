@@ -28,8 +28,8 @@ class CapacityService
 
         if ($percentage >= $threshold) {
             $type = $this->getModelType($model);
-            $name = $model->name ?? ($model->code ?? 'UnitÃ© #' . $model->id);
-            
+            $name = $model->name ?? ($model->code ?? 'Unité #' . $model->id);
+
             // Avoid spamming notifications (max once every 12 hours per unit)
             $cacheKey = "capacity_alert_{$type}_{$model->id}";
             if (Cache::has($cacheKey)) {

@@ -37,7 +37,7 @@ class ReturnToSupplierMail extends Mailable
      */
     public function build()
     {
-        $mail = $this->subject('Notification de Retour de Marchandise - Lot ExpirÃ©')
+        $mail = $this->subject('Notification de Retour de Marchandise - Lot Expiré')
                     ->view('emails.return_supplier');
 
         if (file_exists($this->pdfPath)) {

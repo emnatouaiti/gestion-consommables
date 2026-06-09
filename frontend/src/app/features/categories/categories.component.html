@@ -1,4 +1,4 @@
-﻿<div class="categories-page">
+<div class="categories-page">
 
   <!-- Header -->
   <div class="page-header">
@@ -110,7 +110,7 @@
         <span class="expand-spacer" *ngIf="!hasChildren(cat)"></span>
 
         <!-- Icon & Title -->
-        <span class="row-icon">{{ getLevelIcon(cat.level) }}</span>
+        <span class="row-icon"><i [class]="getLevelIcon(cat.level)"></i></span>
         <div class="row-body">
           <span class="row-title">{{ cat.title }}</span>
           <span class="badge" [ngClass]="cat.status">{{ cat.status }}</span>

@@ -1,4 +1,4 @@
-﻿import { NgModule } from '@angular/core';
+import { NgModule } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { LoginComponent } from './features/auth/login/login.component';
 import { RegisterComponent } from './features/auth/register/register.component';
@@ -13,10 +13,8 @@ const routes: Routes = [
   { path: 'auth/callback', component: GoogleCallbackComponent },
   { path: 'forgot-password', component: ForgotPasswordComponent },
   { path: 'register', component: RegisterComponent },
-  { path: 'dashboard', redirectTo: 'dashboard', pathMatch: 'full' },
   { path: '', canActivate: [AuthGuard], loadChildren: () => import('./features/admin.module').then(m => m.AdminModule) },
-  { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
-  { path: '**', redirectTo: 'dashboard' }
+  { path: '**', redirectTo: '' }
 ];
 
 @NgModule({

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, AfterViewInit, OnDestroy, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AuthService } from '../core/services/auth.service';
@@ -107,18 +107,18 @@ get userInitials(): string {
       ]
     },
     {
-        title: 'Catalogue & D�p�ts',
+        title: 'Catalogue & Dépôts',
       items: [
-        { label: 'Cat�gories', route: '/gerer-categories' },
-        { label: 'Unit�s', route: '/gerer-unites' },
+        { label: 'Catégories', route: '/gerer-categories' },
+        { label: 'Unités', route: '/gerer-unites' },
         { label: 'Produits', route: '/gerer-produits' },
-        { label: 'R�f�rences', route: '/gerer-references' },
-        { label: 'D�p�ts', route: '/gerer-depots' },
+        { label: 'Références', route: '/gerer-references' },
+        { label: 'Dépôts', route: '/gerer-depots' },
         // 'Locaux' hidden for Responsable de stock
       ]
     },
     {
-      title: 'Op�rations',
+      title: 'Opérations',
       items: [
         { label: 'Valider demandes', route: '/validation-demandes' },
         { label: 'Mouvements Stock', route: '/mouvements-stock' },
@@ -142,11 +142,11 @@ get userInitials(): string {
       ]
     },
     {
-      title: 'Op�rations',
+      title: 'Opérations',
       items: [
         { label: 'Catalogue', route: '/gerer-produits' },
-        { label: 'D�p�ts', route: '/gerer-depots' },
-        { label: 'R�f�rences', route: '/gerer-references' },
+        { label: 'Dépôts', route: '/gerer-depots' },
+        { label: 'Références', route: '/gerer-references' },
         { label: 'Mouvements Stock', route: '/mouvements-stock' },
         { label: 'Import OCR', route: '/documents-ocr' },
         { label: 'Fournisseurs (Avis)', route: '/gerer-fournisseurs' }
@@ -166,13 +166,11 @@ get userInitials(): string {
       items: [
         { label: 'Tableau de bord', route: '/dashboard' },
         { label: 'Valider demandes', route: '/validation-demandes', badge: 'Action' },
-        { label: 'Mes Demandes', route: '/demandes-consommables', exact: true },
-        { label: 'Pr?visions', route: '/previsions' },
-        { label: 'Anomalies', route: '/anomalies-critiques' }
+        { label: 'Mes Demandes', route: '/demandes-consommables', exact: true }
       ]
     },
     {
-      title: 'Compte',
+      title: 'Mon Compte',
       items: [
         { label: 'Mon Profil', route: '/profile' }
       ]
@@ -187,7 +185,7 @@ get userInitials(): string {
       ]
     },
     {
-      title: 'Espace Employ�',
+      title: 'Espace Employé',
       items: [
         { label: 'Mes Demandes', route: '/demandes-consommables', exact: true }
       ]
@@ -277,7 +275,7 @@ get userInitials(): string {
       return this.agentSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employ�'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
       return this.userSections;
     }
 
@@ -298,11 +296,11 @@ get userInitials(): string {
     }
 
     if (this.authService.userHasAnyRole(this.user, ['Agent de stock', 'Agent'])) {
-      return 'Op�rations Stock';
+      return 'Opérations Stock';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employ�'])) {
-      return 'Espace Employ�';
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
+      return 'Espace Employé';
     }
 
     return 'Portail';
@@ -314,7 +312,7 @@ get userInitials(): string {
 
   get userRoleLabel(): string {
     const roles = this.authService.getUserRoles(this.user);
-    return roles.length ? roles[0].toUpperCase() : 'SESSION';
+    return roles.length ? roles[0].toUpperCase() : 'UTILISATEUR';
   }
 
   logout() {
@@ -369,21 +367,21 @@ get userInitials(): string {
   notificationLabel(notification: any): string {
     const data = notification?.data || {};
     if (data?.type === 'capacity_alert') {
-      return (data.title || 'Alerte Capacit�') + ': ' + (data.message || 'Espace satur�');
+      return (data.title || 'Alerte Capacité') + ': ' + (data.message || 'Espace saturé');
     }
     if (data?.type === 'stock_movement') {
       return (data.title || 'Mouvement') + ': ' + (data.message || data.reference);
     }
     const item = data?.item_name || 'Article';
-    const qty = data?.requested_quantity ?? '-';
-    return `${item} (${qty})`;
+    const qty = data?.requested_quantity;
+    return (qty && qty !== '-') ? `${item} (${qty})` : item;
   }
 
   onNotificationClick(notification: any): void {
     const data = notification?.data || {};
-    const requestId = data?.consumable_request_id;
+    const requestId = data?.consumable_request_id || data?.request_id;
     const movementId = data?.movement_id;
-    const target = this.resolveNotificationTarget(data);
+    let target = this.resolveNotificationTarget(data);
     this.notificationsOpen = false;
 
     if (requestId) {
@@ -400,11 +398,19 @@ get userInitials(): string {
   }
 
   private resolveNotificationTarget(data: any): string {
-    const rawTarget = String(data?.action_url || data?.url || '').trim();
+    // Always use role-based routing for consumable requests
+    if (data?.consumable_request_id || data?.request_id) {
+      return this.authService.userHasAnyRole(this.user, ['Directeur', 'Validateur', 'Administrateur'])
+        ? '/validation-demandes'
+        : '/demandes-consommables';
+    }
 
-    if (!rawTarget) {
-      if (data?.movement_id) return '/mouvements-stock';
-      if (data?.consumable_request_id) return '/validation-demandes';
+    if (data?.movement_id) {
+      return '/mouvements-stock';
+    }
+
+    const rawTarget = String(data?.action_url || data?.url || '').trim();
+    if (!rawTarget || rawTarget === 'null' || rawTarget === 'undefined' || rawTarget === '/') {
       return '/dashboard';
     }
 
@@ -414,15 +420,12 @@ get userInitials(): string {
 
     try {
       const parsed = new URL(rawTarget);
-      if (parsed.pathname.startsWith('/')) {
-        return parsed.pathname + (parsed.search || '');
-      }
+      const path = parsed.pathname + (parsed.search || '');
+      if (path && path !== '/') return path;
     } catch {
-      // ignore malformed absolute URL and fallback below
+      // ignore
     }
 
-    if (data?.movement_id) return '/mouvements-stock';
-    if (data?.consumable_request_id) return '/validation-demandes';
     return '/dashboard';
   }
   private redirectAdminRootToFirstMenu(): void {

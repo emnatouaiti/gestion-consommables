@@ -22,7 +22,7 @@ class CheckProductExpirations extends Command
      *
      * @var string
      */
-    protected $description = 'Scanne les stocks et envoie des alertes email pour les produits expirÃ©s';
+    protected $description = 'Scanne les stocks et envoie des alertes email pour les produits expirÃs';
 
     /**
      * Execute the console command.
@@ -68,8 +68,8 @@ class CheckProductExpirations extends Command
         }
 
         if (count($expiringSoon) === 0 && count($expired) === 0) {
-            $this->info('Aucun produit expirÃ© ou proche de l\'expiration.');
-            \Illuminate\Support\Facades\Log::info("Scan Expiration : Aucun produit problÃ©matique dÃ©tectÃ©.");
+            $this->info('Aucun produit expirÃ ou proche de l\'expiration.');
+            \Illuminate\Support\Facades\Log::info("Scan Expiration : Aucun produit problÃmatique dÃtectÃ.");
             return;
         }
 
@@ -91,8 +91,8 @@ class CheckProductExpirations extends Command
         ])->get();
 
         if ($responsables->isEmpty()) {
-            $this->error("Aucun utilisateur responsable trouvÃ©.");
-            \Illuminate\Support\Facades\Log::warning("Alerte Expiration : Aucun utilisateur trouvÃ© avec les rÃ´les administratifs.");
+            $this->error("Aucun utilisateur responsable trouvÃ.");
+            \Illuminate\Support\Facades\Log::warning("Alerte Expiration : Aucun utilisateur trouvÃ avec les rÃ´les administratifs.");
             return;
         }
 
@@ -102,6 +102,6 @@ class CheckProductExpirations extends Command
             $user->notify(new ProductExpirationAlert($expiringSoon, $expired));
         }
 
-        $this->info(count($expiringSoon) . ' lots expirent bientÃ´t et ' . count($expired) . ' lots sont expirÃ©s. Notifications envoyÃ©es.');
+        $this->info(count($expiringSoon) . ' lots expirent bientÃ´t et ' . count($expired) . ' lots sont expirÃs. Notifications envoyÃes.');
     }
 }

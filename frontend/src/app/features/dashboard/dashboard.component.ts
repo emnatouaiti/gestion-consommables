@@ -2,7 +2,7 @@ import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef } from '@angu
 import { isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../../core/services/auth.service';
 import { Router } from '@angular/router';
-import { AdminStockService } from '../admin/services/admin-stock.service';
+import { AdminStockService } from '../../core/services/admin-stock.service';
 
 @Component({
   selector: 'app-dashboard',
@@ -145,9 +145,10 @@ export class DashboardComponent implements OnInit {
     if (this.stats.lowStockAlerts > 0) {
       this.criticalAlerts.push({
         type: 'stock',
-        message: `${this.stats.lowStockAlerts} produits en stock critique`,
+        message: `${this.stats.lowStockAlerts} produits en alerte stock bas`,
         severity: 'high',
-        icon: '⚠️'
+        icon: 'fas fa-exclamation-circle',
+        route: '/gerer-produits'
       });
     }
 
@@ -156,7 +157,8 @@ export class DashboardComponent implements OnInit {
         type: 'validation',
         message: `${this.stats.pendingValidations} demandes en attente de validation`,
         severity: 'medium',
-        icon: '📋'
+        icon: 'fas fa-info-circle',
+        route: '/validation-demandes'
       });
     }
 
@@ -165,7 +167,8 @@ export class DashboardComponent implements OnInit {
         type: 'movements',
         message: `${this.stats.pendingStockMovements} mouvements en attente`,
         severity: 'medium',
-        icon: '📦'
+        icon: 'fas fa-info-circle',
+        route: '/mouvements-stock'
       });
     }
   }
@@ -249,79 +252,55 @@ export class DashboardComponent implements OnInit {
         {
           label: 'Utilisateurs actifs',
           value: this.stats.activeUsers,
-          icon: '👥',
+          icon: 'fas fa-users',
           color: 'green',
-          route: '/admin/users',
+          route: '/users',
           trend: this.trends.usersTrend,
           trendLabel: this.trends.usersTrend > 0 ? '+ croissance' : '- stable'
         },
         {
           label: 'Total utilisateurs',
           value: this.stats.totalUsers,
-          icon: '👤',
+          icon: 'fas fa-user-friends',
           color: 'blue',
-          route: '/admin/users'
+          route: '/users'
         },
         {
           label: 'Utilisateurs archivés',
           value: this.stats.archivedUsers,
-          icon: '📁',
+          icon: 'fas fa-user-slash',
           color: 'yellow',
-          route: '/admin/users'
+          route: '/archived'
         },
       ];
 
-      this.quickLinks = [
-        { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Gérer utilisateurs', route: '/admin/users', icon: '👥' },
-        { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
-      ];
       return;
     }
 
     if (this.isDirector) {
-      // Directeur voit TOUT: produits, catégories, stock, demandes
+      // Directeur voit SEULEMENT les demandes
       this.dashboardCards = [
         {
-          label: 'Produits',
-          value: this.stats.totalProducts,
-          icon: '📦',
+          label: 'Mes demandes',
+          value: this.stats.myRequests,
+          icon: 'fas fa-file-alt',
           color: 'blue',
-          route: '/admin/gerer-produits',
-          trend: this.trends.productsTrend,
-          trendLabel: this.trends.productsTrend > 0 ? '+ croissance' : '- stable'
+          route: '/demandes-consommables',
+          trend: this.trends.requestsTrend,
+          trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
         },
-        { label: 'Catégories', value: this.stats.totalCategories, icon: '📂', color: 'purple', route: '/admin/categories' },
-        { label: 'Dépôts', value: this.stats.totalWarehouses, icon: '🏬', color: 'green', route: '/admin/gerer-depots' },
         {
           label: 'Demandes à valider',
           value: this.stats.pendingValidations,
-          icon: '✅',
+          icon: 'fas fa-clipboard-check',
           color: 'yellow',
-          route: '/admin/validation-demandes',
+          route: '/validation-demandes',
           critical: this.stats.pendingValidations > 0,
           trend: this.trends.requestsTrend,
           trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
         },
       ];
 
-      if (this.stats.lowStockAlerts > 0) {
-        this.dashboardCards.push({
-          label: 'Alertes stock bas',
-          value: this.stats.lowStockAlerts,
-          icon: '⚠️',
-          color: 'red',
-          route: '/admin/gerer-produits',
-          critical: true
-        });
-      }
-
-      this.quickLinks = [
-        { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Demandes à valider', route: '/admin/validation-demandes', icon: '✅' },
-        { label: 'Gérer produits', route: '/admin/gerer-produits', icon: '📦' },
-        { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
-      ];
       return;
     }
 
@@ -331,20 +310,20 @@ export class DashboardComponent implements OnInit {
         {
           label: 'Produits',
           value: this.stats.totalProducts,
-          icon: '📦',
+          icon: 'fas fa-box-open',
           color: 'blue',
-          route: '/admin/gerer-produits',
+          route: '/gerer-produits',
           trend: this.trends.productsTrend,
           trendLabel: this.trends.productsTrend > 0 ? '+ croissance' : '- stable'
         },
-        { label: 'Catégories', value: this.stats.totalCategories, icon: '📂', color: 'purple', route: '/admin/categories' },
-        { label: 'Dépôts', value: this.stats.totalWarehouses, icon: '🏬', color: 'green', route: '/admin/gerer-depots' },
+        { label: 'Catégories', value: this.stats.totalCategories, icon: 'fas fa-tags', color: 'purple', route: '/gerer-categories' },
+        { label: 'Dépôts', value: this.stats.totalWarehouses, icon: 'fas fa-warehouse', color: 'green', route: '/gerer-depots' },
         {
           label: 'Mouvements en attente',
           value: this.stats.pendingStockMovements,
-          icon: '📦',
+          icon: 'fas fa-exchange-alt',
           color: 'yellow',
-          route: '/admin/mouvements-stock',
+          route: '/mouvements-stock',
           critical: this.stats.pendingStockMovements > 0,
           trend: this.trends.movementsTrend,
           trendLabel: `${this.trends.movementsTrend.toFixed(1)}% tendance`
@@ -355,48 +334,42 @@ export class DashboardComponent implements OnInit {
         this.dashboardCards.push({
           label: 'Alertes stock bas',
           value: this.stats.lowStockAlerts,
-          icon: '⚠️',
+          icon: 'fas fa-exclamation-triangle',
           color: 'red',
-          route: '/admin/gerer-produits',
+          route: '/gerer-produits',
           critical: true
         });
       }
 
-      this.quickLinks = [
-        { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-        { label: 'Mouvements stock', route: '/admin/mouvements-stock', icon: '📦' },
-        { label: 'Gérer produits', route: '/admin/gerer-produits', icon: '📦' },
-        { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
-      ];
       return;
     }
 
-    // Utilisateur standard (Employé) voit SEULEMENT ses demandes
+    // Default (Utilisateur standard)
     this.dashboardCards = [
       {
         label: 'Mes demandes',
         value: this.stats.myRequests,
-        icon: '📋',
+        icon: 'fas fa-file-alt',
         color: 'blue',
-        route: '/admin/demandes-consommables',
+        route: '/demandes-consommables',
         trend: this.trends.requestsTrend,
         trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
       },
       {
         label: 'Demandes en attente',
         value: this.stats.myPendingRequests,
-        icon: '⏳',
+        icon: 'fas fa-clock',
         color: 'yellow',
-        route: '/admin/demandes-consommables',
+        route: '/demandes-consommables',
         critical: this.stats.myPendingRequests > 0
       },
-      { label: 'Demandes approuvées', value: this.stats.myApprovedRequests, icon: '✅', color: 'green', route: '/admin/demandes-consommables' },
-      { label: 'Demandes rejetées', value: this.stats.myRejectedRequests, icon: '❌', color: 'red', route: '/admin/demandes-consommables' },
+      { label: 'Demandes approuvées', value: this.stats.myApprovedRequests, icon: 'fas fa-check-circle', color: 'green', route: '/demandes-consommables' },
+      { label: 'Demandes rejetées', value: this.stats.myRejectedRequests, icon: 'fas fa-times-circle', color: 'red', route: '/demandes-consommables' },
     ];
     this.quickLinks = [
-      { label: 'Mon profil', route: '/admin/profile', icon: '👤' },
-      { label: 'Nouvelle demande', route: '/admin/demandes-consommables', icon: '➕' },
-      { label: 'Chat interne', route: '/admin/chat', icon: '💬' },
+      { label: 'Mon profil', route: '/profile', icon: '' },
+      { label: 'Nouvelle demande', route: '/demandes-consommables', icon: '' },
+      { label: 'Chat interne', route: '/chat', icon: '' },
     ];
   }
 
@@ -434,7 +407,7 @@ export class DashboardComponent implements OnInit {
         window.URL.revokeObjectURL(url);
         this.isDownloadingReport = false;
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Erreur tel', err);
         this.isDownloadingReport = false;
         alert('Erreur lors du telechargement du rapport.');

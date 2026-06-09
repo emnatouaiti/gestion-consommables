@@ -27,7 +27,7 @@ class NewUserCreated extends Mailable
      */
     public function build()
     {
-        return $this->subject('Vos accÃ¨s - nouveau compte')
+        return $this->subject('Vos accès - nouveau compte')
                     ->view('emails.new_user')
                     ->with([
                         'name' => $this->user->nomprenom ?? $this->user->email,

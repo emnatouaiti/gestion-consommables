@@ -46,7 +46,7 @@ class PasswordResetController extends Controller
         $user->notify(new ResetPasswordNotification($code));
 
         return response()->json([
-            'message' => 'Code de rÃƒÂ©initialisation envoyÃƒÂ© par email'
+            'message' => 'Code de rÃƒÂinitialisation envoyÃƒÂ par email'
         ]);
     }
 
@@ -66,7 +66,7 @@ class PasswordResetController extends Controller
 
         if (!$resetRecord) {
             throw ValidationException::withMessages([
-                'code' => ['Code invalide ou expirÃƒÂ©.'],
+                'code' => ['Code invalide ou expirÃƒÂ.'],
             ]);
         }
 
@@ -74,7 +74,7 @@ class PasswordResetController extends Controller
         if (now()->diffInMinutes($resetRecord->created_at) > 15) {
             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
             throw ValidationException::withMessages([
-                'code' => ['Ce code a expirÃƒÂ©. Veuillez demander un nouveau code.'],
+                'code' => ['Ce code a expirÃƒÂ. Veuillez demander un nouveau code.'],
             ]);
         }
 
@@ -86,7 +86,7 @@ class PasswordResetController extends Controller
         }
 
         return response()->json([
-            'message' => 'Code vÃƒÂ©rifiÃƒÂ© avec succÃƒÂ¨s',
+            'message' => 'Code vÃƒÂrifiÃƒÂ avec succÃƒÂ¨s',
             'email' => $request->email,
         ]);
     }
@@ -108,7 +108,7 @@ class PasswordResetController extends Controller
 
         if (!$resetRecord) {
             throw ValidationException::withMessages([
-                'code' => ['Code invalide ou expirÃƒÂ©.'],
+                'code' => ['Code invalide ou expirÃƒÂ.'],
             ]);
         }
 
@@ -116,7 +116,7 @@ class PasswordResetController extends Controller
         if (now()->diffInMinutes($resetRecord->created_at) > 15) {
             DB::table('password_reset_tokens')->where('email', $request->email)->delete();
             throw ValidationException::withMessages([
-                'code' => ['Ce code a expirÃƒÂ©. Veuillez demander un nouveau code.'],
+                'code' => ['Ce code a expirÃƒÂ. Veuillez demander un nouveau code.'],
             ]);
         }
 
@@ -149,7 +149,7 @@ class PasswordResetController extends Controller
         AuditService::log($user, 'RESET_PASSWORD', 'User reset password via verification code');
 
         return response()->json([
-            'message' => 'Mot de passe rÃƒÂ©initialisÃƒÂ© avec succÃƒÂ¨s'
+            'message' => 'Mot de passe rÃƒÂinitialisÃƒÂ avec succÃƒÂ¨s'
         ]);
     }
 }

@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, PLATFORM_ID, Inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { AdminStockService } from '../../core/services/admin-stock.service';
 import { ApiService } from '../../core/services/api.service';
@@ -169,7 +169,7 @@ export class CategoriesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingId ? 'Cat�gorie mise � jour !' : 'Cat�gorie cr��e !';
+        this.successMessage = this.editingId ? 'Catégorie mise é jour !' : 'Catégorie créée !';
         this.closeModal();
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
@@ -181,10 +181,10 @@ export class CategoriesComponent implements OnInit {
   }
 
   remove(id: number): void {
-    if (!confirm('Supprimer cette cat�gorie et toutes ses sous-cat�gories ?')) return;
+    if (!confirm('Supprimer cette catégorie et toutes ses sous-catégories ?')) return;
     this.stockService.deleteCategory(id).subscribe({
       next: () => {
-        this.successMessage = 'Cat�gorie supprim�e !';
+        this.successMessage = 'Catégorie supprimée !';
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
       },
@@ -218,19 +218,19 @@ export class CategoriesComponent implements OnInit {
 
   getLevelLabel(level: number): string {
     switch (level) {
-      case 1: return 'Cat�gorie';
-      case 2: return 'Sous-cat�gorie';
-      case 3: return 'Sous-sous-cat�gorie';
-      default: return 'Cat�gorie';
+      case 1: return 'Catégorie';
+      case 2: return 'Sous-catégorie';
+      case 3: return 'Sous-sous-catégorie';
+      default: return 'Catégorie';
     }
   }
 
   getLevelIcon(level: number): string {
     switch (level) {
-      case 1: return '??';
-      case 2: return '??';
-      case 3: return '??';
-      default: return '??';
+      case 1: return 'fas fa-folder';
+      case 2: return 'fas fa-folder-open';
+      case 3: return 'fas fa-file';
+      default: return 'fas fa-folder';
     }
   }
 }

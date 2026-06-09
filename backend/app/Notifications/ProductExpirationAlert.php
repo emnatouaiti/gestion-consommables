@@ -41,24 +41,24 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
         $total = count($this->expiringSoon) + count($this->expired);
 
         $mail = (new MailMessage)
-                    ->subject("Alerte Stock : $total lot(s) avec des problÃ¨mes d'expiration")
+                    ->subject("Alerte Stock : $total lot(s) avec des problèmes d'expiration")
                     ->greeting("Bonjour {$notifiable->name},")
-                    ->line("Ceci est un rÃ©capitulatif automatique concernant les dates d'expiration de vos stocks de consommables.")
-                    ->line("Nombre de lots expirÃ©s : " . count($this->expired))
+                    ->line("Ceci est un récapitulatif automatique concernant les dates d'expiration de vos stocks de consommables.")
+                    ->line("Nombre de lots expirés : " . count($this->expired))
                     ->line("Nombre de lots expirant dans les 7 prochains jours : " . count($this->expiringSoon))
                     ->action('Consulter le Dashboard', url(config('app.frontend_url', 'http://localhost:4200') . '/dashboard'));
 
         if (count($this->expired) > 0) {
-            $mail->line("\n**Lots ExpirÃ©s :**");
+            $mail->line("\n**Lots Expirés :**");
             foreach (array_slice($this->expired, 0, 5) as $item) {
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
                 $batch = $stock->batch_number ?: 'Sans lot';
                 $location = $this->formatStockLocation($stock);
-                
+
                 $mail->line("- **{$productName}** (Lot: {$batch})");
-                $mail->line("  Statut: ExpirÃ© depuis {$item['days']} jour(s) ({$stock->quantity} unitÃ©s)");
-                if ($location) $mail->line("  ðŸ“ Emplacement: {$location}");
+                $mail->line("  Statut: Expiré depuis {$item['days']} jour(s) ({$stock->quantity} unités)");
+                if ($location) $mail->line("   Emplacement: {$location}");
             }
             if (count($this->expired) > 5) {
                 $mail->line("- et " . (count($this->expired) - 5) . " autre(s)...");
@@ -66,16 +66,16 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
         }
 
         if (count($this->expiringSoon) > 0) {
-            $mail->line("\n**Lots expirant bientÃ´t :**");
+            $mail->line("\n**Lots expirant bientôt :**");
             foreach (array_slice($this->expiringSoon, 0, 5) as $item) {
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
                 $batch = $stock->batch_number ?: 'Sans lot';
                 $location = $this->formatStockLocation($stock);
-                
+
                 $mail->line("- **{$productName}** (Lot: {$batch})");
-                $mail->line("  Statut: Expire dans {$item['days']} jour(s) ({$stock->quantity} unitÃ©s)");
-                if ($location) $mail->line("  ðŸ“ Emplacement: {$location}");
+                $mail->line("  Statut: Expire dans {$item['days']} jour(s) ({$stock->quantity} unités)");
+                if ($location) $mail->line("   Emplacement: {$location}");
             }
             if (count($this->expiringSoon) > 5) {
                 $mail->line("- et " . (count($this->expiringSoon) - 5) . " autre(s)...");
@@ -86,19 +86,19 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
     }
 
     /**
-     * Construit une chaÃ®ne lisible de l'emplacement du stock
+     * Construit une chaîne lisible de l'emplacement du stock
      */
     private function formatStockLocation($stock): string
     {
         $parts = [];
-        
-        // Via Warehouse Location (Emplacement prÃ©cis)
+
+        // Via Warehouse Location (Emplacement précis)
         if ($stock->warehouseLocation) {
             $loc = $stock->warehouseLocation;
             if ($loc->room?->warehouse) $parts[] = $loc->room->warehouse->name;
             if ($loc->room) $parts[] = $loc->room->name;
             $parts[] = $loc->name ?: $loc->code;
-        } 
+        }
         // Sinon via Cabinet (Armoire)
         elseif ($stock->warehouseCabinet) {
             $cab = $stock->warehouseCabinet;
@@ -119,7 +119,7 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
     {
         return [
             'type' => 'expiration_alert',
-            'message' => count($this->expired) . ' lot(s) expirÃ©(s) et ' . count($this->expiringSoon) . ' expirant bientÃ´t.',
+            'message' => count($this->expired) . ' lot(s) expiré(s) et ' . count($this->expiringSoon) . ' expirant bientôt.',
             'expiring_count' => count($this->expiringSoon),
             'expired_count' => count($this->expired)
         ];

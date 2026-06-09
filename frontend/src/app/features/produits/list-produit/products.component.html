@@ -386,7 +386,7 @@
 
       <div class="modal-footer">
         <button class="btn-cancel" (click)="closeProductDetails()">Fermer</button>
-        <button class="btn-primary sm" (click)="manageProductStocks(selectedProductDetails)">📊 Gérer les stocks</button>
+        <button class="btn-primary sm" (click)="manageProductStocks(selectedProductDetails)"> Gérer les stocks</button>
       </div>
     </div>
   </div>
@@ -544,7 +544,7 @@
                     style="margin-bottom:6px; border-radius:8px;"
                     (click)="generateDescriptions()"
                     [disabled]="!productForm.get('title')?.value">
-              G�n�rer automatiquement
+              Générer automatiquement
             </button>
           </div>
           <textarea formControlName="description" placeholder="Description détaillée..." rows="4"></textarea>

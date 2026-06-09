@@ -15,7 +15,7 @@ import { ChatStateService, ChatPeer } from '../../core/services/chat-state.servi
           <div class="tw-name">{{ peer.name }}</div>
           <div class="tw-status">Fil en cours</div>
         </div>
-        <button class="tw-btn" (click)="clear()">�</button>
+        <button class="tw-btn" (click)="clear()">é</button>
       </div>
       <div class="tw-messages">
         <div *ngFor="let m of messages" class="tw-msg" [class.me]="isMine(m)">

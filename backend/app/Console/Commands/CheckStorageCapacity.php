@@ -71,16 +71,16 @@ class CheckStorageCapacity extends Command
             })->get();
 
             if ($users->isEmpty()) {
-                $this->error("Aucun utilisateur responsable trouvÃ©.");
-                \Illuminate\Support\Facades\Log::warning("Alerte CapacitÃ© : Aucun utilisateur trouvÃ© avec les rÃ´les administratifs.");
+                $this->error("Aucun utilisateur responsable trouvÃ.");
+                \Illuminate\Support\Facades\Log::warning("Alerte CapacitÃ : Aucun utilisateur trouvÃ avec les rÃ´les administratifs.");
             } else {
-                \Illuminate\Support\Facades\Log::info("Envoi d'alertes capacitÃ© Ã  : " . $users->pluck('email')->implode(', '));
+                \Illuminate\Support\Facades\Log::info("Envoi d'alertes capacitÃ Ã  : " . $users->pluck('email')->implode(', '));
                 \Illuminate\Support\Facades\Notification::send($users, new \App\Notifications\CapacityAlertNotification($alerts));
-                $this->info(count($alerts) . ' alerts found. Notifications envoyÃ©es.');
+                $this->info(count($alerts) . ' alerts found. Notifications envoyÃes.');
             }
         } else {
             $this->info('No capacity alerts.');
-            \Illuminate\Support\Facades\Log::info("Scan CapacitÃ© : Tout est normal.");
+            \Illuminate\Support\Facades\Log::info("Scan CapacitÃ : Tout est normal.");
         }
     }
 }

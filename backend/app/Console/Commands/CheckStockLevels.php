@@ -11,11 +11,11 @@ use Illuminate\Support\Facades\Log;
 class CheckStockLevels extends Command
 {
     protected $signature = 'stock:alert';
-    protected $description = 'VÃ©rifie les produits dont le stock est infÃ©rieur au seuil minimum et alerte les responsables';
+    protected $description = 'VÃrifie les produits dont le stock est infÃrieur au seuil minimum et alerte les responsables';
 
     public function handle()
     {
-        $this->info('ðŸ” VÃ©rification des seuils de stock...');
+        $this->info('ðŸ” VÃrification des seuils de stock...');
 
         // Trouver les produits sous le seuil (et actifs)
         $lowStockProducts = Product::where('status', 'active')
@@ -44,8 +44,8 @@ class CheckStockLevels extends Command
         })->get();
 
         if ($responsables->isEmpty()) {
-            $this->error("Aucun responsable trouvÃ© pour l'alerte stock.");
-            Log::warning("Alerte Stock : Aucun utilisateur trouvÃ© pour recevoir les alertes.");
+            $this->error("Aucun responsable trouvÃ pour l'alerte stock.");
+            Log::warning("Alerte Stock : Aucun utilisateur trouvÃ pour recevoir les alertes.");
             return;
         }
 
@@ -55,6 +55,6 @@ class CheckStockLevels extends Command
             $user->notify(new LowStockAlertNotification($lowStockProducts));
         }
 
-        $this->info(count($lowStockProducts) . ' produits en stock critique. Notifications envoyÃ©es.');
+        $this->info(count($lowStockProducts) . ' produits en stock critique. Notifications envoyÃes.');
     }
 }

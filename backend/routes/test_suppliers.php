@@ -1,6 +1,6 @@
 <?php
 /**
- * Test script pour vÃ©rifier les endpoints des fournisseurs
+ * Test script pour vÃrifier les endpoints des fournisseurs
  * Ã€ utiliser avec php artisan tinker ou via une route
  */
 
@@ -11,7 +11,7 @@
 
 echo "=== Test Suppliers API ===\n";
 
-// VÃ©rifier la structure de la table
+// VÃrifier la structure de la table
 DB::statement('DESCRIBE supplier_reviews') ? print "âœ“ Table supplier_reviews OK\n" : print "âœ— Table supplier_reviews manquante\n";
 DB::statement('DESCRIBE product_supplier') ? print "âœ“ Table product_supplier OK\n" : print "âœ— Table product_supplier manquante\n";
 
@@ -33,7 +33,7 @@ if ($supplier) {
         echo "  - Review User: " . $review->user?->name ?? 'null' . "\n";
     }
 } else {
-    echo "âœ— Aucun fournisseur trouvÃ©\n";
+    echo "âœ— Aucun fournisseur trouvÃ\n";
 }
 
 echo "\n=== Test Produit avec Suppliers ===\n";
@@ -46,7 +46,7 @@ if ($product) {
         echo "  - {$s->name}\n";
     }
 } else {
-    echo "âœ— Aucun produit trouvÃ©\n";
+    echo "âœ— Aucun produit trouvÃ\n";
 }
 
-echo "\nâœ“ Tests complÃ©tÃ©s\n";
+echo "\nâœ“ Tests complÃtÃs\n";

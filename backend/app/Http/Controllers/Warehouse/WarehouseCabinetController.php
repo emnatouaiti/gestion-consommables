@@ -41,7 +41,7 @@ class WarehouseCabinetController extends Controller
         $room = WarehouseRoom::findOrFail($validated['room_id']);
         if ($room->max_cabinets > 0 && $room->cabinets()->count() >= $room->max_cabinets) {
             return response()->json([
-                'message' => "La salle '{$room->name}' a atteint sa capacitÃ© maximale de {$room->max_cabinets} armoires."
+                'message' => "La salle '{\$room->name}' a atteint sa capacité maximale de {$room->max_cabinets} armoires."
             ], 422);
         }
 
