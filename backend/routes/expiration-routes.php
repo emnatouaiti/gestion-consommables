@@ -11,7 +11,7 @@
  * });
  */
 
-use App\Http\Controllers\Expiration\ExpirationController;
+use App\Http\Controllers\Expirations\ExpirationController;
 use Illuminate\Support\Facades\Route;
 
 // Checkpoint automatique des expirations (scheduler ou appel manuelle)

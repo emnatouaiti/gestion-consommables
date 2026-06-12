@@ -821,13 +821,13 @@ export class ProductStocksComponent implements OnInit {
     const path = photos[idx]?.path || photos[idx]?.image_path || photos[idx]?.url || '';
     if (!path) return 'assets/images/placeholder-product.png';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    return `http://localhost:8000/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
+    return `/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
   }
 
   getPhotoUrl(path: string | null | undefined): string {
     if (!path) return 'assets/images/placeholder-product.png';
     if (path.startsWith('http://') || path.startsWith('https://')) return path;
-    return `http://localhost:8000/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
+    return `/api/docs/${path.replace(/^storage\//, '').replace(/^[/\\]+/, '')}`;
   }
 
   selectPhoto(index: number): void {
@@ -987,7 +987,7 @@ export class ProductStocksComponent implements OnInit {
     const path = doc?.path;
     if (!path) return;
     // Direct point to backend to avoid proxy issues with large files or specific paths
-    const url = `http://localhost:8000/api/docs/${path.replace(/^[/\\]+/, '').replace(/^storage\//, '')}`;
+    const url = `/api/docs/${path.replace(/^[/\\]+/, '').replace(/^storage\//, '')}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = doc?.title || 'document';

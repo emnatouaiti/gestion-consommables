@@ -1,4 +1,4 @@
-﻿<div class="documents-page">
+<div class="documents-page">
 
   <!-- ══════════════════════════════════════════════════════════
        EN-TÊTE
@@ -66,201 +66,6 @@
 
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL — Emplacement
-  ══════════════════════════════════════════════════════════ -->
-  <div class="modal-backdrop" *ngIf="locationConfirmation" (click)="cancelLocationConfirmation()">
-    <div class="modal-panel wide" (click)="$event.stopPropagation()">
-      <div class="modal-panel-header">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
-          <circle cx="12" cy="10" r="3"/>
-        </svg>
-        <h3>Choisir l'emplacement de chaque produit</h3>
-      </div>
-      <p>Choisissez les informations une ligne à la fois : dépôt, salle, puis emplacement ou armoire.</p>
-
-      <div class="location-progress" *ngIf="locationConfirmation.items?.length">
-        <span class="progress-step">Produit {{ locationStepIndex + 1 }}</span>
-        <span class="progress-sep">/</span>
-        <span class="progress-total">{{ locationConfirmation.items.length }}</span>
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill"
-            [style.width.%]="((locationStepIndex + 1) / locationConfirmation.items.length) * 100">
-          </div>
-        </div>
-      </div>
-
-      <div *ngIf="currentLocationItem() as item" class="location-item">
-        <div class="location-title">
-          <strong>{{ item.title }}</strong>
-          <span class="qty-badge">Qté : {{ item.quantity }}</span>
-        </div>
-
-        <div class="location-grid">
-          <div class="field">
-            <label>Dépôt</label>
-            <select [(ngModel)]="item.warehouse_id"
-                    (ngModelChange)="onWarehouseSelected(item)"
-                    [disabled]="item.depot_locked"
-                    [class.locked-select]="item.depot_locked">
-              <option [ngValue]="null">Sélectionner un dépôt</option>
-              <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
-            </select>
-            <small *ngIf="item.depot_locked" class="locked-hint">Dépôt verrouillé selon votre profil (agent/responsable).</small>
-          </div>
-
-          <div class="field">
-            <label>Salle</label>
-            <select [(ngModel)]="item.room_id" (ngModelChange)="onRoomSelected(item)">
-              <option [ngValue]="null">Sélectionner une salle</option>
-              <option *ngFor="let r of item.rooms" [ngValue]="r.id">{{ r.name }}</option>
-            </select>
-          </div>
-
-          <div class="field full" *ngIf="item.room_id">
-            <label>Type de rangement</label>
-            <div class="choice-cards">
-              <button type="button" class="choice-card"
-                [class.active]="item.storage_target === 'location'"
-                (click)="selectStorageTarget(item, 'location')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
-                  <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
-                </svg>
-                Emplacement
-              </button>
-              <button type="button" class="choice-card"
-                [class.active]="item.storage_target === 'cabinet'"
-                (click)="selectStorageTarget(item, 'cabinet')">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <rect x="2" y="3" width="20" height="14" rx="2"/>
-                  <line x1="8" y1="21" x2="16" y2="21"/>
-                  <line x1="12" y1="17" x2="12" y2="21"/>
-                </svg>
-                Armoire
-              </button>
-            </div>
-          </div>
-
-          <div class="field" *ngIf="item.room_id && item.storage_target === 'location'">
-            <label>Emplacement</label>
-            <select [(ngModel)]="item.warehouse_location_id" (ngModelChange)="onLocationSelected(item)">
-              <option [ngValue]="null">Sélectionner un emplacement</option>
-              <option *ngFor="let l of item.locations" 
-                      [ngValue]="l.id" 
-                      [disabled]="l.isFull || (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units)">
-                {{ l.code || l.name || ('#' + l.id) }} 
-                {{ l.isFull ? '(Plein)' : (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units ? '(Insuffisant)' : '') }}
-              </option>
-            </select>
-          </div>
-
-          <div class="field" *ngIf="item.room_id && item.storage_target === 'cabinet'">
-            <label>Armoire</label>
-            <select [(ngModel)]="item.cabinet_id" (ngModelChange)="onCabinetSelected(item)">
-              <option [ngValue]="null">Aucune</option>
-              <option *ngFor="let c of item.cabinets" 
-                      [ngValue]="c.id" 
-                      [disabled]="c.isFull || (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units)">
-                {{ c.name || c.code || ('#' + c.id) }} 
-                {{ c.isFull ? '(Plein)' : (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units ? '(Insuffisant)' : '') }}
-              </option>
-            </select>
-          </div>
-
-          <div class="field full" *ngIf="item.has_expiration">
-            <label>Date d'expiration (Optionnelle)</label>
-            <input type="date" [(ngModel)]="item.expiration_date" />
-          </div>
-
-          <div class="field full" *ngIf="item.has_expiration">
-            <label>Numéro de lot (Optionnel)</label>
-            <input type="text" [(ngModel)]="item.batch_number" placeholder="Ex: LOT-2026-A" />
-          </div>
-        </div>
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 4px;"><polyline points="15 18 9 12 15 6"/></svg>
-          Précédent
-        </button>
-        <button class="btn primary" (click)="nextLocationStep()" [disabled]="!canGoNextLocation()">
-          <span *ngIf="locationStepIndex < locationConfirmation.items.length - 1" style="display: flex; align-items: center;">
-            Suivant
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-left: 4px;"><polyline points="9 18 15 12 9 6"/></svg>
-          </span>
-          <span *ngIf="locationStepIndex >= locationConfirmation.items.length - 1" style="display: flex; align-items: center;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"/></svg>
-            Valider
-          </span>
-        </button>
-        <button class="btn ghost" (click)="cancelLocationConfirmation()">Annuler</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL — Création produit
-  ══════════════════════════════════════════════════════════ -->
-  <div class="modal-backdrop" *ngIf="productConfirmation" (click)="cancelProductCreation()">
-    <div class="modal-panel" (click)="$event.stopPropagation()">
-      <div class="modal-panel-header">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
-        </svg>
-        <h3>Création produit nécessaire</h3>
-      </div>
-      <p>Plusieurs produits inconnus ont été détectés. Choisissez une catégorie pour chacun.</p>
-
-      <div *ngFor="let s of productConfirmation.suggestedProducts; let i = index" class="suggested-item">
-        <div class="suggested-index">{{ i + 1 }}</div>
-        <div class="suggested-fields">
-          <div class="field">
-            <label>Produit</label>
-            <input type="text" [(ngModel)]="s.title" placeholder="Nom du produit" />
-          </div>
-          <div class="field">
-            <label>Référence</label>
-            <input type="text" [(ngModel)]="s.reference" placeholder="Ex: INV-0006" />
-          </div>
-          <div class="field">
-            <label>Unité</label>
-            <input type="text" [(ngModel)]="s.unit" placeholder="Ex: pièce, boite, litre..." />
-          </div>
-          <div class="field">
-            <label>Seuil min</label>
-            <input type="number" min="0" [(ngModel)]="s.seuil_min" />
-          </div>
-          <div class="field full">
-            <label style="text-transform:none; letter-spacing:0; font-weight:600;">
-              <input type="checkbox" [(ngModel)]="s.has_expiration" style="margin-right:8px; width:auto;" />
-              Produit avec date d'expiration
-            </label>
-          </div>
-          <div class="field full">
-            <label>Catégorie *</label>
-            <select [(ngModel)]="s.category_id">
-              <option [ngValue]="null">Sélectionner une catégorie</option>
-              <option *ngFor="let c of categories" [ngValue]="c.id">{{ c.title || c.name || 'Catégorie inconnue' }}</option>
-            </select>
-          </div>
-        </div>
-        <hr *ngIf="i < productConfirmation.suggestedProducts.length - 1" />
-      </div>
-
-      <div class="modal-actions">
-        <button class="btn primary" (click)="confirmProductCreation()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polyline points="20 6 9 17 4 12"/>
-          </svg>
-          Valider la création
-        </button>
-        <button class="btn ghost" (click)="cancelProductCreation()">Annuler</button>
-      </div>
-    </div>
-  </div>
 
   <!-- ══════════════════════════════════════════════════════════
        MODAL — Création fournisseur
@@ -314,6 +119,231 @@
           Confirmer le fournisseur
         </button>
         <button class="btn ghost" (click)="cancelSupplierCreation()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL — Création de produit requise
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="productConfirmation" (click)="cancelProductCreation()">
+    <div class="modal-panel wide" (click)="$event.stopPropagation()">
+      <div class="modal-panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+        <h3>Création de produit requise</h3>
+      </div>
+      <p style="margin: -6px 0 0; font-size: 13.5px; color: var(--text-mid);">Renseignez les détails manquants pour les nouveaux produits.</p>
+
+      <div style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 20px;">
+        <div *ngFor="let s of productConfirmation.suggestedProducts; let i = index" style="padding: 20px; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: #fafafa;">
+          <h4 style="margin-top:0; margin-bottom:16px; color: var(--text-dark); display:flex; align-items:center; gap:8px;">
+            <div class="suggested-index" style="margin:0;">{{ i + 1 }}</div>
+            Nouveau produit
+          </h4>
+          
+          <div class="form-row">
+            <div class="field">
+              <label>Nom *</label>
+              <input type="text" [(ngModel)]="s.title" placeholder="Nom du produit" />
+            </div>
+            <div class="field">
+              <label>Catégorie *</label>
+              <select [(ngModel)]="s.category_id">
+                <option [ngValue]="null">Sélectionner...</option>
+                <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row triple">
+            <div class="field">
+              <label>Seuil min *</label>
+              <input type="number" min="0" [(ngModel)]="s.seuil_min" placeholder="0" />
+            </div>
+            <div class="field">
+              <label>Seuil max</label>
+              <input type="number" min="0" [(ngModel)]="s.seuil_max" placeholder="0" />
+            </div>
+            <div class="field">
+              <label>Unité</label>
+              <select [(ngModel)]="s.unit_id">
+                <option [ngValue]="null">Sélectionner...</option>
+                <option *ngFor="let u of units" [ngValue]="u.id">{{ u.name }}<span *ngIf="u.code"> ({{ u.code }})</span></option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field full">
+              <label class="checkbox-label" style="margin-top:10px;">
+                <input type="checkbox" [(ngModel)]="s.has_expiration" style="margin-right:8px; width:auto;" />
+                <span>Gérer les dates et lots (Expiration)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>Marque</label>
+              <select [(ngModel)]="s.marque_id" (ngModelChange)="onMarqueSelect(s)">
+                <option [ngValue]="null">Sélectionner...</option>
+                <option *ngFor="let b of brands" [ngValue]="b.id">{{ b.name }}</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Modèle</label>
+              <select [(ngModel)]="s.model">
+                <option value="">Sélectionner...</option>
+                <option *ngFor="let m of s.modelsList" [value]="m.name">{{ m.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>N° Série</label>
+              <input type="text" [(ngModel)]="s.num_serie" placeholder="SN..." />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="field">
+              <label>N° Inventaire</label>
+              <input type="text" placeholder="Auto..." [disabled]="true" />
+            </div>
+            <div class="field">
+              <label>Fournisseur</label>
+              <select [(ngModel)]="s.supplier_id">
+                <option [ngValue]="null">Sélectionner...</option>
+                <option *ngFor="let sup of suppliers" [ngValue]="sup.id">{{ sup.name }}</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label>Description</label>
+              <button type="button" class="btn secondary" style="padding:4px 8px; font-size:11px;"
+                      (click)="generateDescriptions(s)" [disabled]="!s.title">
+                Générer auto
+              </button>
+            </div>
+            <textarea [(ngModel)]="s.description" placeholder="Description détaillée..." rows="3" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
+          </div>
+
+          <div class="field">
+            <label>Description courte</label>
+            <textarea [(ngModel)]="s.short_description" placeholder="Résumé court..." rows="2" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label>Commentaire</label>
+            <textarea [(ngModel)]="s.commentaire" placeholder="Commentaire..." rows="2" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 15px;">
+        <button class="btn primary" (click)="confirmProductCreation()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Valider la création
+        </button>
+        <button class="btn ghost" (click)="cancelProductCreation()">Annuler</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       MODAL — Confirmation des emplacements
+  ══════════════════════════════════════════════════════════ -->
+  <div class="modal-backdrop" *ngIf="locationConfirmation" (click)="cancelLocationConfirmation()">
+    <div class="modal-panel" (click)="$event.stopPropagation()">
+      <div class="modal-panel-header">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        <h3>Confirmation des emplacements</h3>
+      </div>
+      
+      <div class="location-progress" style="margin-top:5px;">
+        <span class="progress-step">Élément {{ locationStepIndex + 1 }}</span>
+        <span class="progress-sep">/</span>
+        <span class="progress-total">{{ locationConfirmation.items.length }}</span>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" [style.width]="((locationStepIndex + 1) / locationConfirmation.items.length * 100) + '%'"></div>
+        </div>
+      </div>
+
+      <div *ngIf="currentLocationItem() as item" class="location-item" style="margin-top: 16px;">
+        <div class="location-title">
+          <h4 style="margin:0;">{{ item.title }}</h4>
+          <span class="qty-badge" style="background:#f1f5f9; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">Qté: {{ item.quantity }}</span>
+        </div>
+        
+        <div class="location-grid">
+          <div class="field">
+            <label>Dépôt</label>
+            <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)" [disabled]="item.depot_locked" [class.locked-select]="item.depot_locked">
+              <option [ngValue]="null">Sélectionner un dépôt</option>
+              <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
+            </select>
+            <small *ngIf="item.depot_locked" class="locked-hint">Dépôt verrouillé selon profil.</small>
+          </div>
+
+          <div class="field">
+            <label>Salle</label>
+            <select [(ngModel)]="item.room_id" (ngModelChange)="onRoomSelected(item)">
+              <option [ngValue]="null">Sélectionner une salle</option>
+              <option *ngFor="let r of item.rooms" [ngValue]="r.id">{{ r.name }}</option>
+            </select>
+          </div>
+
+          <div class="field full" *ngIf="item.room_id">
+            <label>Type de rangement</label>
+            <div class="choice-cards">
+              <button type="button" class="choice-card" [class.active]="item.storage_target === 'location'" (click)="selectStorageTarget(item, 'location')">Emplacement</button>
+              <button type="button" class="choice-card" [class.active]="item.storage_target === 'cabinet'" (click)="selectStorageTarget(item, 'cabinet')">Armoire</button>
+            </div>
+          </div>
+
+          <div class="field" *ngIf="item.room_id && item.storage_target === 'location'">
+            <label>Emplacement</label>
+            <select [(ngModel)]="item.warehouse_location_id" (ngModelChange)="onLocationSelected(item)">
+              <option [ngValue]="null">Aucun</option>
+              <option *ngFor="let l of item.locations" [ngValue]="l.id" [disabled]="l.isFull || (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units)">
+                {{ l.code || l.name || ('#' + l.id) }} 
+                {{ l.isFull ? '(Plein)' : (l.capacity_units > 0 && l.current_units + (item.quantity || 0) > l.capacity_units ? '(Insuffisant)' : '') }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field" *ngIf="item.room_id && item.storage_target === 'cabinet'">
+            <label>Armoire</label>
+            <select [(ngModel)]="item.cabinet_id" (ngModelChange)="onCabinetSelected(item)">
+              <option [ngValue]="null">Aucune</option>
+              <option *ngFor="let c of item.cabinets" [ngValue]="c.id" [disabled]="c.isFull || (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units)">
+                {{ c.name || c.code || ('#' + c.id) }} 
+                {{ c.isFull ? '(Plein)' : (c.capacity_units > 0 && c.current_units + (item.quantity || 0) > c.capacity_units ? '(Insuffisant)' : '') }}
+              </option>
+            </select>
+          </div>
+
+          <div class="field full" *ngIf="item.has_expiration">
+            <label>Date d'expiration (Optionnelle)</label>
+            <input type="date" [(ngModel)]="item.expiration_date" />
+          </div>
+
+          <div class="field full" *ngIf="item.has_expiration">
+            <label>Numéro de lot (Optionnel)</label>
+            <input type="text" [(ngModel)]="item.batch_number" placeholder="Ex: LOT-2026-A" />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
+        <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">Précédent</button>
+        <button class="btn primary" (click)="nextLocationStep()" [disabled]="!canGoNextLocation()">
+          <span *ngIf="locationStepIndex < locationConfirmation.items.length - 1">Suivant</span>
+          <span *ngIf="locationStepIndex >= locationConfirmation.items.length - 1">Valider</span>
+        </button>
+        <button class="btn ghost" (click)="cancelLocationConfirmation()">Annuler</button>
       </div>
     </div>
   </div>
@@ -615,6 +645,8 @@
                 Application soumise à validation
               </span>
             </div>
+            
+
 
           </div>
         </div>

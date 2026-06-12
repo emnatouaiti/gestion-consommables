@@ -1,4 +1,4 @@
-﻿import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Component, OnInit, Inject, PLATFORM_ID, ChangeDetectorRef, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,6 +6,9 @@ import { Router } from '@angular/router';
 import { AdminWarehouseService } from '../../../core/services/admin-warehouse.service';
 
 import { AdminStockService } from '../../../core/services/admin-stock.service';
+import { AdminRefService } from '../../../core/services/admin-ref.service';
+import { SupplierService } from '../../../core/services/supplier.service';
+import { UnitService } from '../../../core/services/unit.service';
 
 
 @Component({
@@ -17,6 +20,10 @@ import { AdminStockService } from '../../../core/services/admin-stock.service';
 })
 export class DocumentsComponent implements OnInit {
   private router = inject(Router);
+  private refService = inject(AdminRefService);
+  private supplierService = inject(SupplierService);
+  private unitService = inject(UnitService);
+  private stockService = inject(AdminStockService);
 
   documents: any[] = [];
   file: File | null = null;
@@ -40,6 +47,12 @@ export class DocumentsComponent implements OnInit {
   locationConfirmation: any = null;
   locationStepIndex = 0;
   allProducts: any[] = [];
+  
+  brands: any[] = [];
+  modelsList: any[] = [];
+  units: any[] = [];
+  suppliers: any[] = [];
+  flatCategories: { id: number; title: string; level: number; displayTitle: string }[] = [];
 
   // Expiration modal properties
   showExpirationModal = false;
@@ -64,6 +77,55 @@ export class DocumentsComponent implements OnInit {
     this.loadWarehouses();
     this.loadProductsList();
     this.loadCurrentUser();
+    this.loadBrands();
+    this.loadUnits();
+    this.loadSuppliers();
+    this.loadCategories();
+  }
+
+  loadBrands(): void {
+    this.refService.listMarques({}).subscribe({
+      next: (res: any) => { this.brands = Array.isArray(res) ? res : []; }
+    });
+  }
+
+  loadUnits(): void {
+    this.unitService.list().subscribe({
+      next: (res: any) => { this.units = Array.isArray(res) ? res : []; }
+    });
+  }
+
+  loadSuppliers(): void {
+    this.supplierService.getSuppliers().subscribe({
+      next: (res: any) => { this.suppliers = Array.isArray(res) ? res : (Array.isArray(res?.data) ? res.data : []); }
+    });
+  }
+
+  onMarqueSelect(s: any): void {
+    s.modelsList = [];
+    s.model = '';
+    if (!s.marque_id) return;
+    const mar = this.brands.find((x: any) => x.id === s.marque_id);
+    s.marque = mar ? mar.name : '';
+    this.refService.listModeles({ marque_id: s.marque_id }).subscribe({
+      next: (res: any) => { s.modelsList = Array.isArray(res) ? res : []; this.cdr.detectChanges(); }
+    });
+  }
+
+  generateDescriptions(s: any): void {
+    if (!s.title || !s.title.trim()) return;
+    const payload = {
+      title: s.title,
+      marque: s.marque || undefined,
+      model: s.model || undefined
+    };
+    this.stockService.generateDescriptions(payload).subscribe({
+      next: (res: any) => {
+        if (res?.short_description) s.short_description = res.short_description;
+        if (res?.description) s.description = res.description;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   loadCurrentUser(): void {
@@ -122,9 +184,14 @@ export class DocumentsComponent implements OnInit {
         if (this.categories.length === 0) {
           // Try tree mode as fallback
           this.http.get('/api/categories?tree=1').subscribe({
-            next: (tree: any) => { this.categories = Array.isArray(tree) ? tree : []; },
+            next: (tree: any) => { 
+              this.categories = Array.isArray(tree) ? tree : []; 
+              this.flatCategories = this.flattenTree(this.categories);
+            },
             error: () => { this.loadCategoriesPublic(); }
           });
+        } else {
+            this.flatCategories = this.flattenTree(this.categories);
         }
       },
       error: (err: any) => {
@@ -147,15 +214,38 @@ export class DocumentsComponent implements OnInit {
         this.categories = Array.isArray(res) ? res : [];
         if (this.categories.length === 0) {
           this.http.get('/api/categories/public?tree=1').subscribe({
-            next: (tree: any) => { this.categories = Array.isArray(tree) ? tree : []; },
-            error: () => { this.categories = []; }
+            next: (tree: any) => { 
+                this.categories = Array.isArray(tree) ? tree : []; 
+                this.flatCategories = this.flattenTree(this.categories);
+            },
+            error: () => { this.categories = []; this.flatCategories = []; }
           });
+        } else {
+            this.flatCategories = this.flattenTree(this.categories);
         }
       },
       error: () => {
         this.categories = [];
+        this.flatCategories = [];
       }
     });
+  }
+
+  private flattenTree(nodes: any[], level = 0): { id: number; title: string; level: number; displayTitle: string }[] {
+    const result: { id: number; title: string; level: number; displayTitle: string }[] = [];
+    for (const node of nodes) {
+      const prefix = level === 0 ? '' : '\u00A0\u00A0'.repeat(level) + '└ ';
+      result.push({
+        id: node.id,
+        title: node.title || node.name,
+        level: node.level || (level + 1),
+        displayTitle: prefix + (node.title || node.name)
+      });
+      if (node.recursive_children && node.recursive_children.length) {
+        result.push(...this.flattenTree(node.recursive_children, level + 1));
+      }
+    }
+    return result;
   }
 
   loadWarehouses(): void {
@@ -300,6 +390,27 @@ export class DocumentsComponent implements OnInit {
 
     if (items.length === 0) {
       this.error = 'Aucune ligne OCR trouvee. Verifiez le fichier.';
+      return;
+    }
+
+    const missingProducts = items.filter((i:any) => !i.product_id);
+    if (missingProducts.length > 0) {
+      this.productConfirmation = {
+        doc,
+        items,
+        suggestedProducts: missingProducts.map((p:any) => ({
+          title: p.title,
+          reference: p.reference,
+          unit: '',
+          seuil_min: 0,
+          has_expiration: false,
+          category_id: null
+        }))
+      };
+      this.locationConfirmation = null;
+      this.supplierConfirmation = null;
+      this.error = ''; 
+      this.loadCategories();
       return;
     }
 
@@ -586,7 +697,9 @@ export class DocumentsComponent implements OnInit {
       };
     });
 
-    this.executeApply(this.productConfirmation.doc, items, true);
+    const docToApply = this.productConfirmation.doc;
+    this.productConfirmation = null;
+    this.openLocationConfirmation(docToApply, items, true);
   }
 
   shouldLockDepotSelection(): boolean {
@@ -716,7 +829,7 @@ export class DocumentsComponent implements OnInit {
     const path = doc?.path;
     if (!path) return;
     const cleanPath = path.replace(/^[/\\]+/, '').replace(/^storage\//, '');
-    const url = `http://localhost:8000/api/docs/${cleanPath}`;
+    const url = `/api/docs/${cleanPath}`;
     const a = document.createElement('a');
     a.href = url;
     a.download = doc?.title || 'document';

@@ -414,11 +414,23 @@ class DocumentController extends Controller
                         'title'          => $action['title'],
                         'reference'      => $action['reference'] !== '' ? $action['reference'] : strtoupper(Str::slug($action['title'])) . '-' . Str::random(4),
                         'seuil_min'      => max(0, (int) ($action['seuil_min'] ?? 0)),
+                        'seuil_max'      => isset($action['seuil_max']) && $action['seuil_max'] !== '' ? max(0, (int) $action['seuil_max']) : null,
                         'stock_quantity' => 0,
                         'categorie_id'   => $catId,
                         'unit'           => $action['unit'] ?? null,
+                        'unit_id'        => $action['unit_id'] ?? null,
                         'photo'          => $document->path,
+                        'marque'         => $action['marque'] ?? null,
+                        'model'          => $action['model'] ?? null,
+                        'num_serie'      => $action['num_serie'] ?? null,
+                        'description'    => $action['description'] ?? null,
+                        'short_description' => $action['short_description'] ?? null,
+                        'commentaire'    => $action['commentaire'] ?? null,
                     ]);
+                    
+                    if (isset($action['supplier_id']) && $action['supplier_id']) {
+                        $product->suppliers()->syncWithoutDetaching([$action['supplier_id']]);
+                    }
                     if ($validSupplierId) $product->suppliers()->syncWithoutDetaching([$validSupplierId]);
                 } elseif ($validSupplierId) {
                     $product->suppliers()->syncWithoutDetaching([$validSupplierId]);

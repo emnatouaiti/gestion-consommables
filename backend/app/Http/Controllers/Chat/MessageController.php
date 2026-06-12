@@ -236,6 +236,103 @@ class MessageController extends Controller
 
         return $data;
     }
+
+    public function stream(Request $request)
+    {
+        $user = null;
+
+        // Try request user first
+        if ($request->user()) {
+            $user = $request->user();
+        } else {
+            $tokenStr = $request->query('token');
+            if ($tokenStr) {
+                if (str_starts_with($tokenStr, 'Bearer ')) {
+                    $tokenStr = substr($tokenStr, 7);
+                }
+                $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($tokenStr);
+                if ($tokenModel && $tokenModel->tokenable) {
+                    $user = $tokenModel->tokenable;
+                }
+            }
+        }
+
+        if (!$user) {
+            return response()->json(['message' => 'Unauthorized'], 401);
+        }
+
+        $response = new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($user) {
+            header('Content-Type: text/event-stream');
+            header('Cache-Control: no-cache');
+            header('Connection: keep-alive');
+            header('X-Accel-Buffering: no');
+
+            // Find current maximum message ID involving this user
+            $lastMessageId = Message::where('sender_id', $user->id)
+                ->orWhere('receiver_id', $user->id)
+                ->max('id') ?? 0;
+
+            // Find current unread count
+            $lastUnreadCount = Message::where('receiver_id', $user->id)
+                ->where('is_read', false)
+                ->count();
+
+            echo "event: connected\n";
+            echo "data: " . json_encode(['status' => 'connected']) . "\n\n";
+            ob_flush();
+            flush();
+
+            $secondsLimit = 300; // 5 minutes limit to prevent infinite processes
+            $start = time();
+            $lastHeartbeat = time();
+
+            while (time() - $start < $secondsLimit) {
+                if (connection_aborted()) {
+                    break;
+                }
+
+                $currentMaxId = Message::where('sender_id', $user->id)
+                    ->orWhere('receiver_id', $user->id)
+                    ->max('id') ?? 0;
+
+                $currentUnreadCount = Message::where('receiver_id', $user->id)
+                    ->where('is_read', false)
+                    ->count();
+
+                if ($currentMaxId > $lastMessageId || $currentUnreadCount !== $lastUnreadCount) {
+                    $lastMessageId = $currentMaxId;
+                    $lastUnreadCount = $currentUnreadCount;
+
+                    echo "event: message\n";
+                    echo "data: " . json_encode([
+                        'type' => 'update',
+                        'unread_count' => $currentUnreadCount
+                    ]) . "\n\n";
+                    ob_flush();
+                    flush();
+                }
+
+                // Send heartbeat every 15 seconds to keep connection alive
+                if (time() - $lastHeartbeat >= 15) {
+                    echo "event: heartbeat\n";
+                    echo "data: " . json_encode(['time' => time()]) . "\n\n";
+                    ob_flush();
+                    flush();
+                    $lastHeartbeat = time();
+                }
+
+                sleep(2);
+            }
+        });
+
+        // Set headers for SSE response
+        $response->headers->set('Content-Type', 'text/event-stream');
+        $response->headers->set('Cache-Control', 'no-cache');
+        $response->headers->set('Connection', 'keep-alive');
+        $response->headers->set('X-Accel-Buffering', 'no');
+
+        return $response;
+    }
 }
 
 

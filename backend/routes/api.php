@@ -204,7 +204,18 @@ Route::prefix('api')->group(function () {
             Route::put('product-stocks/{stock}', [ProductStockController::class, 'updateStock']);
             Route::delete('product-stocks/{stock}', [ProductStockController::class, 'removeStock']);
             Route::get('product-stocks/search', [ProductStockController::class, 'searchStocks']);
+            
+            // Expirations specific routes
+            Route::get('expirations/{product}/lifecycle', [\App\Http\Controllers\Expirations\ExpirationController::class, 'getBatches']);
+            Route::get('expirations/{product}/expiring-soon', [\App\Http\Controllers\Expirations\ExpirationController::class, 'getExpiringSoon']);
+            Route::get('expirations/{product}/events', [\App\Http\Controllers\Expirations\ExpirationController::class, 'getEvents']);
         });
+    });
+
+    require __DIR__ . '/expiration-routes.php';
+
+    Route::prefix('chat')->group(function () {
+        Route::get('stream', [MessageController::class, 'stream']);
     });
 
     // --- MISC / ADMIN ROUTES ---
