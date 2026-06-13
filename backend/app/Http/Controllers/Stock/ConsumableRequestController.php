@@ -21,12 +21,18 @@ use Barryvdh\DomPDF\Facade\Pdf;
 
 class ConsumableRequestController extends Controller
 {
+    private array $resolvedProducts = [];
     // Afficher les demandes selon le profil
     public function index(Request $request)
     {
         $user = Auth::user();
 
-        $query = ConsumableRequest::with('user.role', 'product', 'depot')->latest();
+        $query = ConsumableRequest::with([
+            'user.role', 
+            'product.stocks.warehouseLocation.room.warehouse',
+            'product.stocks.warehouseCabinet.room.warehouse',
+            'depot'
+        ])->latest();
 
         if ($request->filled('start_date')) {
             $query->whereDate('created_at', '>=', $request->input('start_date'));
@@ -920,27 +926,32 @@ class ConsumableRequestController extends Controller
 
     private function getAvailableStock(ConsumableRequest $consumableRequest): ?int
     {
-        $hasProductIdColumn = Schema::hasColumn('consumable_requests', 'product_id');
-        $productId = $hasProductIdColumn ? $consumableRequest->product_id : null;
-
-        $product = null;
-        if ($productId) {
-            $product = Product::find($productId);
-        }
+        $product = $consumableRequest->product;
 
         if (!$product) {
             $itemName = trim((string) $consumableRequest->item_name);
             if ($itemName !== '') {
-                $product = Product::query()
-                    ->whereRaw('LOWER(title) = ?', [mb_strtolower($itemName, 'UTF-8')])
-                    ->orWhere('reference', $itemName)
-                    ->first();
+                $cacheKey = mb_strtolower($itemName, 'UTF-8');
+                if (array_key_exists($cacheKey, $this->resolvedProducts)) {
+                    $product = $this->resolvedProducts[$cacheKey];
+                } else {
+                    $product = Product::query()->with('stocks')
+                        ->whereRaw('LOWER(title) = ?', [$cacheKey])
+                        ->orWhere('reference', $itemName)
+                        ->first();
+                    $this->resolvedProducts[$cacheKey] = $product;
+                }
             }
         }
 
         if (!$product) return null;
 
-        $stocksSum = (int) $product->stocks()->sum('quantity');
+        if ($product->relationLoaded('stocks')) {
+            $stocksSum = (int) $product->stocks->sum('quantity');
+        } else {
+            $stocksSum = (int) $product->stocks()->sum('quantity');
+        }
+
         return $stocksSum > 0 ? $stocksSum : (int) ($product->stock_quantity ?? 0);
     }
 
@@ -1042,7 +1053,7 @@ class ConsumableRequestController extends Controller
 
     private function buildRequestPayload(Request $request): array
     {
-        $hasProductIdColumn = Schema::hasColumn('consumable_requests', 'product_id');
+        $hasProductIdColumn = true;
 
         $rules = [
             'item_name'          => 'nullable|string|max:255',
@@ -1125,7 +1136,7 @@ class ConsumableRequestController extends Controller
                 ]);
             }
 
-            $hasProductIdColumn = Schema::hasColumn('consumable_requests', 'product_id');
+            $hasProductIdColumn = true;
             $payloads = [];
 
             foreach ($items as $item) {

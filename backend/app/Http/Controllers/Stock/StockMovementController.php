@@ -63,32 +63,19 @@ class StockMovementController extends Controller
         if ($user && $user->depot_id && !$this->userHasAnyRole($user, ['Administrateur'])) {
             $depotId = (int) $user->depot_id;
             $query->where(function ($q) use ($user, $depotId) {
+                // Primary: Fast index-based lookup
                 $q->where('depot_id', $depotId)
                   ->orWhere(function ($q2) use ($user, $depotId) {
-                      // Legacy/null-depot movements:
-                      // keep creator visibility and also include movements linked
-                      // to the same depot through source/destination location/cabinet.
+                      // Fallback ONLY for legacy records missing the depot_id
                       $q2->whereNull('depot_id')
                          ->where(function ($q3) use ($user, $depotId) {
                              $q3->where('created_by', $user->id)
-                                ->orWhereHas('sourceWarehouseLocation.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                })
-                                ->orWhereHas('destinationWarehouseLocation.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                })
-                                ->orWhereHas('lines.location.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                })
-                                ->orWhereHas('sourceCabinet.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                })
-                                ->orWhereHas('destinationCabinet.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                })
-                                ->orWhereHas('lines.cabinet.room', function ($sq) use ($depotId) {
-                                    $sq->where('warehouse_id', $depotId);
-                                });
+                                ->orWhereHas('sourceWarehouseLocation.room', fn($sq) => $sq->where('warehouse_id', $depotId))
+                                ->orWhereHas('destinationWarehouseLocation.room', fn($sq) => $sq->where('warehouse_id', $depotId))
+                                ->orWhereHas('lines.location.room', fn($sq) => $sq->where('warehouse_id', $depotId))
+                                ->orWhereHas('sourceCabinet.room', fn($sq) => $sq->where('warehouse_id', $depotId))
+                                ->orWhereHas('destinationCabinet.room', fn($sq) => $sq->where('warehouse_id', $depotId))
+                                ->orWhereHas('lines.cabinet.room', fn($sq) => $sq->where('warehouse_id', $depotId));
                          });
                   });
             });
@@ -436,9 +423,7 @@ class StockMovementController extends Controller
                 'document_id'   => $request->input('document_id'),
             ];
 
-            if (Schema::hasColumn('stock_movements', 'planned_at')) {
-                $movementData['planned_at'] = now();
-            }
+            $movementData['planned_at'] = now();
 
             if ($request->hasFile('in_image')) {
                 $movementData['in_image_path'] = $request->file('in_image')->store('stock-movements/in', 'public');
@@ -476,10 +461,9 @@ class StockMovementController extends Controller
             }
 
             if ($status === 'executed') {
-                $updateData = [];
-                if (Schema::hasColumn('stock_movements', 'validated_by')) $updateData['validated_by'] = $user->id;
-                if (Schema::hasColumn('stock_movements', 'executed_at')) $updateData['executed_at'] = now();
-                if (!empty($updateData)) $movement->update($updateData);
+                $updateData['validated_by'] = $user->id;
+                $updateData['executed_at'] = now();
+                $movement->update($updateData);
 
                 $this->executeMovementInternal($movement, $user);
             }
@@ -506,6 +490,7 @@ class StockMovementController extends Controller
             $responsables = $query->get();
 
             foreach ($responsables as $resp) {
+                /** @var User $resp */
                 if ($user && $resp->id !== $user->id) {
                     $resp->notify(new StockMovementNotification($movement));
                 }

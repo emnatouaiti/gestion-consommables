@@ -172,7 +172,7 @@ class ExpirationController extends Controller
         ]);
 
         return response()->json([
-            'message' => 'Alerte mise Ã  jour',
+            'message' => 'Alerte mise a jour',
             'alert' => $alert,
         ]);
     }
@@ -199,7 +199,7 @@ class ExpirationController extends Controller
             );
 
             return response()->json([
-                'message' => 'Consommation forcÃe enregistrÃe',
+                'message' => 'Consommation forcee enregistree',
                 'event' => $event,
                 'remaining_quantity' => $stock->fresh()->quantity,
             ]);
@@ -243,7 +243,7 @@ class ExpirationController extends Controller
                     'created_by'    => auth()->id(),
                     'validated_by'  => auth()->id(),
                     'status'        => 'executed',
-                    'notes'         => 'Ã‰limination de lot: ' . ($stock->batch_number ?? 'Sans numÃro') . ' - Justification: ' . $validated['justification'],
+                    'notes'         => 'Elimination de lot: ' . ($stock->batch_number ?? 'Sans numÃro') . ' - Justification: ' . $validated['justification'],
                     'source_warehouse_location_id' => $stock->warehouse_location_id,
                     'source_cabinet_id'            => $stock->cabinet_id,
                     'executed_at'   => now(),
@@ -273,7 +273,7 @@ class ExpirationController extends Controller
                     'product_id'  => $stock->product_id,
                     'supplier_id' => $stock->supplier_id,
                     'warehouse_id'=> $warehouseId,
-                    'title'       => 'PV d\'Ã‰limination - Lot ' . ($stock->batch_number ?? $stock->id),
+                    'title'       => 'PV d\'elimination - Lot ' . ($stock->batch_number ?? $stock->id),
                     'type'        => 'pv_destruction',
                     'direction'   => 'out',
                     'path'        => $path,
@@ -294,7 +294,7 @@ class ExpirationController extends Controller
         }
 
         return response()->json([
-            'message'            => 'Lot ÃliminÃ avec succÃ¨s',
+            'message'            => 'Lot elimine avec succÃ¨s',
             'event'              => $event,
             'document'           => $document,
             'movement'           => $movement,

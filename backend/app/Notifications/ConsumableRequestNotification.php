@@ -25,13 +25,7 @@ class ConsumableRequestNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        $channels = [];
-        if (Schema::hasTable('notifications')) {
-            $channels[] = 'database';
-        }
-
-        $channels[] = 'mail';
-        return $channels;
+        return ['database', 'mail'];
     }
 
     public function toMail(object $notifiable): MailMessage

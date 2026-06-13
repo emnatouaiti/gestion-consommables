@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Poster PFE - Application Web de Gestion des Consommables</title>
+    <style>
+        @page {
+            size: A3 portrait;
+            margin: 0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Calibri', 'Segoe UI', sans-serif;
+            background: #e8e8e8;
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .poster {
+            width: 29.7cm;
+            min-height: 42cm;
+            background: #ffffff;
+            border: 3px solid #1a5276;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ===== LEFT SIDE BAR ===== */
+        .side-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 1.8cm;
+            background: linear-gradient(180deg, #1a5276, #1a5276);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .side-bar-text {
+            transform: rotate(-90deg);
+            white-space: nowrap;
+            color: #ffffff;
+            font-size: 26pt;
+            font-weight: bold;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+        }
+
+        /* ===== MAIN AREA ===== */
+        .main-area {
+            margin-left: 1.8cm;
+        }
+
+        /* ===== TOP HEADER ===== */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 25px 10px 25px;
+            border-bottom: 2px solid #1a5276;
+        }
+
+        .logo-img {
+            height: 70px;
+            width: auto;
+            object-fit: contain;
+        }
+
+        .top-title {
+            text-align: center;
+            flex: 1;
+            padding: 0 20px;
+        }
+
+        .top-title h1 {
+            font-size: 26pt;
+            font-weight: bold;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+            line-height: 1.15;
+        }
+
+        /* ===== AUTHOR INFO ===== */
+        .author-info {
+            text-align: center;
+            padding: 10px 25px;
+            border-bottom: 1.5px solid #1a5276;
+        }
+
+        .author-info p {
+            font-size: 12pt;
+            color: #333;
+            margin: 3px 0;
+        }
+
+        .author-info .names {
+            font-weight: bold;
+        }
+
+        .author-info .affiliation {
+            font-style: italic;
+            font-size: 11pt;
+            color: #555;
+        }
+
+        /* ===== BODY CONTENT (2 columns) ===== */
+        .body-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            padding: 12px 20px 15px 20px;
+        }
+
+        .col-left {
+            padding-right: 15px;
+            border-right: 1px solid #ddd;
+        }
+
+        .col-right {
+            padding-left: 15px;
+        }
+
+        /* ===== SECTIONS ===== */
+        .section {
+            margin-bottom: 14px;
+        }
+
+        .section-head {
+            font-size: 13pt;
+            font-weight: bold;
+            color: #1a5276;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #1a5276;
+            padding-bottom: 3px;
+        }
+
+        .resume-box {
+            background: #f4f6f7;
+            border: 1px solid #bdc3c7;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+        }
+
+        .resume-box .resume-label {
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #1a1a1a;
+            margin-bottom: 4px;
+        }
+
+        .resume-box p {
+            font-size: 11pt;
+            line-height: 1.45;
+            color: #333;
+            text-align: justify;
+            font-style: italic;
+        }
+
+        .mots-cles-box {
+            margin-bottom: 14px;
+        }
+
+        .mots-cles-box .mots-label {
+            font-size: 13pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #1a1a1a;
+            margin-bottom: 3px;
+        }
+
+        .mots-cles-box p {
+            font-size: 11pt;
+            color: #333;
+        }
+
+        .section p,
+        .section li {
+            font-size: 11pt;
+            line-height: 1.5;
+            color: #333;
+            text-align: justify;
+        }
+
+        .section ul {
+            margin-left: 18px;
+            margin-top: 4px;
+        }
+
+        .section li {
+            margin-bottom: 3px;
+        }
+
+        .section h3 {
+            font-size: 11.5pt;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 8px;
+            margin-bottom: 4px;
+        }
+
+        /* Architecture diagram */
+        .arch-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin: 10px 0;
+            flex-wrap: wrap;
+        }
+
+        .arch-block {
+            background: #eaf2f8;
+            border: 1.5px solid #2980b9;
+            border-radius: 6px;
+            padding: 8px 10px;
+            text-align: center;
+            min-width: 90px;
+        }
+
+        .arch-block .arch-label {
+            font-size: 10pt;
+            font-weight: bold;
+            color: #1a5276;
+        }
+
+        .arch-block .arch-sub {
+            font-size: 8.5pt;
+            color: #555;
+        }
+
+        .arch-arrow {
+            font-size: 16pt;
+            color: #7f8c8d;
+        }
+
+        /* Features table */
+        .features-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0;
+            font-size: 10.5pt;
+        }
+
+        .features-table th {
+            background: #1a5276;
+            color: white;
+            padding: 5px 8px;
+            text-align: left;
+            font-size: 10pt;
+        }
+
+        .features-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #ddd;
+            vertical-align: top;
+        }
+
+        .features-table tr:nth-child(even) {
+            background: #f8f9fa;
+        }
+
+        /* Remerciements */
+        .remerciements {
+            font-style: italic;
+            font-size: 11pt;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        /* References */
+        .references p {
+            font-size: 10.5pt;
+            margin-bottom: 4px;
+            text-indent: -20px;
+            padding-left: 20px;
+        }
+
+        /* ===== FOOTER ===== */
+        .footer {
+            text-align: right;
+            padding: 6px 25px 10px;
+            border-top: 2px solid #1a5276;
+        }
+
+        .footer span {
+            font-size: 10pt;
+            color: #322bc0;
+            font-weight: bold;
+        }
+
+        /* Print */
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+
+            .poster {
+                border: none;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="poster">
+        <!-- LEFT SIDE BAR -->
+        <div class="side-bar">
+            <span class="side-bar-text">ISET &nbsp; PFE 2025/2026</span>
+        </div>
+
+        <!-- MAIN AREA -->
+        <div class="main-area">
+
+            <!-- TOP HEADER -->
+            <div class="top-header">
+
+                <!-- Logo ETAP -->
+                <img class="logo-img" src="logo-etap.png" alt="Logo ETAP">
+
+                <!-- Titre -->
+                <div class="top-title">
+                    <h1>Développement d’une application web <br>pour la gestion 
+des consommables</h1>
+                </div>
+
+                <!-- Logo ISET -->
+                <img class="logo-img" src="logo-iset.png" alt="Logo ISET">
+
+            </div>
+
+            <!-- AUTHOR INFO -->
+            <div class="author-info">
+                <p class="names">Emna TOUAITI, Eya MAJOUL &mdash; Étudiantes</p>
+                <p class="names">Imen MSAKNI (Encadrante ISET), Hafedh DERGHAM (Encadrant Société)</p>
+                <p class="affiliation">ISET &mdash; Institut Supérieur des Études Technologiques</p>
+                <p class="affiliation">ETAP &mdash; Entreprise Tunisienne d'Activités Pétrolières</p>
+            </div>
+
+            <!-- RESUME + MOTS CLES -->
+            <div style="padding: 12px 20px 0 20px;">
+                <div class="resume-box">
+                    <div class="resume-label">RÉSUMÉ</div>
+                    <p>
+                        Ce projet de fin d'études consiste en la conception et le développement d'une application web
+                        full-stack dédiée à la gestion des consommables au sein de l'Entreprise Tunisienne d'Activités
+                        Pétrolières (ETAP). Le système permet le suivi en temps réel du stock, la traçabilité complète
+                        des mouvements d'entrée et de sortie, la gestion automatisée des alertes d'expiration des
+                        produits, ainsi qu'un workflow intégré de demandes et de validations hiérarchiques. Développée
+                        avec Angular côté frontend et Laravel côté backend, l'application repose sur une architecture
+                        REST sécurisée par Laravel Sanctum et une base de données MySQL. Elle intègre également un
+                        module OCR pour la reconnaissance optique des documents et un système de messagerie interne.
+                    </p>
+                </div>
+
+                <div class="mots-cles-box">
+                    <div class="mots-label">MOTS CLÉS</div>
+                    <p>Gestion de stock ; Consommables ; Angular ; Laravel ; REST API ; Expiration ; OCR ; Traçabilité
+                    </p>
+                </div>
+            </div>
+
+            <!-- 2-COLUMN BODY -->
+            <div class="body-content">
+
+                <!-- LEFT COLUMN -->
+                <div class="col-left">
+                    <div class="section">
+                        <div class="section-head">Introduction</div>
+                        <p>
+                            Dans un contexte professionnel où la gestion des consommables représente un enjeu majeur,
+                            les méthodes manuelles traditionnelles montrent leurs limites : pertes de stock, produits
+                            périmés non détectés, manque de traçabilité et difficultés dans le suivi des demandes.
+                        </p>
+                        <p style="margin-top: 6px;">
+                            L'objectif de ce projet est de concevoir et développer une application web complète
+                            permettant de centraliser, automatiser et sécuriser l'ensemble du processus de gestion des
+                            consommables au sein de l'ETAP, depuis la réception jusqu'à l'archivage.
+                        </p>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Architecture Technique</div>
+                        <p>L'application adopte une architecture client-serveur basée sur une API REST :</p>
+                        <div class="arch-diagram">
+                            <div class="arch-block">
+                                <div class="arch-label">Frontend</div>
+                                <div class="arch-sub">Angular</div>
+                            </div>
+                            <span class="arch-arrow">⟷</span>
+                            <div class="arch-block">
+                                <div class="arch-label">API REST</div>
+                                <div class="arch-sub">Sanctum</div>
+                            </div>
+                            <span class="arch-arrow">⟷</span>
+                            <div class="arch-block">
+                                <div class="arch-label">Backend</div>
+                                <div class="arch-sub">Laravel</div>
+                            </div>
+                            <span class="arch-arrow">⟷</span>
+                            <div class="arch-block">
+                                <div class="arch-label">BDD</div>
+                                <div class="arch-sub">MySQL</div>
+                            </div>
+                        </div>
+                        <h3>Technologies utilisées :</h3>
+                        <ul>
+                            <li><strong>Frontend :</strong> Angular, TypeScript, SCSS</li>
+                            <li><strong>Backend :</strong> Laravel, PHP</li>
+                            <li><strong>Base de données :</strong> MySQL</li>
+                            <li><strong>Authentification :</strong> Laravel Sanctum (tokens)</li>
+                            <li><strong>OCR :</strong> Tesseract via API backend</li>
+                        </ul>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Fonctionnalités Principales</div>
+                        <table class="features-table">
+                            <thead>
+                                <tr>
+                                    <th>Module</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><strong>Dashboard</strong></td>
+                                    <td>Statistiques et KPIs en temps réel</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Gestion de Stock</strong></td>
+                                    <td>Produits, lots, catégories, unités</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Mouvements</strong></td>
+                                    <td>Entrées, sorties et transferts</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Utilisateurs</strong></td>
+                                    <td>Multi-rôles avec permissions</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Fournisseurs</strong></td>
+                                    <td>Répertoire et entrepôts</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Alertes</strong></td>
+                                    <td>Expiration automatique (7j avant)</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Demandes</strong></td>
+                                    <td>Workflow de validation hiérarchique</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>OCR</strong></td>
+                                    <td>Extraction optique de données</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Chat</strong></td>
+                                    <td>Messagerie interne intégrée</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Cycle de Vie des Produits</div>
+                        <p>Le système gère le cycle de vie complet des consommables :</p>
+                        <ul>
+                            <li><strong>Création :</strong> Enregistrement avec numéro de lot et date d'expiration</li>
+                            <li><strong>Alerte :</strong> Notification automatique 7 jours avant expiration</li>
+                            <li><strong>Blocage :</strong> Verrouillage automatique des produits expirés</li>
+                            <li><strong>Archivage :</strong> Historisation complète pour traçabilité</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN -->
+                <div class="col-right">
+
+                    <div class="section">
+                        <div class="section-head">Sécurité</div>
+                        <p>La sécurité est assurée à plusieurs niveaux :</p>
+                        <ul>
+                            <li><strong>Authentification :</strong> Tokens Sanctum avec gestion de sessions</li>
+                            <li><strong>Autorisation :</strong> Système de rôles (Admin, agent de stock,responsable de
+                                stock,directeur , Utilisateur)</li>
+                            <li><strong>Validation :</strong> Contrôle des données côté serveur et client</li>
+                            <li><strong>Gestion multi-sièges :</strong> Charguia II, Mohamed V, Kheireddine Pacha</li>
+                        </ul>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Résultats et Discussion</div>
+                        <p>L'application a permis d'atteindre les objectifs suivants :</p>
+                        <ul>
+                            <li>Réduction significative des pertes dues aux produits périmés grâce aux alertes
+                                automatiques</li>
+                            <li>Traçabilité totale des mouvements de stock avec historique complet</li>
+                            <li>Optimisation du processus de demandes via un workflow de validation structuré</li>
+                            <li>Gain de temps grâce au module OCR pour l'extraction de données</li>
+                            <li>Amélioration de la communication interne via le chat intégré</li>
+                        </ul>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Conclusion</div>
+                        <p>
+                            Ce projet offre une solution complète et moderne pour optimiser la gestion des consommables
+                            au sein de l'ETAP. L'application permet de réduire le gaspillage, assurer une traçabilité
+                            totale et améliorer la productivité grâce à l'automatisation intelligente des processus
+                            métier.
+                        </p>
+                        <p style="margin-top: 6px;">
+                            <strong>Perspectives :</strong> Intégration d'un module de prédiction de consommation basé
+                            sur l'intelligence artificielle, déploiement d'une application mobile et mise en place de
+                            tableaux de bord avancés avec des indicateurs prévisionnels.
+                        </p>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Remerciements</div>
+                        <p class="remerciements">
+                            Nous tenons à exprimer notre gratitude envers nos encadrants Mme Imen MSAKNI et M. Hafedh
+                            DERGHAM pour leur soutien et leurs conseils précieux tout au long de ce projet. Nous
+                            remercions également l'ISET et l'ETAP pour la confiance et les ressources mises à notre
+                            disposition.
+                        </p>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-head">Références Bibliographiques</div>
+                        <div class="references">
+                            <p>[1] Angular Documentation. <em>Angular - Introduction to the Angular Docs</em>.
+                                https://angular.dev</p>
+                            <p>[2] Laravel Documentation. <em>Laravel - The PHP Framework For Web Artisans</em>.
+                                https://laravel.com/docs</p>
+                            <p>[3] Taylor Otwell. <em>Laravel Sanctum - API Token Authentication</em>. Laravel LLC,
+                                2024.</p>
+                            <p>[4] Tesseract OCR. <em>Open Source OCR Engine</em>. https://github.com/tesseract-ocr</p>
+                            <p>[5] MySQL Documentation. <em>MySQL Reference Manual</em>. Oracle Corporation, 2024.</p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- FOOTER -->
+            <div class="footer">
+                <span>
+
+Code PFE : DSI-26-R626 </span>
+            </div>
+
+        </div>
+    </div>
+</body>
+
+</html>

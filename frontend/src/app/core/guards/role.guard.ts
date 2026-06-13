@@ -1,14 +1,23 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 import { Observable, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 
 @Injectable({ providedIn: 'root' })
 export class RoleGuard implements CanActivate {
-  constructor(private auth: AuthService, private router: Router) {}
+  constructor(
+      private auth: AuthService, 
+      private router: Router,
+      @Inject(PLATFORM_ID) private platformId: Object
+  ) {}
 
   canActivate(route: ActivatedRouteSnapshot, state: RouterStateSnapshot): Observable<boolean> {
+    if (!isPlatformBrowser(this.platformId)) {
+        return of(true); // Wait for browser to handle roles so SSR doesn't force a login redirect
+    }
+
     const expected = route.data['roles'] as string[] | undefined;
 
     // If there's no token, redirect to login immediately

@@ -75,10 +75,6 @@ class AuthController extends Controller
 
     public function unreadNotificationsCount(Request $request)
     {
-        if (!Schema::hasTable('notifications')) {
-            return response()->json(['count' => 0]);
-        }
-
         return response()->json([
             'count' => $request->user()->unreadNotifications()->count()
         ]);
@@ -86,10 +82,6 @@ class AuthController extends Controller
 
     public function notifications(Request $request)
     {
-        if (!Schema::hasTable('notifications')) {
-            return response()->json([]);
-        }
-
         return response()->json(
             $request->user()
                 ->notifications()
@@ -101,10 +93,6 @@ class AuthController extends Controller
 
     public function markAllNotificationsRead(Request $request)
     {
-        if (!Schema::hasTable('notifications')) {
-            return response()->json(['message' => 'Aucune notification a marquer.']);
-        }
-
         $request->user()->unreadNotifications->markAsRead();
 
         return response()->json(['message' => 'Notifications marquees comme lues.']);

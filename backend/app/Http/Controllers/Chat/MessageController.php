@@ -239,6 +239,7 @@ class MessageController extends Controller
 
     public function stream(Request $request)
     {
+        set_time_limit(0);
         $user = null;
 
         // Try request user first
@@ -282,7 +283,8 @@ class MessageController extends Controller
             ob_flush();
             flush();
 
-            $secondsLimit = 300; // 5 minutes limit to prevent infinite processes
+            $isCliServer = php_sapi_name() === 'cli-server';
+            $secondsLimit = $isCliServer ? 1 : 300; // 5 minutes limit (1 sec on CLI dev server)
             $start = time();
             $lastHeartbeat = time();
 

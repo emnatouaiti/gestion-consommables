@@ -18,19 +18,11 @@ export class AuthService {
         @Inject(PLATFORM_ID) private platformId: Object
     ) {
         if (isPlatformBrowser(this.platformId)) {
-            const cachedUser = localStorage.getItem(this.USER_CACHE_KEY);
+            const cachedUser = sessionStorage.getItem(this.USER_CACHE_KEY);
             if (cachedUser) {
                 try { this.currentUser.set(JSON.parse(cachedUser)); } catch {}
             }
             
-            // Listen for changes in localStorage from other tabs
-            window.addEventListener('storage', (event) => {
-                if (event.key === this.TOKEN_KEY && !event.newValue) {
-                    this.currentUser.set(null);
-                    this.router.navigateByUrl('/login');
-                }
-            });
-
             setTimeout(() => this.loadUser(), 0);
         }
     }
@@ -40,14 +32,14 @@ export class AuthService {
             return;
         }
 
-        const token = localStorage.getItem(this.TOKEN_KEY);
+        const token = sessionStorage.getItem(this.TOKEN_KEY);
         try { console.debug('[AuthService] loadUser token:', token); } catch (e) {}
         if (token) {
             this.apiService.get('user').subscribe({
                 next: (user) => {
                     this.currentUser.set(user);
                     if (isPlatformBrowser(this.platformId)) {
-                        localStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(user));
+                        sessionStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(user));
                     }
                 },
                 error: (err) => {
@@ -99,12 +91,12 @@ export class AuthService {
     handleGoogleCallback(token: string) {
         if (isPlatformBrowser(this.platformId)) {
             // Clear any existing token first to prevent session conflicts
-            const oldToken = localStorage.getItem(this.TOKEN_KEY);
+            const oldToken = sessionStorage.getItem(this.TOKEN_KEY);
             if (oldToken && oldToken !== token) {
                 // Revoke old token if different
                 this.currentUser.set(null);
             }
-            localStorage.setItem(this.TOKEN_KEY, token);
+            sessionStorage.setItem(this.TOKEN_KEY, token);
             // fetch user immediately then navigate according to role
             this.apiService.get('user').subscribe({
                 next: (user) => {
@@ -117,7 +109,7 @@ export class AuthService {
                 error: (err) => {
                     console.error('[AuthService] Google callback user fetch error:', err);
                     // if fetching user fails, clear token and go to login
-                    localStorage.removeItem(this.TOKEN_KEY);
+                    sessionStorage.removeItem(this.TOKEN_KEY);
                     this.currentUser.set(null);
                     this.router.navigate(['/login']);
                 }
@@ -194,21 +186,21 @@ export class AuthService {
 
     private setSession(authResult: any) {
         if (isPlatformBrowser(this.platformId)) {
-            localStorage.setItem(this.TOKEN_KEY, authResult.token);
+            sessionStorage.setItem(this.TOKEN_KEY, authResult.token);
         }
 
         try { console.debug('[AuthService] setSession token:', authResult.token, 'user:', authResult.user); } catch (e) {}
         this.currentUser.set(authResult.user);
         if (isPlatformBrowser(this.platformId)) {
-            localStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(authResult.user || null));
+            sessionStorage.setItem(this.USER_CACHE_KEY, JSON.stringify(authResult.user || null));
         }
         this.router.navigate([this.resolvePostLoginRoute(authResult.user)]);
     }
 
     private purgeAuth() {
         if (isPlatformBrowser(this.platformId)) {
-            localStorage.removeItem(this.TOKEN_KEY);
-            localStorage.removeItem(this.USER_CACHE_KEY);
+            sessionStorage.removeItem(this.TOKEN_KEY);
+            sessionStorage.removeItem(this.USER_CACHE_KEY);
             try { console.debug('[AuthService] purgeAuth called, navigating to /login'); } catch (e) {}
         }
         this.currentUser.set(null);
@@ -217,14 +209,14 @@ export class AuthService {
 
     isAuthenticated(): boolean {
         if (isPlatformBrowser(this.platformId)) {
-            return !!localStorage.getItem(this.TOKEN_KEY);
+            return !!sessionStorage.getItem(this.TOKEN_KEY);
         }
         return false;
     }
 
     getToken(): string | null {
         if (isPlatformBrowser(this.platformId)) {
-            return localStorage.getItem(this.TOKEN_KEY);
+            return sessionStorage.getItem(this.TOKEN_KEY);
         }
         return null;
     }

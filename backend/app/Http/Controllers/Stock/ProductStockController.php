@@ -19,9 +19,7 @@ class ProductStockController extends Controller
             ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier')
             ->where('quantity', '>', 0);
 
-        if (\Illuminate\Support\Facades\Schema::hasColumn('product_stocks', 'batch_status')) {
-            $query->whereIn('batch_status', ['active', 'expired']);
-        }
+        $query->whereIn('batch_status', ['active', 'expired']);
 
         // Filtrer par dÃpÃ´t de l'utilisateur si c'est un responsable/agent
         if ($user && $user->depot_id) {
@@ -157,9 +155,7 @@ class ProductStockController extends Controller
         $stockQuery = $product->stocks()
             ->with('warehouseLocation.room.warehouse', 'warehouseCabinet.room.warehouse', 'supplier');
 
-        if (Schema::hasColumn('product_stocks', 'batch_status')) {
-            $stockQuery->whereIn('batch_status', ['active', 'expired']);
-        }
+        $stockQuery->whereIn('batch_status', ['active', 'expired']);
 
         $stockEntries = $stockQuery->get();
 
@@ -234,9 +230,7 @@ class ProductStockController extends Controller
 
         // --- 3. Build availability per warehouse ---
         $warehouseQuery = Warehouse::query()->orderBy('name');
-        if (Schema::hasColumn('warehouses', 'status')) {
-            $warehouseQuery->where('status', 'active');
-        }
+        $warehouseQuery->where('status', 'active');
         $allWarehouses = $warehouseQuery->get();
         $stockByWarehouse = $stockDetails->groupBy('warehouse_id');
 

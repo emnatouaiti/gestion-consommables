@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Router } from '@angular/router';
 import { AdminWarehouseService } from '../../core/services/admin-warehouse.service';
@@ -534,8 +534,8 @@ export class WarehousesComponent implements OnInit {
   }
 
   saveLocation(): void {
-    if (!this.locationForm.code || !this.locationForm.name) {
-      this.errorMessage = 'Le code et le nom de l\'emplacement sont obligatoires.';
+    if (!this.locationForm.name) {
+      this.errorMessage = 'Le nom de l\'emplacement est obligatoire.';
       return;
     }
 

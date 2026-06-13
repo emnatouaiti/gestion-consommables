@@ -1,20 +1,27 @@
-﻿import { Injectable } from '@angular/core';
+import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { CanActivate, Router, UrlTree } from '@angular/router';
-import { Observable } from 'rxjs';
+import { isPlatformBrowser } from '@angular/common';
 import { AuthService } from '../services/auth.service';
 
 @Injectable({
     providedIn: 'root'
 })
 export class AuthGuard implements CanActivate {
-    constructor(private authService: AuthService, private router: Router) { }
+    constructor(
+        private authService: AuthService, 
+        private router: Router,
+        @Inject(PLATFORM_ID) private platformId: Object
+    ) { }
 
     canActivate(): boolean | UrlTree {
-        // Vérifier à la fois le token ET que l'utilisateur est chargé
-        const hasToken = this.authService.isAuthenticated();
-        const hasUser = this.authService.getCurrentUserSnapshot() !== null;
+        if (!isPlatformBrowser(this.platformId)) {
+            // Wait for browser to evaluate authentication so SSR doesn't improperly redirect to login
+            return true;
+        }
 
-        if (hasToken && hasUser) {
+        const hasToken = this.authService.isAuthenticated();
+
+        if (hasToken) {
             return true;
         }
 

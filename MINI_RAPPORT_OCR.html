@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mini Rapport OCR — consotrack</title>
+  <style>
+    body{font-family:Segoe UI,Roboto,Arial;background:#f7f9fb;color:#111;margin:0;padding:24px}
+    .wrap{max-width:900px;margin:0 auto;background:#fff;padding:28px;border-radius:8px;box-shadow:0 6px 24px rgba(15,23,42,.08)}
+    h1,h2{color:#0b66ff;margin:0 0 12px}
+    h3{margin:18px 0 8px;color:#0b66ff}
+    p{line-height:1.45}
+    pre{background:#0f1724;color:#e6eef8;padding:12px;border-radius:6px;overflow:auto}
+    code{background:#eef3ff;padding:2px 6px;border-radius:4px}
+    .columns{display:flex;gap:16px}
+    .col{flex:1}
+    .svg-box{border:1px solid #e6eef8;padding:8px;border-radius:6px;background:#fbfdff}
+    .actions{margin-top:18px}
+    .btn{display:inline-block;background:#0b66ff;color:#fff;padding:10px 14px;border-radius:6px;text-decoration:none}
+    .note{font-size:.95rem;color:#334155;margin-top:8px}
+    dt{font-weight:700}
+    dd{margin:0 0 8px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Mini Rapport OCR — consotrack</h1>
+    <p>Version lisible et imprimable du rapport OCR. Ce document explique le flux, les commandes, les fichiers clés et montre des illustrations (schémas/SVG) pour quelqu'un qui ne connaît rien à l'OCR.</p>
+
+    <h2>Résumé rapide</h2>
+    <p>L'application utilise <strong>Tesseract</strong> pour l'OCR, <strong>Imagick</strong> / <strong>ImageMagick</strong> pour le prétraitement, puis des heuristiques PHP dans <code>backend/app/Http/Controllers/Documents/DocumentController.php</code> pour extraire <em>reference/title/quantity</em>. L'UI Angular (voir <code>frontend/src/app/features/ocr/upload-document/documents.component.ts</code>) gère l'upload, l'édition et l'application au stock.</p>
+
+    <h3>Commandes-clés (exemples)</h3>
+    <pre><code>"C:\\Program Files\\Tesseract-OCR\\tesseract.exe" "&lt;image&gt;" stdout -l fra+eng --psm 6 --oem 1 2>&1
+magick input.pdf -density 300 -resample 300x300 -deskew 40% -resize 200% output.png</code></pre>
+
+    <h2>Fichiers principaux</h2>
+    <dl>
+      <dt>Frontend (UI)</dt>
+      <dd><code>frontend/src/app/features/ocr/upload-document/documents.component.ts</code> — upload, diagnostics, affichage et application des <code>ocr_lines</code>.</dd>
+      <dt>Backend (OCR + parsing)</dt>
+      <dd><code>backend/app/Http/Controllers/Documents/DocumentController.php</code> — prétraitement, exécution Tesseract (text &amp; TSV), parsing (zones, quantités), runTargetedNumericOcr.</dd>
+      <dt>Scripts de test</dt>
+      <dd><code>test_ocr.php</code>, <code>test_recent_ocr.php</code>, <code>test_stored_ocr.php</code> — appels directs à Tesseract pour debug local.</dd>
+    </dl>
+
+    <h2>Flux (visuel)</h2>
+    <div class="svg-box">
+      <!-- Simple SVG flowchart -->
+      <svg width="100%" height="220" viewBox="0 0 900 220" xmlns="http://www.w3.org/2000/svg" aria-label="flux-ocr">
+        <defs><marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0b66ff"/></marker></defs>
+        <rect x="20" y="18" width="170" height="56" rx="8" fill="#eef6ff" stroke="#cfe3ff"/>
+        <text x="105" y="48" font-size="14" text-anchor="middle" fill="#0b66ff">Frontend: Upload</text>
+        <rect x="230" y="18" width="190" height="56" rx="8" fill="#fff7ef" stroke="#ffe8c7"/>
+        <text x="325" y="48" font-size="14" text-anchor="middle" fill="#b45309">Backend: Store</text>
+        <rect x="460" y="18" width="200" height="56" rx="8" fill="#f0fff4" stroke="#c7f5d8"/>
+        <text x="560" y="48" font-size="14" text-anchor="middle" fill="#047857">Preprocess + Tesseract</text>
+        <rect x="230" y="100" width="430" height="76" rx="8" fill="#ffffff" stroke="#e6eef8"/>
+        <text x="445" y="132" font-size="13" text-anchor="middle" fill="#0b2447">Parsing TSV / Text → ocr_lines (reference, title, quantity)</text>
+        <line x1="190" y1="46" x2="230" y2="46" stroke="#0b66ff" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="420" y1="46" x2="460" y2="46" stroke="#0b66ff" stroke-width="2" marker-end="url(#arrow)"/>
+        <line x1="560" y1="74" x2="560" y2="100" stroke="#0b66ff" stroke-width="2" marker-end="url(#arrow)"/>
+      </svg>
+    </div>
+
+    <h2>Illustration: écran & zones OCR</h2>
+    <div class="columns" style="margin-top:12px">
+      <div class="col svg-box">
+        <h3 style="margin-top:0">UI: Upload & Résultats</h3>
+        <!-- simple UI placeholder -->
+        <svg width="100%" height="160" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="468" height="148" rx="8" fill="#fbfdff" stroke="#e6eef8"/>
+          <rect x="18" y="18" width="120" height="34" rx="6" fill="#0b66ff"/>
+          <text x="78" y="40" font-size="12" text-anchor="middle" fill="#fff">Choisir fichier</text>
+          <rect x="150" y="18" width="120" height="34" rx="6" fill="#0b66ff"/>
+          <text x="210" y="40" font-size="12" text-anchor="middle" fill="#fff">Importer</text>
+          <rect x="18" y="62" width="430" height="80" rx="6" fill="#fff" stroke="#e6eef8"/>
+          <text x="36" y="84" font-size="12" fill="#0b2447">Document: bon_livraison_123.png</text>
+          <text x="36" y="102" font-size="12" fill="#334155">Lignes OCR détectées: 6 — éditables</text>
+        </svg>
+      </div>
+      <div class="col svg-box">
+        <h3 style="margin-top:0">Exemple: zone de table (quantité sur la droite)</h3>
+        <svg width="100%" height="160" viewBox="0 0 480 160" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="6" width="468" height="148" rx="8" fill="#fff" stroke="#e6eef8"/>
+          <!-- table header -->
+          <rect x="24" y="18" width="420" height="22" fill="#f1f5f9" stroke="#e6eef8"/>
+          <text x="40" y="33" font-size="12" fill="#0b2447">Réf</text>
+          <text x="180" y="33" font-size="12" fill="#0b2447">Désignation</text>
+          <text x="420" y="33" font-size="12" text-anchor="end" fill="#0b2447">Quantité</text>
+          <!-- rows -->
+          <text x="40" y="60" font-size="12">INV-0001</text>
+          <text x="180" y="60" font-size="12">Ordinateur Portable Dell</text>
+          <text x="420" y="60" font-size="12" text-anchor="end">10</text>
+          <rect x="384" y="50" width="80" height="20" fill="rgba(11,102,255,0.08)" stroke="rgba(11,102,255,0.15)" rx="4"/>
+          <text x="40" y="85" font-size="12">INV-0002</text>
+          <text x="180" y="85" font-size="12">Souris sans fil Logitech M185</text>
+          <text x="420" y="85" font-size="12" text-anchor="end">25</text>
+          <rect x="384" y="75" width="80" height="20" fill="rgba(11,102,255,0.08)" stroke="rgba(11,102,255,0.15)" rx="4"/>
+        </svg>
+      </div>
+    </div>
+
+    <h2>Explication technique condensée</h2>
+    <p>Le backend suit ces étapes principales:</p>
+    <ol>
+      <li>Prétraitement (deskew, enhance, resize) via Imagick ou ImageMagick.</li>
+      <li>Exécution Tesseract en mode TSV pour récupérer boîtes et confiance, puis parsing spatial pour retrouver colonnes (réf / désignation / quantité).</li>
+      <li>Pour chaque ligne, extraction référence (regex étendue), nettoyage du titre, tentative de lecture de la quantité (fuzzy mappings + lecture ciblée d'image avec whitelist numériques).</li>
+      <li>Retour des <code>ocr_lines</code> au frontend pour édition et application au stock.</li>
+    </ol>
+
+    <h2>Exporter en PDF</h2>
+    <p class="note">Options recommandées:</p>
+    <pre><code>REMARQUE: utilisez l'une des commandes ci-dessous dans PowerShell (Windows)</code></pre>
+    <pre><code># 1) Chrome headless (si chrome est installé)
+"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --headless --disable-gpu --print-to-pdf="MINI_RAPPORT_OCR.pdf" "file:///%CD%\\MINI_RAPPORT_OCR.html"
+
+# 2) wkhtmltopdf (si installé)
+wkhtmltopdf MINI_RAPPORT_OCR.html MINI_RAPPORT_OCR.pdf</code></pre>
+    <p class="note">Ou: ouvrir ce fichier dans un navigateur et imprimer (Ctrl+P) → «Enregistrer en PDF».</p>
+
+    <div class="actions">
+      <a class="btn" href="MINI_RAPPORT_OCR.md">Voir version Markdown</a>
+      <span style="margin-left:12px;color:#334155"> — Fichier HTML créé dans le dépôt.</span>
+    </div>
+    <p style="margin-top:18px;font-size:0.95rem;color:#475569">Voulez-vous que je génère le PDF maintenant ici (nécessite wkhtmltopdf ou Chrome disponible), ou préférez-vous que je fasse des captures d'écran annotées réelles depuis l'application ?</p>
+  </div>
+</body>
+</html>

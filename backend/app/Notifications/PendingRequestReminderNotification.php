@@ -19,11 +19,7 @@ class PendingRequestReminderNotification extends Notification
 
     public function via(object $notifiable): array
     {
-        $channels = ['mail'];
-        if (Schema::hasTable('notifications')) {
-            $channels[] = 'database';
-        }
-        return $channels;
+        return ['mail', 'database'];
     }
 
     public function toMail(object $notifiable): MailMessage
