@@ -1,4 +1,4 @@
-﻿import {
+import {
   Component,
   OnInit,
   OnDestroy,
@@ -105,7 +105,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   private getToken(): string | null {
     try {
-      return localStorage.getItem('auth_token');
+      return sessionStorage.getItem('auth_token');
     } catch {
       return null;
     }

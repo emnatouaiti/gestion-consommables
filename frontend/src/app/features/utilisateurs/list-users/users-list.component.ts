@@ -138,7 +138,7 @@ export class UsersListComponent implements OnInit {
   }
 
   private getHeaders(): Record<string, string> {
-    const token = localStorage.getItem('auth_token');
+    const token = sessionStorage.getItem('auth_token');
     const headers: Record<string, string> = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     return headers;
