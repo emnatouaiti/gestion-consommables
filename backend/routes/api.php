@@ -214,9 +214,7 @@ Route::prefix('api')->group(function () {
 
     require __DIR__ . '/expiration-routes.php';
 
-    Route::prefix('chat')->group(function () {
-        Route::get('stream', [MessageController::class, 'stream']);
-    });
+
 
     // --- MISC / ADMIN ROUTES ---
     Route::middleware(['auth:sanctum', 'lastseen'])->group(function () {

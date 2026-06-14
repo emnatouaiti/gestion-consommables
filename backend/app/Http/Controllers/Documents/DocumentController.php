@@ -427,7 +427,7 @@ class DocumentController extends Controller
                         'short_description' => $action['short_description'] ?? null,
                         'commentaire'    => $action['commentaire'] ?? null,
                     ]);
-                    
+
                     if (isset($action['supplier_id']) && $action['supplier_id']) {
                         $product->suppliers()->syncWithoutDetaching([$action['supplier_id']]);
                     }
@@ -640,7 +640,7 @@ class DocumentController extends Controller
         $isWindows = stripos(PHP_OS_FAMILY, 'Windows') !== false;
         $binArg    = $isWindows ? '"' . $binary . '"' : escapeshellarg($binary);
         $fileArg   = $isWindows ? '"' . $source . '"' : escapeshellarg($source);
-        
+
         $psmOptions = [6, 3, 11, 1]; // Try uniform block, fully automatic, sparse text, etc.
         $bestTsv = '';
         $bestCount = 0;
@@ -665,7 +665,7 @@ class DocumentController extends Controller
             if (file_exists($tsvFile)) {
                 $tsv = (string) file_get_contents($tsvFile);
                 @unlink($tsvFile);
-                
+
                 // Count lines in TSV (excluding header and noise)
                 $lineCount = count(array_filter(explode("\n", $tsv), fn($l) => str_contains($l, "\t") && strlen($l) > 20));
                 if ($lineCount > $bestCount) {
@@ -789,7 +789,7 @@ class DocumentController extends Controller
             if ($val >= 1900 && $val <= 2199) return null; // year
             // Guard against model numbers: if it looks like a model number (e.g. 5420, 1080)
             // and it's not a common small quantity, reject it here and let the parser decide.
-            if ($val > 500 && $val != 1000 && $val != 2000) return null; 
+            if ($val > 500 && $val != 1000 && $val != 2000) return null;
             if ($val <= 0) return null;
             return $val;
         }
@@ -846,7 +846,7 @@ class DocumentController extends Controller
         // Description / produit column header variants
         if (preg_match('/descri?p?ti?[o0]?n?|produit|descriptiond[anu]produit|descr|prod/i', $t)) $signals++;
         // Quantity column header variants
-        if (preg_match('/quan?ti?[tdÃ]?[eÃ]?|qte|qty|ouanti|uanti/i', $t)) $signals++;
+       if (preg_match('/qu[ao]?[nm]?[tm]i?[tdÃ]?[eÃ]?|qte|qty|ouanti|uanti/i', $t)) $signals++;
         // Observations / Notes column
         if (preg_match('/observ|notes?/', $t)) $signals++;
         // Metadata signals
@@ -944,7 +944,7 @@ class DocumentController extends Controller
         foreach ($rows as $idx => $row) {
             $rowText  = strtolower(implode(' ', array_column($row, 'text')));
             $hasRef   = preg_match('/r[eÃiÃ]?f/', $rowText) === 1;
-            $hasQty   = preg_match('/quan?ti?[tdÃ]?[eÃ]?|qty|qte/', $rowText) === 1;
+           $hasQty   = preg_match('/qu[ao]?[nm]?[tm]i?[tdÃ]?[eÃ]?|qty|qte/', $rowText) === 1;
             $hasDescr = preg_match('/descri?p?ti?[o0]?n?|produit/', $rowText) === 1;
 
             if ($hasRef && ($hasQty || $hasDescr)) {
@@ -953,7 +953,7 @@ class DocumentController extends Controller
                     if (preg_match('/r[eÃiÃ]?f[eÃiÃ]?[rn]?[eÃiÃ]?[nc]?[ec]?[eo]?/i', $word['text'])) {
                         $refColEnd = $word['right'] + 80;
                     }
-                    if (preg_match('/quan?ti?[tdÃ]?[eÃ]?/i', $word['text'])) {
+                    if (preg_match('/qu[ao]?[nm]?[tm]i?[tdÃ]?[eÃ]?/i', $word['text'])) {
                         // FIX-4: widen boundary by 150 px to the left to absorb OCR drift
                         $qtyColStart = $word['left'] - 150;
                         $qtyColEnd   = $word['right'] + 120;
@@ -1089,75 +1089,65 @@ class DocumentController extends Controller
             }
             if (!$this->isLikelyValidTitle($titleStr)) continue;
 
-            // --- Extract quantity ---
-            // STEP 1: Targeted OCR on the quantity column area
+            // --- Extract quantity (generic, image-first approach) ---
             $qty = null;
-            if (!empty($qtyTokens)) {
+
+            // STEP 1: Targeted numeric-only OCR on the quantity column area.
+            // This is the primary, document-agnostic method: it re-reads the
+            // cropped image region with a digits-only whitelist, so OCR noise
+            // like "Oe", "tC i", "7 as" never matters — we never trust the
+            // alphabetic reading of a numeric cell.
+            if (!empty($qtyTokens) && $storedPath) {
                 $qtyLeft   = min(array_column($qtyTokens, 'left'));
                 $qtyTop    = min(array_column($qtyTokens, 'top'));
                 $qtyRight  = max(array_column($qtyTokens, 'right'));
                 $qtyBottom = max(array_column($qtyTokens, 'bottom'));
-                
-                // Add padding
-                if ($storedPath) {
-                    $qty = $this->runTargetedNumericOcr($storedPath, $qtyLeft - 10, $qtyTop - 5, $qtyRight + 10, $qtyBottom + 5);
+
+                $qty = $this->runTargetedNumericOcr($storedPath, $qtyLeft - 10, $qtyTop - 5, $qtyRight + 10, $qtyBottom + 5);
+            }
+
+            // STEP 2: if two quantity columns exist (commandée/livrée), prefer
+            // the right-most ("livrée") one — re-run targeted OCR on that zone.
+            if (!empty($qtyTokens) && $storedPath && ($qtyPrimaryStart !== null && $qtyPrimaryEnd !== null)) {
+                $rightZone = array_values(array_filter($qtyTokens, fn($w) => $w['left'] >= $qtyPrimaryStart && $w['right'] <= $qtyPrimaryEnd));
+                if (!empty($rightZone)) {
+                    $zLeft   = min(array_column($rightZone, 'left'));
+                    $zTop    = min(array_column($rightZone, 'top'));
+                    $zRight  = max(array_column($rightZone, 'right'));
+                    $zBottom = max(array_column($rightZone, 'bottom'));
+                    $qtyRightMost = $this->runTargetedNumericOcr($storedPath, $zLeft - 10, $zTop - 5, $zRight + 10, $zBottom + 5);
+                    if ($qtyRightMost !== null) $qty = $qtyRightMost;
                 }
             }
 
-            if ($qty === null) {
-                // Fallback: scan individual tokens right â†’ left
+            // STEP 3: fallback when targeted OCR is unavailable (no Imagick) or
+            // returned nothing — try the text tokens directly.
+            if ($qty === null && !empty($qtyTokens)) {
                 foreach (array_reverse($qtyTokens) as $w) {
                     $qty = $this->tryParseQuantity($w['text']);
                     if ($qty !== null) break;
                 }
             }
 
-            // If document has two quantity columns (commandÃe/livrÃe), prefer right-most (livrÃe).
-            if (!empty($qtyTokens)) {
-                $qtyFromRightMost = null;
-                $rightZone = [];
-                if ($qtyPrimaryStart !== null && $qtyPrimaryEnd !== null) {
-                    $rightZone = array_values(array_filter($qtyTokens, fn($w) => $w['left'] >= $qtyPrimaryStart && $w['right'] <= $qtyPrimaryEnd));
-                }
-                if (empty($rightZone)) {
-                    // fallback: take the far-right half of qty tokens
-                    $maxRight = max(array_column($qtyTokens, 'right'));
-                    $minLeft = min(array_column($qtyTokens, 'left'));
-                    $mid = (int) (($maxRight + $minLeft) / 2);
-                    $rightZone = array_values(array_filter($qtyTokens, fn($w) => $w['left'] >= $mid));
-                }
-                foreach (array_reverse($rightZone) as $w) {
-                    $q = $this->tryParseQuantity($w['text']);
-                    if ($q !== null) { $qtyFromRightMost = $q; break; }
-                }
-                if ($qtyFromRightMost !== null) $qty = $qtyFromRightMost;
-            }
-
-            // STEP 2: fallback â€” scan title tokens right â†’ left
-            //         FIX-8: remove the token from title when it is used as qty
+            // STEP 4: last-resort fallback — scan title tokens right → left
+            // (only used if the quantity column produced absolutely nothing).
             if ($qty === null && !empty($titleTokens)) {
                 $tw = array_column($titleTokens, 'text');
                 for ($i = count($tw) - 1; $i >= 0; $i--) {
                     $candidate = $this->tryParseQuantity($tw[$i]);
                     if ($candidate === null) continue;
 
-                    // Reject if adjacent to a measurement unit
                     $prevWord = ($i > 0) ? strtolower($tw[$i - 1]) : '';
                     $nextWord = ($i < count($tw) - 1) ? strtolower($tw[$i + 1]) : '';
                     $units    = ['pages','page','g','gr','ml','go','mo','ghz','ko','mg'];
                     if (in_array($prevWord, $units) || in_array($nextWord, $units)) continue;
 
-                    $wordLeft      = $titleTokens[$i]['left'];
-                    $isNearQtyCol  = $wordLeft >= ($qtyColStart - 80);
-                    $lower         = strtolower(trim($tw[$i], ',.;:+- '));
-                    $compact       = preg_replace('/[^a-z0-9]/i', '', $lower);
-                    $isKnownMisread= isset($this->knownQtyMisreads()[$lower]) || ($compact !== '' && isset($this->knownQtyMisreads()[$compact]));
+                    $wordLeft     = $titleTokens[$i]['left'];
+                    $isNearQtyCol = $wordLeft >= ($qtyColStart - 80);
 
-                    if ($isNearQtyCol || $isKnownMisread) {
+                    if ($isNearQtyCol) {
                         $qty = $candidate;
-                        // FIX-8: remove this token from the title
                         array_splice($titleTokens, $i, 1);
-                        // Rebuild titleStr without the qty token
                         $titleStr = implode(' ', array_column($titleTokens, 'text'));
                         $titleStr = $this->fixOcrTitleNoise(trim($titleStr, ',.:;+- '));
                         break;
@@ -1168,8 +1158,9 @@ class DocumentController extends Controller
             if ($titleStr === '') continue;
             if (preg_match('/@|gmail|yahoo|hotmail|client|adresse|date|numero|bon de livraison/i', $titleStr)) continue;
 
-            // Generic recovery pass: if quantity is missing or suspiciously 1-digit,
-            // re-read the right side of the row (quantity column neighborhood).
+            // STEP 5: generic recovery — if quantity is still missing or
+            // suspiciously low (1 digit), re-read the right ~38% of the row
+            // with targeted numeric OCR. Pure image-based, no document-specific rules.
             if ($storedPath && ($qty === null || $qty < 10)) {
                 $rowLeft   = (int) min(array_column($row, 'left'));
                 $rowTop    = (int) min(array_column($row, 'top'));
@@ -1177,7 +1168,6 @@ class DocumentController extends Controller
                 $rowBottom = (int) max(array_column($row, 'bottom'));
 
                 $rowWidth = max(1, $rowRight - $rowLeft);
-                // Right-most 38% of the row usually contains the quantity value.
                 $altLeft = (int) ($rowLeft + ($rowWidth * 0.62));
                 $altQty = $this->runTargetedNumericOcr($storedPath, $altLeft, $rowTop - 4, $rowRight + 12, $rowBottom + 4);
 
@@ -1187,6 +1177,13 @@ class DocumentController extends Controller
                     }
                 }
             }
+
+            Log::info('Qty extraction debug', [
+                'reference' => $ref,
+                'title' => $titleStr,
+                'qtyTokens' => array_map(fn($w) => $w['text'], $qtyTokens),
+                'qty' => $qty,
+            ]);
 
             $parsed[] = [
                 'reference'        => $ref,
@@ -1307,6 +1304,7 @@ class DocumentController extends Controller
             }
         }
 
+
         return $parsed;
     }
 
@@ -1426,7 +1424,11 @@ class DocumentController extends Controller
                 }
             }
 
-            foreach ($tmpFiles as $f) @unlink($f);
+          foreach ($tmpFiles as $f) @unlink($f);
+            Log::info('runTargetedNumericOcr candidates', [
+                'left' => $left, 'top' => $top, 'right' => $right, 'bottom' => $bottom,
+                'candidates' => $candidates,
+            ]);
             if (empty($candidates)) return null;
 
             $freq = array_count_values($candidates);
@@ -1443,6 +1445,11 @@ class DocumentController extends Controller
                     $bestVal = (int) array_key_first($freq2);
                 }
             }
+            Log::info('runTargetedNumericOcr result', [
+            'left' => $left, 'top' => $top, 'right' => $right, 'bottom' => $bottom,
+            'candidates' => $candidates ?? null,
+            'bestVal' => $bestVal ?? null,
+        ]);
 
             return $bestVal;
         } catch (\Throwable $e) {
@@ -1568,7 +1575,7 @@ class DocumentController extends Controller
 
         foreach ($lines as $line) {
             $lowLine = strtolower($line);
-            
+
             // Skip clear metadata lines
             if (preg_match('/adresse|livraison|destinataire|client|nom du|contact|phone|email|tel:|fax:|site web|gmail|hotmail|yahoo/i', $lowLine)) continue;
             if (preg_match('/bon de livraison|numero de bon|rÃfÃrence n/i', $lowLine)) continue;
@@ -1594,7 +1601,7 @@ class DocumentController extends Controller
 
             // Scan the last few tokens for quantity
             $maxSearch = min(count($tokens), 3);
-            
+
             // First, try combining the last 2 or 3 tokens (for noisy reads like "tc i" or "7 as")
             for ($len = $maxSearch; $len >= 2; $len--) {
                 $combined = strtolower(implode(' ', array_slice($tokens, -$len)));

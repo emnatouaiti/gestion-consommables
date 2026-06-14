@@ -290,7 +290,7 @@ class AdminController extends Controller
 
         return response()->json([
             'stats' => [
-                ['label' => 'Produits Ã  risque (<14j)', 'value' => count($highRisk), 'trend' => 'Action requise'],
+                ['label' => 'Produits a  risque (<14j)', 'value' => count($highRisk), 'trend' => 'Action requise'],
                 ['label' => 'Produits dormants', 'value' => count($overStock), 'trend' => 'Capital immobilisÃ'],
                 ['label' => 'Confiance algorithmique', 'value' => '85%', 'trend' => 'BasÃe sur 30j']
             ],

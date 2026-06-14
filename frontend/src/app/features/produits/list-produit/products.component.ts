@@ -47,7 +47,7 @@ export class ProductsComponent implements OnInit {
     lastPage: 1
   };
   updatingPhotoId: number | null = null;
-  // RÃactivation modal
+  // Réactivation modal
   showReactivateModal = false;
   reactivateProduct: any | null = null;
 
@@ -125,7 +125,7 @@ export class ProductsComponent implements OnInit {
     const newDesc = parts.join(', ');
 
     const currentDesc = this.productForm.get('description')?.value || '';
-    
+
     // Only update if current is empty or matches the previous auto-generated one
     if (currentDesc === '' || currentDesc === this.lastAutoDesc) {
       if (currentDesc !== newDesc) {
@@ -206,7 +206,7 @@ export class ProductsComponent implements OnInit {
   generateDescriptions(): void {
     const title = this.productForm.get('title')?.value;
     if (!title || !title.trim()) {
-      this.errorMessage = 'Titre requis pour gÃnÃrer la description.';
+      this.errorMessage = 'Titre requis pour générer la description.';
       return;
     }
     this.errorMessage = '';
@@ -222,7 +222,7 @@ export class ProductsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de gÃnÃrer la description.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de générer la description.');
       }
     });
   }
@@ -280,7 +280,7 @@ export class ProductsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = err?.message || 'Erreur de chargement des catÃgories.';
+        this.errorMessage = err?.message || 'Erreur de chargement des catégories.';
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -440,7 +440,7 @@ export class ProductsComponent implements OnInit {
     }
 
     if (this.editingId && (!payload.reference || payload.reference === '')) {
-      this.errorMessage = 'RÃfÃrence est obligatoire lors de la modification.';
+      this.errorMessage = 'Référence est obligatoire lors de la modification.';
       return;
     }
     this.errorMessage = '';
@@ -453,12 +453,12 @@ export class ProductsComponent implements OnInit {
       next: (res: any) => {
         const created = res?.product || res?.data || null;
         if (this.editingId) {
-          this.successMessage = 'Produit mis Ã  jour !';
+          this.successMessage = 'Produit mis à jour !';
         } else if (created && created.reference) {
-          this.successMessage = 'Produit crÃÃ ! RÃf: ' + created.reference;
+          this.successMessage = 'Produit créé ! Réf : ' + created.reference;
           this.highlightedProductId = created.id || null;
         } else {
-          this.successMessage = 'Produit crÃÃ !';
+          this.successMessage = 'Produit créé !';
         }
         this.closeModal();
         this.loadProducts();
@@ -495,7 +495,7 @@ export class ProductsComponent implements OnInit {
     if (!confirm('Supprimer ce produit ?')) return;
     this.stockService.deleteProduct(id).subscribe({
       next: () => {
-        this.successMessage = 'Produit supprimÃ !';
+        this.successMessage = 'Produit supprimé !';
         this.loadProducts();
         setTimeout(() => this.successMessage = '', 3000);
       },
@@ -509,7 +509,7 @@ export class ProductsComponent implements OnInit {
     if (!this.reactivateProduct?.id) return;
     this.stockService.activateProduct(this.reactivateProduct.id).subscribe({
       next: () => {
-        this.successMessage = `Produit "${this.reactivateProduct.title}" rÃactivÃ !`;
+        this.successMessage = `Produit "${this.reactivateProduct.title}" réactivé !`;
         this.showReactivateModal = false;
         this.reactivateProduct = null;
         this.closeModal();
@@ -517,7 +517,7 @@ export class ProductsComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 4000);
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de rÃactiver le produit.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de réactiver le produit.');
       }
     });
   }
@@ -566,13 +566,13 @@ export class ProductsComponent implements OnInit {
     this.updatingPhotoId = product.id;
     this.stockService.updateProduct(product.id, { photos: [file] }).subscribe({
       next: () => {
-        this.successMessage = 'Photo mise Ã  jour.';
+        this.successMessage = 'Photo mise à jour.';
         this.updatingPhotoId = null;
         this.loadProducts();
         setTimeout(() => (this.successMessage = ''), 2000);
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de mettre Ã  jour la photo.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
         this.updatingPhotoId = null;
       }
     });
@@ -788,7 +788,7 @@ export class ProductsComponent implements OnInit {
         }
         this.newReviewContent = '';
         this.isLoading = false;
-        this.successMessage = 'Avis publiÃ !';
+        this.successMessage = 'Avis publié !';
         this.cdr.detectChanges();
         setTimeout(() => this.successMessage = '', 3000);
       },

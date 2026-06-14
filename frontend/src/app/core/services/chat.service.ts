@@ -1,17 +1,10 @@
-import { Injectable, OnDestroy } from '@angular/core';
-import { Observable, Subject, of, timer } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { Injectable } from '@angular/core';
+import { Observable } from 'rxjs';
 import { ApiService } from './api.service';
 
 @Injectable({ providedIn: 'root' })
-export class ChatService implements OnDestroy {
-  private eventSource: EventSource | null = null;
-  private messageReceived$ = new Subject<any>();
-
+export class ChatService {
   constructor(private api: ApiService) {}
-
-  ngOnDestroy(): void {
-  }
 
   conversations(): Observable<any[]> {
     return this.api.get('chat/conversations');
@@ -37,15 +30,11 @@ export class ChatService implements OnDestroy {
     return this.api.get('chat/users');
   }
 
-  pollConversations(periodMs = 15000): Observable<any[]> {
-    return timer(0, periodMs).pipe(
-      switchMap(() => this.conversations())
-    );
+  pollConversations(periodMs = 5000): Observable<any[]> {
+    return this.conversations();
   }
 
   pollMessages(userId: number, periodMs = 5000): Observable<any[]> {
-    return timer(0, periodMs).pipe(
-      switchMap(() => this.messages(userId))
-    );
+    return this.messages(userId);
   }
 }

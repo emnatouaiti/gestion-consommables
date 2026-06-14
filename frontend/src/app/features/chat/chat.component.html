@@ -1,4 +1,4 @@
-﻿<div class="chat-wrapper">
+<div class="chat-wrapper">
 
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar">
@@ -14,9 +14,14 @@
     </div>
 
     <!-- Conversations -->
-    <div class="sb-section">
-      Conversations
-      <span class="sb-section-line"></span>
+    <div class="sb-section" style="display:flex; justify-content:space-between; align-items:center;">
+      <span>Conversations</span>
+      <button (click)="manualRefresh()" title="Rafraîchir" style="background:none; border:none; color:var(--text-light); cursor:pointer; display:flex; align-items:center; padding:4px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+      </button>
     </div>
     <div class="conv-list conv-list-top">
       <div
@@ -92,6 +97,13 @@
           {{ statusLabel() }}
         </div>
       </div>
+      <button class="btn secondary" (click)="manualRefresh()" title="Rafraîchir" style="margin-left: auto; padding: 6px 12px; font-size: 13px; display: flex; align-items: center; gap: 6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6"/>
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+        </svg>
+        <span>Rafraîchir</span>
+      </button>
     </header>
 
     <ng-template #noHeader>

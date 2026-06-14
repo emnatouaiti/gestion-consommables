@@ -458,7 +458,7 @@ get userInitials(): string {
 
     this.loadUnreadNotifications();
     if (!this.notificationPollTimer && isPlatformBrowser(this.platformId)) {
-      this.notificationPollTimer = setInterval(() => this.loadUnreadNotifications(), 20000);
+      this.notificationPollTimer = setInterval(() => this.loadUnreadNotifications(), 300000);
     }
   }
 

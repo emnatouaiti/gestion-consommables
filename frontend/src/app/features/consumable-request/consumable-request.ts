@@ -242,7 +242,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   get tabs(): Array<{ id: NavTab; label: string; count?: number }> {
     const tabs: Array<{ id: NavTab; label: string; count?: number }> = [];
 
-    // Only show "Demandes ÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â  valider" for directors, not for responsables
+    // Only show "Demandes à valider" for directors, not for responsables
     const isDirector = this.isDirectorUser(this.currentUser);
     if (this.viewMode === 'validation' && isDirector) {
       tabs.push({ id: 'pending', label: 'Demandes a valider', count: this.pendingValidationRequests.length });
@@ -843,13 +843,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         // Handle depot warnings
         if (res?.depot_warnings && res.depot_warnings.length > 0) {
           this.depotWarnings = res.depot_warnings;
-          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dÃƒÆ’Ã†â€Ãƒâ€šÃ‚ÂpÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â´ts.';
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dépôts.';
         }
         if (res?.insufficient_warnings?.length > 0) {
           const details = res.insufficient_warnings
             .map((w: any) => `${w.product}: manque ${w.missing}`)
             .join(', ');
-          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilitÃƒÆ’Ã†â€Ãƒâ€šÃ‚Â.`;
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilité.`;
         }
 
         this.message = res?.status === 'validated_by_manager'

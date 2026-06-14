@@ -72,6 +72,11 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.loadMessages();
   }
 
+  manualRefresh(): void {
+    this.loadConversations();
+    this.loadMessages();
+  }
+
   /* --- Envoi --- */
   send(): void {
     const text = this.messageText.trim();
