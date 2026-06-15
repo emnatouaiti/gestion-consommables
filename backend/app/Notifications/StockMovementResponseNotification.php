@@ -33,14 +33,14 @@ class StockMovementResponseNotification extends Notification
      */
     public function toMail(object $notifiable): \Illuminate\Notifications\Messages\MailMessage
     {
-        $statusLabel = $this->movement->status === 'executed' ? 'APPROUVÉ' : 'REJETÉ';
+        $statusLabel = $this->movement->status === 'executed' ? 'APPROUVE' : 'REJETE';
         $color = $this->movement->status === 'executed' ? 'green' : 'red';
         $validator = $this->movement->validator->nomprenom ?? 'Le responsable';
 
         $mail = (new \Illuminate\Notifications\Messages\MailMessage)
-            ->subject("[$statusLabel] Réponse à votre mouvement : {$this->movement->reference}")
+            ->subject("[$statusLabel] Reponse a votre mouvement : {$this->movement->reference}")
             ->greeting("Bonjour {$notifiable->nomprenom},")
-            ->line("Votre demande de mouvement de stock **{$this->movement->reference}** a été traitée par **$validator**.")
+            ->line("Votre demande de mouvement de stock **{$this->movement->reference}** a ete traitee par **$validator**.")
             ->line("Statut final : **$statusLabel**");
 
         if ($this->movement->response_notes) {
@@ -48,7 +48,7 @@ class StockMovementResponseNotification extends Notification
         }
 
         if ($this->movement->response_pdf_path) {
-            $mail->action('Télécharger la décision (PDF)', url(config('app.url') . '/api/docs/' . $this->movement->response_pdf_path));
+            $mail->action('Telecharger la decision (PDF)', url(config('app.url') . '/api/docs/' . $this->movement->response_pdf_path));
 
             // Attach PDF if exists on disk
             $filePath = \Illuminate\Support\Facades\Storage::disk('public')->path($this->movement->response_pdf_path);
@@ -78,8 +78,8 @@ class StockMovementResponseNotification extends Notification
             'validator' => $this->movement->validator->nomprenom ?? 'Le responsable',
             'notes' => $this->movement->response_notes,
             'pdf' => $this->movement->response_pdf_path,
-            'title' => 'Réponse mouvement',
-            'message' => "Votre mouvement {$this->movement->reference} a été " . ($this->movement->status === 'executed' ? 'approuvé' : 'rejeté'),
+            'title' => 'Reponse mouvement',
+            'message' => "Votre mouvement {$this->movement->reference} a ete " . ($this->movement->status === 'executed' ? 'approuve' : 'rejete'),
         ];
     }
 }

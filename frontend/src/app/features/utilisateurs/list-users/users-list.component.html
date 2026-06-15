@@ -76,7 +76,7 @@
     {{ errorMessage }}
   </div>
 
-  <!-- Succés -->
+  <!-- Succes -->
   <div class="success-msg" *ngIf="successMessage">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none"
       stroke="currentColor" stroke-width="2">
@@ -145,7 +145,7 @@
               (click)="remove(u.id, u)"
               [disabled]="!canDelete(u)"
               [style.opacity]="!canDelete(u) ? '0.5' : '1'"
-              [title]="!canDelete(u) ? 'Les administrateurs ne peuvent pas être archivés' : 'Archiver'">
+              [title]="!canDelete(u) ? 'Les administrateurs ne peuvent pas etre archives' : 'Archiver'">
               Archiver
             </button>
           </td>
@@ -161,7 +161,7 @@
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
                 <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
               </svg>
-              <p>Aucun utilisateur trouvé.</p>
+              <p>Aucun utilisateur trouve.</p>
             </div>
           </td>
         </tr>
@@ -172,7 +172,7 @@
     <!-- Pagination -->
     <div class="pagination-controls" *ngIf="totalPages > 1">
       <button class="btn small" (click)="changePage(currentPage - 1)" [disabled]="currentPage === 1">
-        < Précédent
+        < Precedent
       </button>
       <span class="page-info">Page {{ currentPage }} sur {{ totalPages }}</span>
       <button class="btn small" (click)="changePage(currentPage + 1)" [disabled]="currentPage === totalPages">
@@ -194,7 +194,7 @@
   </div>
 </div>
 
-<!-- --- Modal Ajouter/éditer Utilisateur ----------------------------- -->
+<!-- --- Modal Ajouter/editer Utilisateur ----------------------------- -->
 <div class="modal-backdrop" *ngIf="showModal" (click)="onBackdropClick($event)">
   <div class="modal-box">
     <div class="modal-header">
@@ -238,7 +238,7 @@
           />
         </div>
 
-        <!-- Role - en premier pour déterminer les champs à afficher -->
+        <!-- Role - en premier pour determiner les champs a afficher -->
         <div class="form-group">
           <label>Role *</label>
           <div class="select-wrapper">
@@ -293,7 +293,7 @@
           </div>
         </div>
 
-        <!-- Pour les autres rôles : Service, Poste, Siege -->
+        <!-- Pour les autres roles : Service, Poste, Siege -->
         <div *ngIf="!isStorageRole(form.roles) && form.roles !== 'Administrateur' && form.roles !== 'Directeur' && form.roles !== ''">
           <div class="form-group">
             <label>Service</label>
@@ -342,7 +342,7 @@
           </div>
         </div>
         
-        <!-- Cas spécial pour Directeur : on veut le siège et le service, mais pas le poste -->
+        <!-- Cas special pour Directeur : on veut le siege et le service, mais pas le poste -->
         <div *ngIf="form.roles === 'Directeur'">
           <div class="form-group">
             <label>Service</label>
@@ -375,7 +375,7 @@
             </div>
           </div>
         </div>
-        <!-- Fin autres rôles -->
+        <!-- Fin autres roles -->
 
         <div class="form-group">
           <label>Adresse</label>
@@ -409,3 +409,16 @@
     </div>
   </div>
 </div>
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

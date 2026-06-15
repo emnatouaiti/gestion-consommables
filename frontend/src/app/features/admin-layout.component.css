@@ -1,11 +1,11 @@
-/* ═══════════════════════════════════════════════════════
-   CONSOTRACKER — Layout 2026
-   Sidebar large marine · Topbar frosted · Contenus aérés
-═══════════════════════════════════════════════════════ */
+/* =======================================================
+   CONSOTRACKER - Layout 2026
+   Sidebar large marine · Topbar frosted · Contenus aeres
+======================================================= */
 
 @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,400;1,700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap');
 
-/* ── Variables ─────────────────────────────────────────── */
+/* -- Variables ------------------------------------------- */
 :host {
   display: block;
   height: 100vh;
@@ -24,7 +24,7 @@
   --b800: #0a3068;
   --b900: #061e48;
 
-  /* Sidebar — dark navy */
+  /* Sidebar - dark navy */
   --sb-top:      #13223a;
   --sb-mid:      #192d48;
   --sb-bot:      #0c1826;
@@ -51,7 +51,7 @@
   --red:    #ef4444;
   --amber:  #f59e0b;
 
-  /* Géométrie */
+  /* Geometrie */
   --sidebar-w: 300px;   /* ← AGRANDI */
   --topbar-h:  64px;
   --r-sm:  8px;
@@ -74,7 +74,7 @@ a      { text-decoration: none; color: inherit; }
 button { font-family: inherit; cursor: pointer; }
 ul     { list-style: none; }
 
-/* ── Keyframes ─────────────────────────────────────────── */
+/* -- Keyframes ------------------------------------------- */
 @keyframes floatUp   { 0%,100%{transform:translateY(0);}   50%{transform:translateY(-8px);} }
 @keyframes ringGlow  { 0%,100%{opacity:.22;transform:scale(1);} 50%{opacity:.5;transform:scale(1.04);} }
 @keyframes dotPulse  { 0%,100%{box-shadow:0 0 0 3px rgba(52,211,153,.2);} 50%{box-shadow:0 0 0 6px rgba(52,211,153,.06);} }
@@ -84,9 +84,9 @@ ul     { list-style: none; }
 @keyframes slideDown { from{opacity:0;transform:translateY(-10px);} to{opacity:1;transform:translateY(0);} }
 @keyframes fadeUp    { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:none;} }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    ROOT
-═══════════════════════════════════════════════════════ */
+======================================================= */
 .layout-root {
   display: flex;
   height: 100vh;
@@ -95,9 +95,9 @@ ul     { list-style: none; }
   animation: fadeIn .35s var(--ease) both;
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    SIDEBAR
-═══════════════════════════════════════════════════════ */
+======================================================= */
 .sidebar {
   width: var(--sidebar-w);
   min-width: var(--sidebar-w);
@@ -117,7 +117,7 @@ ul     { list-style: none; }
   border-right: 1px solid rgba(255,255,255,.04);
 }
 
-/* Orbes décoratifs */
+/* Orbes decoratifs */
 .sidebar-orb {
   position: absolute;
   border-radius: 50%;
@@ -138,7 +138,7 @@ ul     { list-style: none; }
   animation: orbDrift 28s ease-in-out 9s infinite reverse;
 }
 
-/* ── Brand ─────────────────────────────────────────────── */
+/* -- Brand ----------------------------------------------- */
 .brand {
   display: flex;
   flex-direction: column;
@@ -230,7 +230,7 @@ ul     { list-style: none; }
   border: 1px solid rgba(255,255,255,.13);
 }
 
-/* ── Séparateur ────────────────────────────────────────── */
+/* -- Separateur ------------------------------------------ */
 .sidebar-divider {
   height: 1px;
   margin-bottom: 16px;
@@ -244,7 +244,7 @@ ul     { list-style: none; }
   position: relative; z-index: 1;
 }
 
-/* ── Navigation ────────────────────────────────────────── */
+/* -- Navigation ------------------------------------------ */
 .nav {
   flex: 1;
   overflow-y: auto;
@@ -346,7 +346,7 @@ ul     { list-style: none; }
   color: var(--b700);
 }
 
-/* ── Footer sidebar ────────────────────────────────────── */
+/* -- Footer sidebar -------------------------------------- */
 .sidebar-footer {
   display: flex;
   align-items: center;
@@ -367,9 +367,9 @@ ul     { list-style: none; }
   animation: dotPulse 2.8s ease-in-out infinite;
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    MAIN AREA
-═══════════════════════════════════════════════════════ */
+======================================================= */
 .main-area {
   flex: 1;
   display: flex;
@@ -379,7 +379,7 @@ ul     { list-style: none; }
   position: relative;
 }
 
-/* ── Topbar ────────────────────────────────────────────── */
+/* -- Topbar ---------------------------------------------- */
 .topbar {
   height: var(--topbar-h);
   flex-shrink: 0;
@@ -523,7 +523,7 @@ ul     { list-style: none; }
   box-shadow: 0 4px 14px rgba(239,68,68,.3);
 }
 
-/* ── Panneau notifications ──────────────────────────────── */
+/* -- Panneau notifications -------------------------------- */
 .notifications-panel {
   position: absolute;
   top: var(--topbar-h);
@@ -647,7 +647,7 @@ ul     { list-style: none; }
   letter-spacing: 0.5px;
 }
 
-/* ── Contenu principal ─────────────────────────────────── */
+/* -- Contenu principal ----------------------------------- */
 .content {
   flex: 1;
   padding: 28px 30px;
@@ -658,12 +658,12 @@ ul     { list-style: none; }
     radial-gradient(ellipse 50% 40% at 95% 95%, rgba(77,140,217,.04) 0%, transparent 60%);
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
-  animation: fadeUp .4s var(--ease) .1s both;
+  animation: fadeIn .4s var(--ease) .1s both;
 }
 .content::-webkit-scrollbar       { width: 5px; }
 .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 5px; }
 
-/* ── FAB Chat ──────────────────────────────────────────── */
+/* -- FAB Chat -------------------------------------------- */
 .chat-fab {
   position: fixed;
   bottom: 26px; right: 26px;
@@ -699,9 +699,9 @@ ul     { list-style: none; }
   line-height: 1;
 }
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    RESPONSIVE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 @media (max-width: 1100px) {
   :host { --sidebar-w: 260px; }
   .content { padding: 22px 20px; }

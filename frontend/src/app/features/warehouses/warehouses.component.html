@@ -1,4 +1,4 @@
-﻿<div class="warehouses-container">
+<div class="warehouses-container">
   <!-- Error and Success Messages -->
   <div class="error-msg" *ngIf="errorMessage">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -19,7 +19,7 @@
     <!-- Column 1: Warehouses -->
     <div class="column warehouses-column">
       <div class="column-header">
-        <h2>Dépôts</h2>
+        <h2>Depots</h2>
         <button class="btn primary small" (click)="openAddWarehouseModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="12" y1="5" x2="12" y2="19" />
@@ -53,7 +53,7 @@
             </button>
           </div>
           <div class="item-actions" (click)="$event.stopPropagation()">
-            <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D dépôt" (click)="open3DViewer('warehouse', warehouse)">3D</button>
+            <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D depot" (click)="open3DViewer('warehouse', warehouse)">3D</button>
             <button class="btn mini" title="Voir les produits" (click)="viewWarehouseProducts(warehouse)">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </button>
@@ -67,7 +67,7 @@
         </div>
 
         <div class="empty-state" *ngIf="warehouses.length === 0">
-          <p>Aucun dépôt</p>
+          <p>Aucun depot</p>
         </div>
       </div>
     </div>
@@ -120,7 +120,7 @@
       </div>
 
       <div class="empty-col" *ngIf="!selectedWarehouse">
-        <p>Sélectionnez un dépôt</p>
+        <p>Selectionnez un depot</p>
       </div>
     </div>
 
@@ -170,7 +170,7 @@
         <div class="list-item" *ngFor="let location of locations">
           <div class="item-title">{{ location.code }}</div>
           <div class="item-meta">{{ location.name }}</div>
-          <div class="item-small">Capacité: {{ location.current_units || 0 }} / {{ location.capacity_units || '∞' }}</div>
+          <div class="item-small">Capacite: {{ location.current_units || 0 }} / {{ location.capacity_units || '∞' }}</div>
           <div class="item-actions" (click)="$event.stopPropagation()">
             <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('location', location)">3D</button>
             <button class="btn mini" (click)="viewLocationProducts(location)">
@@ -194,7 +194,7 @@
           <div class="list-item" *ngFor="let cabinet of cabinets">
             <div class="item-title">{{ cabinet.name }}</div>
             <div class="item-meta" *ngIf="cabinet.code">{{ cabinet.code }}</div>
-            <div class="item-small">Capacité: {{ cabinet.current_units || 0 }} / {{ cabinet.capacity_units || '∞' }}</div>
+            <div class="item-small">Capacite: {{ cabinet.current_units || 0 }} / {{ cabinet.capacity_units || '∞' }}</div>
             <div class="item-actions" (click)="$event.stopPropagation()">
               <button class="btn mini info" style="background:#3498db;color:#fff" title="Vue 3D" (click)="open3DViewer('cabinet', cabinet)">3D</button>
               <button class="btn mini" (click)="viewCabinetProducts(cabinet)">
@@ -216,7 +216,7 @@
       </div>
 
       <div class="empty-col" *ngIf="!selectedRoom">
-        <p>Sélectionnez une salle</p>
+        <p>Selectionnez une salle</p>
       </div>
     </div>
 
@@ -224,11 +224,11 @@
 
 </div>
 
-<!-- ═══ Warehouse Modal ════════════════════════════════════════════════ -->
+<!-- === Warehouse Modal ================================================ -->
 <div class="modal-backdrop" *ngIf="showWarehouseModal" (click)="closeWarehouseModal()">
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h2>{{ editingWarehouseId ? 'Modifier dépôt' : 'Ajouter dépôt / local' }}</h2>
+      <h2>{{ editingWarehouseId ? 'Modifier depot' : 'Ajouter depot / local' }}</h2>
       <button class="modal-close" (click)="closeWarehouseModal()">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
@@ -236,6 +236,15 @@
 
     <div class="modal-content">
       <form (ngSubmit)="saveWarehouse()">
+        <!-- Message d'erreur dans le modal -->
+        <div class="modal-error-alert" *ngIf="warehouseModalError">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ warehouseModalError }}</span>
+        </div>
         <div class="form-group">
           <label>Nom *</label>
           <input type="text" [(ngModel)]="warehouseForm.name" name="name" class="form-control" />
@@ -247,7 +256,7 @@
         </div>
 
         <div class="form-group address-search-group">
-          <label>Adresse complète (ex: 54, Avenue Mohamed V, Tunis)</label>
+          <label>Adresse complete (ex: 54, Avenue Mohamed V, Tunis)</label>
           <div class="search-input-wrapper">
             <input type="text" [(ngModel)]="warehouseForm.address" name="address" class="form-control" placeholder="Saisissez l'adresse ici..." (keyup.enter)="geocodeAddress()" />
             <button type="button" class="btn secondary small" (click)="geocodeAddress()">Pointe sur map</button>
@@ -273,7 +282,7 @@
 
 
         <div class="form-group">
-          <label>Téléphone</label>
+          <label>Telephone</label>
           <input type="tel" [(ngModel)]="warehouseForm.phone" name="phone" class="form-control" />
         </div>
 
@@ -282,7 +291,7 @@
         <div class="form-row">
           <div class="form-group">
             <label>Nombre max. de salles</label>
-            <input type="number" [(ngModel)]="warehouseForm.max_rooms" name="max_rooms" class="form-control" placeholder="0 = Illimité" />
+            <input type="number" [(ngModel)]="warehouseForm.max_rooms" name="max_rooms" class="form-control" placeholder="0 = Illimite" />
           </div>
         </div>
 
@@ -290,14 +299,14 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeWarehouseModal()">Annuler</button>
-          <button type="submit" class="btn primary">{{ editingWarehouseId ? 'Mettre à jour' : 'Créer' }}</button>
+          <button type="submit" class="btn primary">{{ editingWarehouseId ? 'Mettre a jour' : 'Creer' }}</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- ═══ Room Modal ════════════════════════════════════════════════════ -->
+<!-- === Room Modal ==================================================== -->
 <div class="modal-backdrop" *ngIf="showRoomModal" (click)="closeRoomModal()">
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -309,6 +318,15 @@
 
     <div class="modal-content">
       <form (ngSubmit)="saveRoom()">
+        <!-- Message d'erreur dans le modal -->
+        <div class="modal-error-alert" *ngIf="roomModalError">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ roomModalError }}</span>
+        </div>
         <div class="form-group">
           <label>Nom *</label>
           <input type="text" [(ngModel)]="roomForm.name" name="name" class="form-control" />
@@ -319,11 +337,11 @@
         <div class="form-row">
           <div class="form-group">
             <label>Max emplacements</label>
-            <input type="number" [(ngModel)]="roomForm.max_locations" name="max_locations" class="form-control" placeholder="Illimité" />
+            <input type="number" [(ngModel)]="roomForm.max_locations" name="max_locations" class="form-control" placeholder="Illimite" />
           </div>
           <div class="form-group">
             <label>Max armoires</label>
-            <input type="number" [(ngModel)]="roomForm.max_cabinets" name="max_cabinets" class="form-control" placeholder="Illimité" />
+            <input type="number" [(ngModel)]="roomForm.max_cabinets" name="max_cabinets" class="form-control" placeholder="Illimite" />
           </div>
         </div>
 
@@ -331,14 +349,14 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeRoomModal()">Annuler</button>
-          <button type="submit" class="btn primary">{{ editingRoomId ? 'Mettre à jour' : 'Créer' }}</button>
+          <button type="submit" class="btn primary">{{ editingRoomId ? 'Mettre a jour' : 'Creer' }}</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- ═══ Location Modal ════════════════════════════════════════════════ -->
+<!-- === Location Modal ================================================ -->
 <div class="modal-backdrop" *ngIf="showLocationModal" (click)="closeLocationModal()">
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -350,17 +368,26 @@
 
     <div class="modal-content">
       <form (ngSubmit)="saveLocation()">
+        <!-- Message d'erreur dans le modal -->
+        <div class="modal-error-alert" *ngIf="locationModalError">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ locationModalError }}</span>
+        </div>
 
         <div class="form-group">
           <label>Nom *</label>
-          <input type="text" [(ngModel)]="locationForm.name" name="name" placeholder="Ex: Etagère 1"
+          <input type="text" [(ngModel)]="locationForm.name" name="name" placeholder="Ex: Etagere 1"
             class="form-control" />
         </div>
 
 
 
         <div class="form-group">
-          <label>Capacité (unités)</label>
+          <label>Capacite (unites)</label>
           <input type="number" [(ngModel)]="locationForm.capacity_units" name="capacity_units" class="form-control" />
         </div>
 
@@ -368,14 +395,14 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeLocationModal()">Annuler</button>
-          <button type="submit" class="btn primary">{{ editingLocationId ? 'Mettre à jour' : 'Créer' }}</button>
+          <button type="submit" class="btn primary">{{ editingLocationId ? 'Mettre a jour' : 'Creer' }}</button>
         </div>
       </form>
     </div>
   </div>
 </div>
 
-<!-- ═══ Cabinet (Armoire) Modal ═════════════════════════════════════════ -->
+<!-- === Cabinet (Armoire) Modal ========================================= -->
 <div class="modal-backdrop" *ngIf="showCabinetModal" (click)="closeCabinetModal()">
   <div class="modal-box" (click)="$event.stopPropagation()">
     <div class="modal-header">
@@ -387,6 +414,15 @@
 
     <div class="modal-content">
       <form (ngSubmit)="saveCabinet()">
+        <!-- Message d'erreur dans le modal -->
+        <div class="modal-error-alert" *ngIf="cabinetModalError">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          <span>{{ cabinetModalError }}</span>
+        </div>
         <div class="form-group">
           <label>Nom *</label>
           <input type="text" [(ngModel)]="cabinetForm.name" name="cabinet_name" class="form-control" />
@@ -396,7 +432,7 @@
 
 
         <div class="form-group">
-          <label>Capacité (unités)</label>
+          <label>Capacite (unites)</label>
           <input type="number" [(ngModel)]="cabinetForm.capacity_units" name="cabinet_capacity_units" class="form-control" />
         </div>
 
@@ -404,7 +440,7 @@
 
         <div class="modal-actions">
           <button type="button" class="btn" (click)="closeCabinetModal()">Annuler</button>
-          <button type="submit" class="btn primary">{{ editingCabinetId ? 'Mettre à jour' : 'Créer' }}</button>
+          <button type="submit" class="btn primary">{{ editingCabinetId ? 'Mettre a jour' : 'Creer' }}</button>
         </div>
       </form>
     </div>
@@ -452,3 +488,17 @@
   </div>
 </div>
 
+
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

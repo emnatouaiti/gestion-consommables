@@ -234,7 +234,7 @@ class ExpirationController extends Controller
         $document = null;
         $movement = null;
 
-        // â”€â”€ CrÃer un mouvement de stock pour l'historique â”€â”€
+        // a"€a"€ CrÃer un mouvement de stock pour l'historique a"€a"€
         try {
             DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
@@ -255,7 +255,7 @@ class ExpirationController extends Controller
                     'quantity'          => $originalQuantity,
                 ]);
 
-                // â”€â”€ GÃnÃrer le PV d'Ãlimination â”€â”€
+                // a"€a"€ GÃnÃrer le PV d'Ãlimination a"€a"€
                 $pdf = Pdf::loadView('pdf.elimination', [
                     'stock'         => $stock,
                     'justification' => $validated['justification'],
@@ -318,7 +318,7 @@ class ExpirationController extends Controller
             'justification' => 'required|string|min:5',
         ]);
 
-        // â”€â”€ Ã‰tape critique : mettre Ã  jour le stock et crÃer l'ÃvÃnement â”€â”€
+        // a"€a"€ Ã‰tape critique : mettre Ã  jour le stock et crÃer l'ÃvÃnement a"€a"€
         $event = $this->expirationService->returnToSupplierBatch(
             stock: $stock,
             userId: auth()->id() ?? 1,
@@ -328,7 +328,7 @@ class ExpirationController extends Controller
         $document = null;
         $movement = null;
 
-        // â”€â”€ CrÃer un mouvement de stock pour l'historique â”€â”€
+        // a"€a"€ CrÃer un mouvement de stock pour l'historique a"€a"€
         try {
             DB::transaction(function () use ($stock, $originalQuantity, $validated, $event, &$movement, &$document) {
                 $movement = StockMovement::create([
@@ -350,7 +350,7 @@ class ExpirationController extends Controller
                     'quantity'          => $originalQuantity,
                 ]);
 
-                // â”€â”€ GÃnÃrer le bon de retour â”€â”€
+                // a"€a"€ GÃnÃrer le bon de retour a"€a"€
                 $pdf = Pdf::loadView('pdf.return_supplier', [
                     'stock'         => $stock,
                     'supplier'      => $stock->supplier,
@@ -385,7 +385,7 @@ class ExpirationController extends Controller
                 $product->stock_quantity = $product->stocks()->sum('quantity');
                 $product->save();
 
-                // â”€â”€ Envoyer l'email au fournisseur â”€â”€
+                // a"€a"€ Envoyer l'email au fournisseur a"€a"€
                 if ($stock->supplier && !empty($stock->supplier->email)) {
                     try {
                         Mail::to($stock->supplier->email)->send(new ReturnToSupplierMail(

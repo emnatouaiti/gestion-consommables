@@ -44,9 +44,15 @@ class ProductController extends Controller
         $user = auth()->user();
         if ($user && (($user->role?->name ?? '') === 'responsable' || ($user->role?->name ?? '') === 'agent') && $user->depot_id) {
             $depotId = $user->depot_id;
-            $query->whereHas('productStocks', function($q) use ($depotId) {
-                $q->whereHas('warehouseLocation.room', fn($r) => $r->where('warehouse_id', $depotId))
-                  ->orWhereHas('warehouseCabinet.room', fn($r) => $r->where('warehouse_id', $depotId));
+            
+            // Optimization: Pre-fetch location and cabinet IDs to avoid complex nested EXISTS subqueries
+            $roomIds = \App\Models\WarehouseRoom::where('warehouse_id', $depotId)->pluck('id');
+            $locationIds = \App\Models\WarehouseLocation::whereIn('room_id', $roomIds)->pluck('id');
+            $cabinetIds = \App\Models\WarehouseCabinet::whereIn('room_id', $roomIds)->pluck('id');
+
+            $query->whereHas('productStocks', function($q) use ($locationIds, $cabinetIds) {
+                $q->whereIn('location_id', $locationIds)
+                  ->orWhereIn('cabinet_id', $cabinetIds);
             });
         }
         $perPage = max(1, min(100, (int) $request->get('per_page', 20)));
@@ -125,12 +131,12 @@ class ProductController extends Controller
             'short_description' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'commentaire' => 'nullable|string',
-            'num_serie' => 'nullable|string|max:255',
+            'num_serie' => 'required|string|max:255',
             'num_inventaire' => 'nullable|string|max:255',
-            'model' => 'nullable|string|max:255',
-            'marque' => 'nullable|string|max:255',
+            'model' => 'required|string|max:255',
+            'marque' => 'required|string|max:255',
             'seuil_min' => 'required|integer|min:0',
-            'seuil_max' => 'nullable|integer|gt:seuil_min',
+            'seuil_max' => 'required|integer|gt:seuil_min',
             'reference' => 'nullable|string|max:120',
             'categorie_id' => 'required|exists:categories,id',
             'has_expiration' => 'nullable|boolean',
@@ -303,12 +309,12 @@ class ProductController extends Controller
             'short_description' => 'nullable|string|max:500',
             'description' => 'nullable|string',
             'commentaire' => 'nullable|string',
-            'num_serie' => 'nullable|string|max:255',
+            'num_serie' => 'required|string|max:255',
             'num_inventaire' => 'nullable|string|max:255',
-            'model' => 'nullable|string|max:255',
-            'marque' => 'nullable|string|max:255',
+            'model' => 'required|string|max:255',
+            'marque' => 'required|string|max:255',
             'seuil_min' => 'required|integer|min:0',
-            'seuil_max' => 'nullable|integer|gt:seuil_min',
+            'seuil_max' => 'required|integer|gt:seuil_min',
             'reference' => 'required|string|max:120|unique:products,reference,' . $product->id,
             'categorie_id' => 'required|exists:categories,id',
             'has_expiration' => 'nullable|boolean',

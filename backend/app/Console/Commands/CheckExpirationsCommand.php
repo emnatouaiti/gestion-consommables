@@ -20,7 +20,7 @@ class CheckExpirationsCommand extends Command
 
     public function handle(ExpirationManagementService $expirationService): int
     {
-        $this->info('ðŸ” DÃbut du scan des expirations...');
+        $this->info('ðŸ" DÃbut du scan des expirations...');
 
         // Configurer le service
         $expirationService->setAlertDaysBefore($this->option('days-before'));
@@ -30,7 +30,7 @@ class CheckExpirationsCommand extends Command
 
         // Afficher les rÃsultats
         $this->newLine();
-        $this->info('âœ… Scan complÃtÃ!');
+        $this->info('aœ... Scan complÃtÃ!');
         $this->table(
             ['MÃtrique', 'Nombre'],
             [
@@ -43,13 +43,13 @@ class CheckExpirationsCommand extends Command
 
         if ($this->option('verbose')) {
             $this->newLine();
-            $this->info('ðŸ“Š DÃtails supplÃmentaires:');
+            $this->info('ðŸ"Š DÃtails supplÃmentaires:');
 
             $expiring = $expirationService->getExpiringProducts($this->option('days-before'));
             $expired = $expirationService->getExpiredProducts();
 
-            $this->line("  â€¢ Produits expirant bientÃ´t: {$expiring->count()}");
-            $this->line("  â€¢ Produits expirÃÃs: {$expired->total()}");
+            $this->line("  a€¢ Produits expirant bientÃ´t: {$expiring->count()}");
+            $this->line("  a€¢ Produits expirÃÃs: {$expired->total()}");
         }
 
         return Command::SUCCESS;

@@ -7,13 +7,13 @@ import { AdminExpirationService } from '../../../core/services/admin-expiration.
  *
  * Pour chaque date d'expiration distincte du produit:
  * - Affiche une timeline du cycle de vie
- * - Statut actuel (Valide, Expire bientôt, Expiré)
+ * - Statut actuel (Valide, Expire bientot, Expire)
  * - Action possible (Consommer, Acknowledge, Force-consume)
  */
 interface BatchLifecycle {
   batch_number: string;
   expiration_date: string;
-  status: string; // " Valide" | "️ Expire" | " Expiré"
+  status: string; // " Valide" | "️ Expire" | " Expire"
   color: string; // "success" | "warning" | "danger"
   daysLeft: number;
   quantity: number; // Total des stocks avec cette date
@@ -58,7 +58,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Générer les cycles de vie pour chaque batch unique (date d'expiration)
+   * Generer les cycles de vie pour chaque batch unique (date d'expiration)
    */
   generateBatchLifecycles() {
     if (!this.productStocks || this.productStocks.length === 0) {
@@ -86,7 +86,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
         expDate = new Date(expirationDate);
         daysLeft = Math.ceil((expDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
         if (daysLeft < 0) {
-          status = 'Expiré depuis ' + Math.abs(daysLeft) + ' jour(s)';
+          status = 'Expire depuis ' + Math.abs(daysLeft) + ' jour(s)';
           color = 'danger';
         } else if (daysLeft <= 7) {
           status = 'Expire dans ' + daysLeft + ' jour(s)';
@@ -96,7 +96,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
         }
       }
 
-      // Générer la timeline du cycle de vie
+      // Generer la timeline du cycle de vie
       const events = this.generateTimeline(expirationDate);
 
       return {
@@ -116,14 +116,14 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
       return new Date(a.expiration_date).getTime() - new Date(b.expiration_date).getTime();
     });
 
-    // Sélectionner le premier batch par défaut
+    // Selectionner le premier batch par defaut
     if (this.batches.length > 0) {
       this.selectedBatch = this.batches[0];
     }
   }
 
   /**
-   * Générer une timeline pour une date d'expiration
+   * Generer une timeline pour une date d'expiration
    */
   generateTimeline(expirationDate: string): LifecycleEvent[] {
     const today = new Date();
@@ -168,7 +168,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
       },
       {
         title: 'Jour d\'Expiration',
-        description: 'Dernier jour de consommation autorisée',
+        description: 'Dernier jour de consommation autorisee',
         date: this.formatDate(expDate),
         status: today === expDate ? 'current' : today > expDate ? 'completed' : 'pending',
         icon: 'calendar',
@@ -176,7 +176,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
       },
       {
         title: 'Blocage Consommation',
-        description: 'Stock marqué comme expiré',
+        description: 'Stock marque comme expire',
         date: this.formatDate(new Date(expDate.getTime() + 86400000)),
         status: today > expDate ? 'completed' : 'pending',
         icon: 'slash',
@@ -184,7 +184,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
       },
       {
         title: 'Archivage',
-        description: 'Historique conservé',
+        description: 'Historique conserve',
         date: this.formatDate(new Date(expDate.getTime() + 86400000 * 2)),
         status: 'pending',
         icon: 'archive',
@@ -194,7 +194,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Grouper un tableau par une clé composite (batch_number + expiration_date)
+   * Grouper un tableau par une cle composite (batch_number + expiration_date)
    */
   groupBy(array: any[], key: string): { [key: string]: any[] } {
     return array.reduce((result, item) => {
@@ -222,7 +222,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Sélectionner un batch
+   * Selectionner un batch
    */
   selectBatch(batch: BatchLifecycle) {
     this.selectedBatch = batch;
@@ -236,7 +236,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Obtenir les stocks pour le batch sélectionné
+   * Obtenir les stocks pour le batch selectionne
    */
   getSelectedBatchStocks(): any[] {
     if (!this.selectedBatch) return [];
@@ -244,7 +244,7 @@ export class ProductBatchLifecycleComponent implements OnInit, OnChanges {
   }
 
   /**
-   * Vérifier si le batch peut être consommé
+   * Verifier si le batch peut etre consomme
    */
   canConsume(batch: BatchLifecycle): boolean {
     return batch.daysLeft === Infinity || batch.daysLeft >= 0;

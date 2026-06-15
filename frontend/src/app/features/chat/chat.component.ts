@@ -65,7 +65,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.msgSub?.unsubscribe();
   }
 
-  /* --- Sélection conversation --- */
+  /* --- Selection conversation --- */
   selectConversation(conv: any): void {
     this.selectedUser = { ...conv.user };
     this.chatState?.setActive?.({ id: conv.user.id, name: conv.user.name });
@@ -119,7 +119,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     this.selectedFile = null;
   }
 
-  /* --- Helpers présence --- */
+  /* --- Helpers presence --- */
   isOnline(lastSeen: string | null | undefined): boolean {
     if (!lastSeen) return false;
     const d = new Date(lastSeen).getTime();
@@ -131,7 +131,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
    *  - "En ligne"              si < 5 min
    *  - "Vu a 14:32"           si aujourd'hui mais > 5 min
    *  - "Vu hier a 14:32"      si hier
-   *  - "Vu avant-hier é..."   si avant-hier
+   *  - "Vu avant-hier e..."   si avant-hier
    *  - "Vu le 12/03 a 14:32"  sinon
    */
   presenceLabel(lastSeen: string | null | undefined): string {
@@ -145,10 +145,10 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     const diffDays = Math.floor(diffMs / 86_400_000);
     const time = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
-    if (diffDays === 0) return `Connecté à ${time}`;
-    if (diffDays === 1) return `Connecté hier à ${time}`;
-    if (diffDays === 2) return `Connecté avant-hier à ${time}`;
-    return `Connecté le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} à ${time}`;
+    if (diffDays === 0) return `Connecte a ${time}`;
+    if (diffDays === 1) return `Connecte hier a ${time}`;
+    if (diffDays === 2) return `Connecte avant-hier a ${time}`;
+    return `Connecte le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} a ${time}`;
   }
 
   statusLabel(): string {
@@ -164,7 +164,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return conv?.last_read_at ? 'Vu' : 'Non vu';
   }
 
-  /* --- Séparateurs de jours dans les messages --- */
+  /* --- Separateurs de jours dans les messages --- */
   get messagesWithSeparators(): any[] {
     const result: any[] = [];
     let lastDay = '';
@@ -189,8 +189,8 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Formate une date pour les séparateurs ou les horodatages sidebar.
-   * @param full  true = texte complet pour séparateur ("Aujourd'hui", "Hier"é)
+   * Formate une date pour les separateurs ou les horodatages sidebar.
+   * @param full  true = texte complet pour separateur ("Aujourd'hui", "Hier"e)
    *              false = version courte pour sidebar ("14:32", "Hier", "12/03")
    */
   smartDate(dateStr: string | null | undefined, full = false): string {
@@ -280,7 +280,7 @@ export class ChatComponent implements OnInit, OnDestroy, AfterViewChecked {
     return `le ${d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })} a ${time}`;
   }
 
-  /* --- Privé --- */
+  /* --- Prive --- */
   private startConversationsPolling(): void {
     this.convSub?.unsubscribe();
     this.convSub = this.chat.pollConversations().subscribe({

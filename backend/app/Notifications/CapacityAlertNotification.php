@@ -37,18 +37,18 @@ class CapacityAlertNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         $message = (new MailMessage)
-            ->subject('️ Alerte de Capacité de Stockage')
+            ->subject('️ Alerte de Capacite de Stockage')
             ->greeting('Bonjour ' . $notifiable->name . ',')
-            ->line('Certains de vos espaces de stockage ont atteint ou dépassé 90% de leur capacité maximale.')
-            ->line('Voici le détail :');
+            ->line('Certains de vos espaces de stockage ont atteint ou depasse 90% de leur capacite maximale.')
+            ->line('Voici le detail :');
 
         foreach ($this->alerts as $alert) {
-            $message->line("- **{$alert['type']} : {$alert['name']}** - Utilisé : {$alert['current']} / {$alert['capacity']} ({$alert['percentage']}%)");
+            $message->line("- **{$alert['type']} : {$alert['name']}** - Utilise : {$alert['current']} / {$alert['capacity']} ({$alert['percentage']}%)");
         }
 
         return $message
-            ->action('Voir les dépôts', url('/warehouses'))
-            ->line('Merci de faire le nécessaire pour libérer de l\'espace.');
+            ->action('Voir les depots', url('/warehouses'))
+            ->line('Merci de faire le necessaire pour liberer de l\'espace.');
     }
 
     /**
@@ -60,8 +60,8 @@ class CapacityAlertNotification extends Notification
     {
         return [
             'type' => 'capacity_alert',
-            'title' => 'Alerte de Capacité de Stockage',
-            'message' => count($this->alerts) . ' espace(s) de stockage sont proches de leur capacité maximale.',
+            'title' => 'Alerte de Capacite de Stockage',
+            'message' => count($this->alerts) . ' espace(s) de stockage sont proches de leur capacite maximale.',
             'alerts' => $this->alerts,
             'action_url' => '/warehouses'
         ];

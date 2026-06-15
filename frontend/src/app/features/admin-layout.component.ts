@@ -107,18 +107,18 @@ get userInitials(): string {
       ]
     },
     {
-        title: 'Catalogue & Dépôts',
+        title: 'Catalogue & Depots',
       items: [
-        { label: 'Catégories', route: '/gerer-categories' },
-        { label: 'Unités', route: '/gerer-unites' },
+        { label: 'Categories', route: '/gerer-categories' },
+        { label: 'Unites', route: '/gerer-unites' },
         { label: 'Produits', route: '/gerer-produits' },
-        { label: 'Références', route: '/gerer-references' },
-        { label: 'Dépôts', route: '/gerer-depots' },
+        { label: 'References', route: '/gerer-references' },
+        { label: 'Depots', route: '/gerer-depots' },
         // 'Locaux' hidden for Responsable de stock
       ]
     },
     {
-      title: 'Opérations',
+      title: 'Operations',
       items: [
         { label: 'Valider demandes', route: '/validation-demandes' },
         { label: 'Mouvements Stock', route: '/mouvements-stock' },
@@ -142,11 +142,11 @@ get userInitials(): string {
       ]
     },
     {
-      title: 'Opérations',
+      title: 'Operations',
       items: [
         { label: 'Catalogue', route: '/gerer-produits' },
-        { label: 'Dépôts', route: '/gerer-depots' },
-        { label: 'Références', route: '/gerer-references' },
+        { label: 'Depots', route: '/gerer-depots' },
+        { label: 'References', route: '/gerer-references' },
         { label: 'Mouvements Stock', route: '/mouvements-stock' },
         { label: 'Import OCR', route: '/documents-ocr' },
         { label: 'Fournisseurs (Avis)', route: '/gerer-fournisseurs' }
@@ -185,7 +185,7 @@ get userInitials(): string {
       ]
     },
     {
-      title: 'Espace Employé',
+      title: 'Espace Employe',
       items: [
         { label: 'Mes Demandes', route: '/demandes-consommables', exact: true }
       ]
@@ -275,7 +275,7 @@ get userInitials(): string {
       return this.agentSections;
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employe'])) {
       return this.userSections;
     }
 
@@ -296,11 +296,11 @@ get userInitials(): string {
     }
 
     if (this.authService.userHasAnyRole(this.user, ['Agent de stock', 'Agent'])) {
-      return 'Opérations Stock';
+      return 'Operations Stock';
     }
 
-    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employé'])) {
-      return 'Espace Employé';
+    if (this.authService.userHasAnyRole(this.user, ['Utilisateur', 'Employe'])) {
+      return 'Espace Employe';
     }
 
     return 'Portail';
@@ -367,7 +367,7 @@ get userInitials(): string {
   notificationLabel(notification: any): string {
     const data = notification?.data || {};
     if (data?.type === 'capacity_alert') {
-      return (data.title || 'Alerte Capacité') + ': ' + (data.message || 'Espace saturé');
+      return (data.title || 'Alerte Capacite') + ': ' + (data.message || 'Espace sature');
     }
     if (data?.type === 'stock_movement') {
       return (data.title || 'Mouvement') + ': ' + (data.message || data.reference);

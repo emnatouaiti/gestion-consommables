@@ -6,6 +6,7 @@ import { ConsumableRequestService } from '../../core/services/consumable-request
 import { AuthService } from '../../core/services/auth.service';
 import { AdminWarehouseService } from '../../core/services/admin-warehouse.service';
 import { forkJoin } from 'rxjs';
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 
 type NavTab = 'pending' | 'history' | 'exits';
 type RequestViewMode = 'table' | 'columns';
@@ -16,7 +17,7 @@ type ItemDecision = 'approved' | 'rejected' | 'pending';
 @Component({
   selector: 'app-consumable-request',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, DatePipe],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, DatePipe, ConfirmModalComponent],
   templateUrl: './consumable-request.html',
   styleUrls: ['./consumable-request.css']
 })
@@ -58,6 +59,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   form: FormGroup;
   requestModalOpen = false;
   requestModalEditMode = false;
+  requestModalErrorMessage = '';
   editingRequestId: number | null = null;
   deletingRequestId: number | null = null;
   requestLines: Array<{
@@ -74,6 +76,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   modalApprovedQuantity = 0;
   modalApprovedQuantities: Record<number, number> = {};
   approving = false;
+  approveModalErrorMessage = '';
   depotWarnings: any[] = [];
   depotWarningMessage: string = '';
 
@@ -111,6 +114,16 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   sallesList: any[] = [];
   locationsList: any[] = [];
   cabinetsList: any[] = [];
+
+  // Confirm Modal state
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  confirmModalAction: (() => void) | null = null;
 
   // Expanded rows
   expandedRequestIds = new Set<number>();
@@ -163,7 +176,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       }
     });
-    // Correction NG0100 : forcer la détection de changements après modification des droits
+    // Correction NG0100 : forcer la detection de changements apres modification des droits
     this.cdr.detectChanges();
 
   }
@@ -206,9 +219,11 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
           return db - da;
         });
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: () => {
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -242,7 +257,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   get tabs(): Array<{ id: NavTab; label: string; count?: number }> {
     const tabs: Array<{ id: NavTab; label: string; count?: number }> = [];
 
-    // Only show "Demandes à valider" for directors, not for responsables
+    // Only show "Demandes a valider" for directors, not for responsables
     const isDirector = this.isDirectorUser(this.currentUser);
     if (this.viewMode === 'validation' && isDirector) {
       tabs.push({ id: 'pending', label: 'Demandes a valider', count: this.pendingValidationRequests.length });
@@ -469,6 +484,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     this.currentBatchCode = batchCode;
     this.requestModalOpen = true;
     this.requestModalEditMode = false;
+    this.requestModalErrorMessage = '';
     this.editingRequestId = null;
     this.requestLines = [{ product_id: null, requested_quantity: null, searchTerm: '', filteredItems: [...this.products] }];
     this.form.reset({ product_id: null, item_name: '', requested_quantity: '' });
@@ -477,6 +493,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   openEditRequestModal(request: any): void {
     this.requestModalOpen = true;
     this.requestModalEditMode = true;
+    this.requestModalErrorMessage = '';
     this.editingRequestId = request.id;
     this.currentBatchCode = request.batch_code || null;
 
@@ -494,6 +511,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   closeRequestModal(): void {
     this.requestModalOpen = false;
     this.requestModalEditMode = false;
+    this.requestModalErrorMessage = '';
     this.editingRequestId = null;
     this.requestLines = [{ product_id: null, requested_quantity: null, searchTerm: '', filteredItems: [] }];
     this.form.reset({ product_id: null, item_name: '', requested_quantity: '' });
@@ -517,7 +535,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
     const validLines = this.requestLines.filter(l => (l.product_id || l.searchTerm) && Number(l.requested_quantity) >= 1);
     if (validLines.length === 0) {
-      this.message = 'Ajoutez au moins un produit avec une quantite valide.';
+      this.requestModalErrorMessage = 'Veuillez au moins un produit avec une quantite valide.';
       return;
     }
 
@@ -551,7 +569,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
     request$.subscribe({
       next: () => {
-        this.message = this.requestModalEditMode ? 'Demande modifiée avec succès.' : 'demande ajouter avec succes non traite';
+        this.message = this.requestModalEditMode ? 'Demande modifiee avec succes.' : 'demande ajouter avec succes non traite';
         this.cdr.detectChanges();
         this.currentBatchCode = null;
         this.loading = false;
@@ -579,8 +597,6 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         this.message = 'Demande mise en attente.';
         this.cdr.detectChanges();
         this.loadRequests();
-        this.loading = false;
-        this.cdr.detectChanges();
         this.ngZone.runOutsideAngular(() => {
           setTimeout(() => {
             this.ngZone.run(() => { this.message = ''; this.cdr.detectChanges(); });
@@ -597,27 +613,61 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     });
   }
 
+  openConfirmModal(
+    title: string,
+    message: string,
+    action: () => void,
+    type: 'danger' | 'warning' | 'info' = 'warning',
+    confirmText = 'Confirmer',
+    cancelText = 'Annuler',
+    alertOnly = false
+  ): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalAction = action;
+    this.confirmModalType = type;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalCancelText = cancelText;
+    this.confirmModalAlertOnly = alertOnly;
+    this.confirmModalVisible = true;
+  }
+
+  onConfirmModalConfirmed(): void {
+    if (this.confirmModalAction) {
+      this.confirmModalAction();
+    }
+    this.confirmModalVisible = false;
+  }
+
   deleteRequest(id: number): void {
     if (!this.canEditDeleteOwnRequests || this.deletingRequestId) return;
-    if (typeof window !== 'undefined' && !window.confirm('Supprimer cette demande ?')) return;
-    this.deletingRequestId = id;
-    this.consumableRequestService.deleteRequest(id).subscribe({
-      next: () => {
-        this.message = 'Demande supprimee.';
-        this.deletingRequestId = null;
-        this.loadRequests();
-        this.ngZone.runOutsideAngular(() => {
-          setTimeout(() => {
-            this.ngZone.run(() => { this.message = ''; });
-          }, 3000);
+    
+    this.openConfirmModal(
+      'Supprimer la demande',
+      'Supprimer cette demande ?',
+      () => {
+        this.deletingRequestId = id;
+        this.consumableRequestService.deleteRequest(id).subscribe({
+          next: () => {
+            this.message = 'Demande supprimee.';
+            this.deletingRequestId = null;
+            this.loadRequests();
+            this.ngZone.runOutsideAngular(() => {
+              setTimeout(() => {
+                this.ngZone.run(() => { this.message = ''; });
+              }, 3000);
+            });
+          },
+          error: (err: unknown) => {
+            this.message = 'Erreur lors de la suppression.';
+            this.deletingRequestId = null;
+            console.error(err);
+          }
         });
       },
-      error: (err: unknown) => {
-        this.message = 'Erreur lors de la suppression.';
-        this.deletingRequestId = null;
-        console.error(err);
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   // Approve / Reject
@@ -738,7 +788,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       rejections: {}
     };
 
-    // Ajouter les quantités approuvées
+    // Ajouter les quantites approuvees
     for (const item of approvedItems) {
       payload.approved_quantities[item.id] = Number(this.itemApprovedQuantities[item.id]);
     }
@@ -758,13 +808,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         // Handle depot warnings
         if (res?.depot_warnings && res.depot_warnings.length > 0) {
           this.depotWarnings = res.depot_warnings;
-          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dépôts.';
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs depots.';
         }
         if (res?.insufficient_warnings?.length > 0) {
           const details = res.insufficient_warnings
             .map((w: any) => `${w.product}: manque ${w.missing}`)
             .join(', ');
-          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilité.`;
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilite.`;
         }
 
         if (rejectedCount > 0 && approvedCount > 0) {
@@ -814,15 +864,16 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     const maxAllowed = Number(request?.available_stock ?? request?.requested_quantity ?? 0);
     const approvedQuantity = Number(this.modalApprovedQuantity);
     if (!Number.isFinite(approvedQuantity) || approvedQuantity < 0) {
-      this.message = 'Quantite approuvee invalide.';
+      this.approveModalErrorMessage = 'Quantite approuvee invalide.';
       return;
     }
     if (approvedQuantity > maxAllowed) {
-      this.message = `La quantite approuvee ne doit pas depasser ${maxAllowed}.`;
+      this.approveModalErrorMessage = `La quantite approuvee ne doit pas depasser ${maxAllowed}.`;
       return;
     }
 
     this.approving = true;
+    this.approveModalErrorMessage = '';
 
     // Si c'est un lot, utiliser approved_quantities pour chaque item
     let payload: { approved_quantity?: number; approved_quantities?: Record<number, number> } = {};
@@ -843,13 +894,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         // Handle depot warnings
         if (res?.depot_warnings && res.depot_warnings.length > 0) {
           this.depotWarnings = res.depot_warnings;
-          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs dépôts.';
+          this.depotWarningMessage = res.warning_message || 'Certains produits sont disponibles dans plusieurs depots.';
         }
         if (res?.insufficient_warnings?.length > 0) {
           const details = res.insufficient_warnings
             .map((w: any) => `${w.product}: manque ${w.missing}`)
             .join(', ');
-          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilité.`;
+          this.message = `Stock insuffisant pour certains produits (${details}). Distribution faite selon disponibilite.`;
         }
 
         this.message = res?.status === 'validated_by_manager'
@@ -874,11 +925,11 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         const validStatuses = err?.error?.valid_statuses;
 
         if (currentStatus && validStatuses) {
-          this.message = `Statut invalide: ${currentStatus}. Statuts acceptes: ${validStatuses.join(', ') || 'none'}.`;
+          this.approveModalErrorMessage = `Statut invalide: ${currentStatus}. Statuts acceptes: ${validStatuses.join(', ') || 'none'}.`;
         } else if (apiError) {
-          this.message = apiError;
+          this.approveModalErrorMessage = apiError;
         } else {
-          this.message = 'Erreur lors de l\'approbation.';
+          this.approveModalErrorMessage = 'Erreur lors de l\'approbation.';
         }
         console.error(err);
         this.approving = false;
@@ -1231,7 +1282,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
 
     this.consumableRequestService.confirmExit(this.selectedRequestForExit.id, payload).subscribe({
       next: (res: any) => {
-        const depotName = res?.depot_name ? ` (Dépôt: ${res.depot_name})` : '';
+        const depotName = res?.depot_name ? ` (Depot: ${res.depot_name})` : '';
         this.message = 'Remise effectuee et stock mis a jour.' + depotName;
         this.confirmingExit = false;
         this.closeExitModal();
@@ -1278,7 +1329,7 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
   }
 
   private isDirectorUser(user: any): boolean {
-    // Only the role determines Director status — not the poste (job title)
+    // Only the role determines Director status - not the poste (job title)
     return this.authService.userHasAnyRole(user, ['Directeur', 'directeur', 'durecteur', 'director']);
   }
 }

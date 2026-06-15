@@ -30,7 +30,7 @@ const adminRoles = ['Administrateur'];
 const directorRoles = ['Directeur'];
 const managerRoles = ['Responsable de stock', 'Responsable', 'Gestionnaire'];
 const agentRoles = ['Agent de stock', 'Agent'];
-const userRoles = ['Utilisateur', 'Employé', 'Directeur'];
+const userRoles = ['Utilisateur', 'Employe', 'Directeur'];
 
 const adminAndDirector = [...adminRoles, ...directorRoles];
 const managerAndAgent = [...managerRoles, ...agentRoles, ...directorRoles];

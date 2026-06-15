@@ -7,13 +7,13 @@ import * as THREE from 'three';
 import { AdminStockService } from '../../../core/services/admin-stock.service';
 import { AdminWarehouseService } from '../../../core/services/admin-warehouse.service';
 
-/* ═══════════════════════════════════════════════════════════════════
-   STORAGE 3D VIEWER — Professional Edition v4.1
-   Thème  : Professionnel neutre · Lumière douce · Matériaux réalistes
+/* ===================================================================
+   STORAGE 3D VIEWER - Professional Edition v4.1
+   Theme  : Professionnel neutre · Lumiere douce · Materiaux realistes
    Moteur : Three.js r128 · PBR · Ombres douces · Ton mapping ACESFilmic
-   Palette: Gris ardoise / Bleu acier / Vert opérationnel / Orange alerte
-   v4.1   : Portes cliquables — clic sur battant = ouverture/fermeture
-═══════════════════════════════════════════════════════════════════ */
+   Palette: Gris ardoise / Bleu acier / Vert operationnel / Orange alerte
+   v4.1   : Portes cliquables - clic sur battant = ouverture/fermeture
+=================================================================== */
 
 @Component({
   selector: 'app-storage-3d-viewer',
@@ -23,7 +23,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
   template: `
 <div class="vr" [class.vr-loading]="isLoading">
 
-  <!-- Canvas ────────────────────────────────────────────────── -->
+  <!-- Canvas -------------------------------------------------- -->
   <div #canvasHost class="vr-canvas"
     (mousedown)="onMouseDown($event)"
     (mousemove)="onMouseMove($event)"
@@ -36,7 +36,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     (touchend)="onMouseUp()">
   </div>
 
-  <!-- Loader ─────────────────────────────────────────────────── -->
+  <!-- Loader --------------------------------------------------- -->
   <div class="vr-loader" *ngIf="isLoading">
     <div class="ld-spinner">
       <div class="ld-track"></div>
@@ -46,7 +46,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     <div class="ld-sub">{{ title }}</div>
   </div>
 
-  <!-- Breadcrumb ──────────────────────────────────────────────── -->
+  <!-- Breadcrumb ------------------------------------------------ -->
   <div class="vr-breadcrumb" *ngIf="!isLoading">
     <ng-container *ngFor="let crumb of breadcrumbs; let i = index; let last = last">
       <button class="crumb-btn" [class.crumb-active]="last" (click)="goToCrumb(i)">
@@ -59,12 +59,12 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     <div class="crumb-type">{{ typeLabel }}</div>
   </div>
 
-  <!-- Header info ─────────────────────────────────────────────── -->
+  <!-- Header info ----------------------------------------------- -->
   <div class="vr-header" *ngIf="!isLoading">
     <div class="vr-title-block">
       <div class="vr-title">{{ title }}</div>
       <div class="vr-subtitle" *ngIf="type==='location'||type==='cabinet'">
-        {{ currentUnits }} / {{ capacityUnits }} unités
+        {{ currentUnits }} / {{ capacityUnits }} unites
         <span class="vr-pct" [class]="gaugeStatusClass">{{ percentage | number:'1.0-0' }}%</span>
       </div>
       <div class="vr-subtitle" *ngIf="type==='room'">
@@ -86,7 +86,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     </div>
   </div>
 
-  <!-- Toolbar vertical ────────────────────────────────────────── -->
+  <!-- Toolbar vertical ------------------------------------------ -->
   <div class="vr-toolbar" *ngIf="!isLoading">
     <button class="vr-btn" title="Vue de face" (click)="setCameraPreset('front')">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -102,7 +102,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
         <line x1="10" y1="3" x2="10" y2="17"/>
       </svg>
     </button>
-    <button class="vr-btn" title="Vue isométrique" (click)="setCameraPreset('iso')">
+    <button class="vr-btn" title="Vue isometrique" (click)="setCameraPreset('iso')">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M10 2L18 6.5V14L10 18L2 13.5V6L10 2Z"/>
         <line x1="10" y1="2" x2="10" y2="10"/>
@@ -123,7 +123,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
         <line x1="6" y1="9" x2="12" y2="9"/>
       </svg>
     </button>
-    <button class="vr-btn" title="Réinitialiser" (click)="resetCamera()">
+    <button class="vr-btn" title="Reinitialiser" (click)="resetCamera()">
       <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M3 10a7 7 0 1 1 1.5 4.3"/>
         <path d="M3 14V10h4"/>
@@ -151,7 +151,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     </ng-container>
   </div>
 
-  <!-- Légende produits ─────────────────────────────────────────── -->
+  <!-- Legende produits ------------------------------------------- -->
   <div class="vr-legend" *ngIf="!isLoading && uniqueProducts.length > 0">
     <div class="vr-legend-title">
       Produits
@@ -166,7 +166,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     </div>
   </div>
 
-  <!-- Popup produit ───────────────────────────────────────────── -->
+  <!-- Popup produit --------------------------------------------- -->
   <div class="vr-popup" *ngIf="selectedProduct"
     [style.left.px]="popupX" [style.top.px]="popupY">
     <div class="vr-popup-header">
@@ -180,15 +180,15 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     </div>
     <div class="vr-popup-body">
       <div class="vr-field" *ngIf="selectedProduct.reference">
-        <span class="vr-field-key">Référence</span>
+        <span class="vr-field-key">Reference</span>
         <span class="vr-field-val mono">{{ selectedProduct.reference }}</span>
       </div>
       <div class="vr-field">
-        <span class="vr-field-key">Quantité</span>
+        <span class="vr-field-key">Quantite</span>
         <span class="vr-field-val bold">{{ selectedProduct.local_quantity || selectedProduct.stock_quantity || 1 }}</span>
       </div>
       <div class="vr-field" *ngIf="selectedProduct.category?.title">
-        <span class="vr-field-key">Catégorie</span>
+        <span class="vr-field-key">Categorie</span>
         <span class="vr-field-val">{{ selectedProduct.category.title }}</span>
       </div>
       <div class="vr-field warn" *ngIf="selectedProduct.expiration_date">
@@ -202,7 +202,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     </div>
   </div>
 
-  <!-- Toast porte ─────────────────────────────────────────────── -->
+  <!-- Toast porte ----------------------------------------------- -->
   <div class="vr-door-toast" *ngIf="type==='cabinet' && !isLoading" [class.vr-door-toast-visible]="showDoorHint">
     <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" style="width:14px;height:14px">
       <rect x="2" y="1" width="12" height="14" rx="1.5"/>
@@ -212,16 +212,16 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     Cliquez sur une porte pour l'ouvrir
   </div>
 
-  <!-- Hint ────────────────────────────────────────────────────── -->
+  <!-- Hint ------------------------------------------------------ -->
   <div class="vr-hint" *ngIf="!isLoading">{{ hint }}</div>
 
-  <!-- Vide ────────────────────────────────────────────────────── -->
+  <!-- Vide ------------------------------------------------------ -->
   <div class="vr-empty" *ngIf="!isLoading && type!=='warehouse' && type!=='room' && products.length===0">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
       <path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2Z" opacity=".4"/>
       <path d="M12 12v4" stroke-width="2"/><circle cx="12" cy="9" r="1" fill="currentColor" opacity=".5"/>
     </svg>
-    Aucun produit stocké ici
+    Aucun produit stocke ici
   </div>
 
 </div>
@@ -229,7 +229,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
   styles: [`
     :host { display: block; }
 
-    /* ── Container ──────────────────────────────────────────── */
+    /* -- Container -------------------------------------------- */
     .vr {
       position: relative;
       width: 100%;
@@ -251,7 +251,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     }
     .vr-canvas:active { cursor: grabbing; }
 
-    /* ── Loader ──────────────────────────────────────────────── */
+    /* -- Loader ------------------------------------------------ */
     .vr-loader {
       position: absolute; inset: 0;
       display: flex; flex-direction: column;
@@ -283,7 +283,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
       font-size: 12px; color: #6b7280;
     }
 
-    /* ── Breadcrumb ──────────────────────────────────────────── */
+    /* -- Breadcrumb -------------------------------------------- */
     .vr-breadcrumb {
       position: absolute; top: 14px; left: 14px;
       display: flex; align-items: center; gap: 4px;
@@ -312,7 +312,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
       text-transform: uppercase; letter-spacing: 0.05em;
     }
 
-    /* ── Header ─────────────────────────────────────────────── */
+    /* -- Header ----------------------------------------------- */
     .vr-header {
       position: absolute; top: 14px; right: 14px;
       display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
@@ -378,7 +378,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     .vr-gauge-status.gauge-warn { color: #ca8a04; }
     .vr-gauge-status.gauge-full { color: #dc2626; }
 
-    /* ── Toolbar ─────────────────────────────────────────────── */
+    /* -- Toolbar ----------------------------------------------- */
     .vr-toolbar {
       position: absolute; right: 14px; top: 50%;
       transform: translateY(-50%);
@@ -414,7 +414,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
       border-color: #93c5fd;
     }
 
-    /* ── Légende ─────────────────────────────────────────────── */
+    /* -- Legende ----------------------------------------------- */
     .vr-legend {
       position: absolute; bottom: 40px; left: 14px;
       background: rgba(255,255,255,.88);
@@ -454,7 +454,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     }
     .vr-legend-qty { font-size: 11px; font-weight: 600; color: #9ca3af; }
 
-    /* ── Popup produit ───────────────────────────────────────── */
+    /* -- Popup produit ----------------------------------------- */
     .vr-popup {
       position: absolute;
       min-width: 230px; max-width: 270px;
@@ -504,7 +504,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     .mono { font-family: 'DM Mono','Fira Code',monospace; font-size: 11px; }
     .bold { font-weight: 700; color: #111827; font-size: 14px; }
 
-    /* ── Toast porte ─────────────────────────────────────────── */
+    /* -- Toast porte ------------------------------------------- */
     .vr-door-toast {
       position: absolute; top: 56px; left: 14px;
       display: flex; align-items: center; gap: 7px;
@@ -525,7 +525,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
       transform: translateY(0);
     }
 
-    /* ── Hint ────────────────────────────────────────────────── */
+    /* -- Hint -------------------------------------------------- */
     .vr-hint {
       position: absolute; bottom: 10px; left: 50%;
       transform: translateX(-50%);
@@ -540,7 +540,7 @@ import { AdminWarehouseService } from '../../../core/services/admin-warehouse.se
     .vr-btn-door { color: #3b7dd8; }
     .vr-btn-door[disabled] { opacity: 0.5; cursor: not-allowed; }
 
-    /* ── Vide ────────────────────────────────────────────────── */
+    /* -- Vide -------------------------------------------------- */
     .vr-empty {
       position: absolute; bottom: 90px; left: 50%;
       transform: translateX(-50%);
@@ -609,20 +609,20 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
   private sph = { theta: 0.5, phi: 1.05, radius: 10 };
   private targetSph = { theta: 0.5, phi: 1.05, radius: 10 };
 
-  /* ── Getters ──────────────────────────────────────────────── */
+  /* -- Getters ------------------------------------------------ */
   get typeLabel(): string {
-    return { warehouse: 'Entrepôt', room: 'Salle', location: 'Emplacement', cabinet: 'Armoire' }[this.type] ?? '';
+    return { warehouse: 'Entrepot', room: 'Salle', location: 'Emplacement', cabinet: 'Armoire' }[this.type] ?? '';
   }
 
   get hint(): string {
     if (this.type === 'warehouse') return 'Glisser pour tourner · Molette pour zoomer · Clic pour entrer dans une salle';
     if (this.type === 'room') return 'Clic sur une armoire ou un emplacement pour explorer';
-    if (this.type === 'cabinet') return 'Clic sur une porte pour l\'ouvrir · Clic sur un produit pour ses détails';
-    return 'Glisser pour tourner · Clic sur un produit pour ses détails';
+    if (this.type === 'cabinet') return 'Clic sur une porte pour l\'ouvrir · Clic sur un produit pour ses details';
+    return 'Glisser pour tourner · Clic sur un produit pour ses details';
   }
 
   get gaugeStatus(): string {
-    if (this.percentage >= 90) return 'Saturé';
+    if (this.percentage >= 90) return 'Sature';
     if (this.percentage >= 70) return 'Presque plein';
     return 'Disponible';
   }
@@ -663,7 +663,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.renderer?.domElement?.remove();
   }
 
-  /* ── ResizeObserver ────────────────────────────────────────── */
+  /* -- ResizeObserver ------------------------------------------ */
   private setupResizeObserver() {
     this.resizeObserver = new ResizeObserver(entries => {
       const entry = entries[0];
@@ -677,7 +677,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.resizeObserver.observe(this.canvasHost.nativeElement);
   }
 
-  /* ── Navigation ─────────────────────────────────────────────── */
+  /* -- Navigation ----------------------------------------------- */
   goToCrumb(index: number) {
     if (index === this.breadcrumbs.length - 1) return;
     const stepsBack = this.breadcrumbs.length - 1 - index;
@@ -698,7 +698,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     if (andFetch) this.fetchData();
   }
 
-  /* ── Mouse / Touch ──────────────────────────────────────────── */
+  /* -- Mouse / Touch -------------------------------------------- */
   onMouseDown(e: MouseEvent) { this.isDragging = true; this.prevMouse = { x: e.clientX, y: e.clientY }; }
   onMouseUp() { this.isDragging = false; }
 
@@ -743,7 +743,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     const hits = ray.intersectObjects(this.clickables.map(c => c.mesh), true);
     if (!hits.length) { this.selectedProduct = null; this.cdr.markForCheck(); return; }
 
-    // Trouver le clickable correspondant (peut être un enfant dans un Group)
+    // Trouver le clickable correspondant (peut etre un enfant dans un Group)
     let found = this.clickables.find(c => c.mesh === hits[0].object);
     if (!found) {
       // Chercher dans les parents si le mesh est dans un Group
@@ -755,7 +755,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     if (!found) return;
 
     if (this.type === 'warehouse' || this.type === 'room') {
-      // Navigation vers sous-entité
+      // Navigation vers sous-entite
       this.viewStack.push({ type: this.type, id: this.storageId, title: this.title, capacity: this.capacityUnits, current: this.currentUnits });
       this.type = found.entityType as any;
       this.storageId = found.data.id;
@@ -766,7 +766,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       this.selectedProduct = null;
       this.fetchData();
     } else if (found.entityType === 'door') {
-      // ── Clic sur une porte → bascule ouverture/fermeture ──
+      // -- Clic sur une porte → bascule ouverture/fermeture --
       if (!this.doorAnimating) {
         this.toggleDoor();
       }
@@ -783,7 +783,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  /* ── Camera ─────────────────────────────────────────────────── */
+  /* -- Camera --------------------------------------------------- */
   setCameraPreset(preset: 'front' | 'top' | 'iso') {
     if (preset === 'front') { this.targetSph.theta = 0; this.targetSph.phi = 1.1; }
     if (preset === 'top')   { this.targetSph.phi = 0.18; }
@@ -822,7 +822,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.camera.lookAt(0, lookY, 0);
   }
 
-  /* ── Init Three.js ──────────────────────────────────────────── */
+  /* -- Init Three.js -------------------------------------------- */
   private initThree() {
     const el = this.canvasHost.nativeElement;
     const W = el.clientWidth || 800;
@@ -850,7 +850,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.startRenderLoop();
   }
 
-  /* ── Environnement professionnel ────────────────────────────── */
+  /* -- Environnement professionnel ------------------------------ */
   private buildEnvironment() {
     this.scene.background = new THREE.Color(0xeceff4);
     this.scene.fog = new THREE.FogExp2(0xe8ecf2, 0.009);
@@ -892,7 +892,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.scene.add(grid);
   }
 
-  /* ── Render loop ─────────────────────────────────────────────── */
+  /* -- Render loop ----------------------------------------------- */
   private startRenderLoop() {
     const loop = () => {
       this.animId = requestAnimationFrame(loop);
@@ -927,7 +927,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
         }
       }
 
-      // Légère animation de flottement des produits
+      // Legere animation de flottement des produits
       for (const f of this.floatingMeshes) {
         f.mesh.position.y = f.baseY + Math.sin(t * f.speed + f.phase) * f.amp;
       }
@@ -937,7 +937,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     loop();
   }
 
-  /* ── Nettoyage scène ─────────────────────────────────────────── */
+  /* -- Nettoyage scene ------------------------------------------- */
   private disposeScene() {
     if (!this.rootGroup) return;
     this.rootGroup.traverse((obj: THREE.Object3D) => {
@@ -951,7 +951,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.scene?.remove(this.rootGroup);
   }
 
-  /* ── Fetch ───────────────────────────────────────────────────── */
+  /* -- Fetch ----------------------------------------------------- */
   fetchData() {
     this.isLoading = true;
     this.selectedProduct = null;
@@ -1015,7 +1015,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.uniqueProducts = Object.values(map);
   }
 
-  /* ── Builder principal ───────────────────────────────────────── */
+  /* -- Builder principal ----------------------------------------- */
   private buildScene() {
     this.disposeScene();
     this.clickables = [];
@@ -1037,7 +1037,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     else if (this.type === 'cabinet') this.buildCabinetScene();
     else                               this.buildLocationScene();
 
-    // Afficher le toast "Cliquez sur une porte" lors de l'entrée dans une armoire
+    // Afficher le toast "Cliquez sur une porte" lors de l'entree dans une armoire
     if (this.type === 'cabinet') {
       this.showDoorHint = true;
       this.cdr.markForCheck();
@@ -1049,9 +1049,9 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     }
   }
 
-  /* ══════════════════════════════════════════════════════════
-     ENTREPÔT — Bâtiments industriels réalistes
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     ENTREPOT - Batiments industriels realistes
+  ========================================================== */
   private buildWarehouseScene() {
     const rooms = this.warehouseRooms;
     if (!rooms.length) return;
@@ -1144,9 +1144,9 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* ══════════════════════════════════════════════════════════
-     SALLE — Plan d'atelier réaliste
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     SALLE - Plan d'atelier realiste
+  ========================================================== */
   private buildRoomScene() {
     const total = this.roomCabinets.length + this.roomLocations.length;
     if (!total) return;
@@ -1205,9 +1205,9 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* ══════════════════════════════════════════════════════════
-     ARMOIRE réaliste — Métal industriel (vue salle)
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     ARMOIRE realiste - Metal industriel (vue salle)
+  ========================================================== */
   private buildRealisticCabinet(px: number, pz: number, data: any) {
     const W = 1.4, D = 0.85, H = 4.8;
     const fill = data.capacity_units > 0 ? Math.min((data.current_units || 0) / data.capacity_units, 1) : 0;
@@ -1294,12 +1294,12 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.rootGroup.add(clickMesh);
     this.clickables.push({ mesh: clickMesh, data, entityType: 'cabinet' });
 
-    this.addLabel(data.name || data.code || '—', px, H + 0.55, pz, this.c3ToHex(statusColor), 0.72);
+    this.addLabel(data.name || data.code || '-', px, H + 0.55, pz, this.c3ToHex(statusColor), 0.72);
   }
 
-  /* ══════════════════════════════════════════════════════════
-     EMPLACEMENT réaliste — Palette + Rack (vue salle)
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     EMPLACEMENT realiste - Palette + Rack (vue salle)
+  ========================================================== */
   private buildRealisticLocation(px: number, pz: number, data: any) {
     const W = 1.8, D = 1.5;
     const fill = data.capacity_units > 0 ? Math.min((data.current_units || 0) / data.capacity_units, 1) : 0;
@@ -1365,12 +1365,12 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.rootGroup.add(clickMesh);
     this.clickables.push({ mesh: clickMesh, data, entityType: 'location' });
 
-    this.addLabel(data.name || data.code || '—', px, 0.75, pz, this.c3ToHex(statusColor), 0.62);
+    this.addLabel(data.name || data.code || '-', px, 0.75, pz, this.c3ToHex(statusColor), 0.62);
   }
 
-  /* ══════════════════════════════════════════════════════════
-     ARMOIRE vue détail — Produits sur étagères + PORTES CLIQUABLES
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     ARMOIRE vue detail - Produits sur etageres + PORTES CLIQUABLES
+  ========================================================== */
   private buildCabinetScene() {
     this.percentage = this.capacityUnits > 0 ? (this.currentUnits / this.capacityUnits) * 100 : 0;
 
@@ -1389,7 +1389,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       ? new THREE.Color(0xef4444)
       : this.percentage >= 70 ? new THREE.Color(0xf59e0b) : new THREE.Color(0x3b82f6);
 
-    // ── Structure corps ──
+    // -- Structure corps --
     const bodyMat = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.35, metalness: 0.2 });
     const sideMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.4, metalness: 0.25 });
 
@@ -1405,7 +1405,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       this.rootGroup.add(m);
     });
 
-    // ── Étagères ──
+    // -- Etageres --
     const shelfMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.5, metalness: 0.45 });
     for (let s = 0; s <= N_SHELVES; s++) {
       const shelf = new THREE.Mesh(new THREE.BoxGeometry(W - T * 2 - 0.01, 0.04, D - T - 0.01), shelfMat);
@@ -1413,7 +1413,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       this.rootGroup.add(shelf);
     }
 
-    // ── LED statut barre supérieure ──
+    // -- LED statut barre superieure --
     const ledMat = new THREE.MeshStandardMaterial({ color: statusColor, emissive: statusColor, emissiveIntensity: 1.5 });
     const topBar = new THREE.Mesh(new THREE.BoxGeometry(W + T * 2 + 0.04, 0.05, D + 0.04), ledMat);
     topBar.position.set(0, CAB_H + 0.02, 0);
@@ -1423,12 +1423,12 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     topLight.position.set(0, CAB_H + 0.3, 0);
     this.rootGroup.add(topLight);
 
-    // ── Lumière intérieure (s'allume à l'ouverture) ──
+    // -- Lumiere interieure (s'allume a l'ouverture) --
     this.interiorLight = new THREE.PointLight(0xfff5e0, 0, 6);
     this.interiorLight.position.set(0, CAB_H * 0.5, 0);
     this.rootGroup.add(this.interiorLight);
 
-    // ── PORTES VITRÉES CLIQUABLES avec pivots sur charnières ──
+    // -- PORTES VITREES CLIQUABLES avec pivots sur charnieres --
     const doorMat  = new THREE.MeshStandardMaterial({ color: 0xe8eef6, roughness: 0.3, metalness: 0.2 });
     const glassMat = new THREE.MeshStandardMaterial({
       color: 0xbfdbfe, roughness: 0.05, metalness: 0,
@@ -1436,17 +1436,17 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
 
     [-W/4, W/4].forEach((dx, di) => {
-      // Pivot positionné sur la charnière (bord extérieur de chaque battant)
+      // Pivot positionne sur la charniere (bord exterieur de chaque battant)
       const hingeX = di === 0 ? -(W / 2 - T) : (W / 2 - T);
       const pivot = new THREE.Group();
       pivot.position.set(hingeX, CAB_H / 2, D / 2 + T / 2);
       this.rootGroup.add(pivot);
 
-      // Stocker les références de pivot pour l'animation
+      // Stocker les references de pivot pour l'animation
       if (di === 0) this.doorPivotLeft = pivot;
       else          this.doorPivotRight = pivot;
 
-      // Offset local du centre de la porte par rapport à la charnière
+      // Offset local du centre de la porte par rapport a la charniere
       const localDx = dx - hingeX;
 
       // Porte
@@ -1459,7 +1459,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       glass.position.set(localDx, CAB_H * 0.05, 0.001);
       pivot.add(glass);
 
-      // Poignée (côté intérieur)
+      // Poignee (cote interieur)
       const handleMat = new THREE.MeshStandardMaterial({ color: 0xb0bcc8, metalness: 0.9, roughness: 0.12 });
       const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.24, 10), handleMat);
       handle.rotation.z = Math.PI / 2;
@@ -1475,11 +1475,11 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
       clickDoor.position.set(localDx, 0, 0);
       pivot.add(clickDoor);
 
-      // Enregistrement comme entité cliquable "door"
+      // Enregistrement comme entite cliquable "door"
       this.clickables.push({ mesh: clickDoor, data: { side: di }, entityType: 'door' });
     });
 
-    // ── Produits sur les étagères ──
+    // -- Produits sur les etageres --
     this.placeCabinetProducts(N_SHELVES, SHELF_H, PAD, cols, rows, BW, BD, GX, GZ);
     this.addLabel(this.title, 0, CAB_H + 0.85, 0, this.c3ToHex(statusColor));
   }
@@ -1530,9 +1530,9 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* ══════════════════════════════════════════════════════════
-     EMPLACEMENT vue détail — Produits sur palette
-  ══════════════════════════════════════════════════════════ */
+  /* ==========================================================
+     EMPLACEMENT vue detail - Produits sur palette
+  ========================================================== */
   private buildLocationScene() {
     this.percentage = this.capacityUnits > 0 ? (this.currentUnits / this.capacityUnits) * 100 : 0;
 
@@ -1635,7 +1635,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     });
   }
 
-  /* ── Sprite label propre ─────────────────────────────────────── */
+  /* -- Sprite label propre --------------------------------------- */
   private addLabel(text: string, x: number, y: number, z: number, hexColor = '3b82f6', scale = 1.0) {
     const canvas = document.createElement('canvas');
     canvas.width = 320; canvas.height = 72;
@@ -1663,7 +1663,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     const maxLen = 22;
-    const label = text && text.length > maxLen ? text.slice(0, maxLen - 1) + '…' : (text || '—');
+    const label = text && text.length > maxLen ? text.slice(0, maxLen - 1) + '...' : (text || '-');
     ctx.fillText(label, 160, 42);
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -1674,7 +1674,7 @@ export class Storage3dViewerComponent implements OnInit, OnDestroy {
     this.rootGroup.add(sprite);
   }
 
-  /* ── Helpers couleur ─────────────────────────────────────────── */
+  /* -- Helpers couleur ------------------------------------------- */
   private c3ToHex(c: THREE.Color): string { return c.getHexString(); }
 
   toHex(str: string): string {

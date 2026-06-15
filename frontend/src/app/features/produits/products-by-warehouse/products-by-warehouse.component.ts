@@ -44,7 +44,7 @@ export class ProductsByWarehouseComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = 'Erreur chargement dépôt.';
+        this.errorMessage = 'Erreur chargement depot.';
       }
     });
   }

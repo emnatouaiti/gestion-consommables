@@ -7,8 +7,8 @@
 
 use Illuminate\Support\Facades\Route;
 
-// Test 1: Vérifier les tables
-echo "=== Vérification des tables ===\n";
+// Test 1: Verifier les tables
+echo "=== Verification des tables ===\n";
 try {
     $suppliers = DB::table('suppliers')->count();
     echo "✓ Suppliers table: $suppliers records\n";
@@ -43,7 +43,7 @@ try {
             echo "  - First review user: " . ($first_review->user?->name ?? 'null') . "\n";
         }
     } else {
-        echo "✗ Aucun fournisseur trouvé\n";
+        echo "✗ Aucun fournisseur trouve\n";
     }
 } catch (\Exception $e) {
     echo "✗ Error: " . $e->getMessage() . "\n";
@@ -51,22 +51,22 @@ try {
     echo "  Stack: " . substr($e->getTraceAsString(), 0, 200) . "\n";
 }
 
-// Test 3: Contrôleur directement
-echo "\n=== Test du contrôleur ===\n";
+// Test 3: Controleur directement
+echo "\n=== Test du controleur ===\n";
 try {
     $supplier = \App\Models\Supplier::first();
     if ($supplier) {
         $controller = new \App\Http\Controllers\API\SupplierController();
         $response = $controller->show($supplier);
 
-        // Si c'est une réponse JsonResponse
+        // Si c'est une reponse JsonResponse
         if (method_exists($response, 'getData')) {
             $data = $response->getData();
-            echo "✓ Contrôleur response OK\n";
+            echo "✓ Controleur response OK\n";
             echo "  - Products: " . (isset($data->products) ? count($data->products) : 'N/A') . "\n";
             echo "  - Reviews: " . (isset($data->reviews) ? count($data->reviews) : 'N/A') . "\n";
         } else {
-            echo "✓ Contrôleur response OK (Model)\n";
+            echo "✓ Controleur response OK (Model)\n";
             echo "  - Products: " . $response->products->count() . "\n";
             echo "  - Reviews: " . $response->reviews->count() . "\n";
         }
@@ -76,5 +76,5 @@ try {
     echo "  File: " . $e->getFile() . ":" . $e->getLine() . "\n";
 }
 
-echo "\n✓ Tests complétés\n";
+echo "\n✓ Tests completes\n";
 ?>

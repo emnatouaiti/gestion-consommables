@@ -1,11 +1,11 @@
-/* ═══════════════════════════════════════════════════════
-   COMPOSANT UTILISATEURS — Design ETAP 2026
-   Harmonisé avec la sidebar sombre marine
-═══════════════════════════════════════════════════════ */
+/* =======================================================
+   COMPOSANT UTILISATEURS - Design ETAP 2026
+   Harmonise avec la sidebar sombre marine
+======================================================= */
 
-/* ═══ Variables spécifiques utilisateurs ═══ */
+/* === Variables specifiques utilisateurs === */
 :host {
-  /* Variables héritées de la palette ETAP */
+  /* Variables heritees de la palette ETAP */
   --blue-50:  #e8f1fb;
   --blue-100: #c2d9f5;
   --blue-200: #a3c5ef;
@@ -17,7 +17,7 @@
   --blue-800: #0a3068;
   --blue-900: #061e48;
 
-  /* Couleurs spécifiques du composant */
+  /* Couleurs specifiques du composant */
   --users-accent: var(--blue-300);
   --users-accent-dark: var(--blue-500);
   --users-accent-darkest: var(--blue-700);
@@ -51,7 +51,7 @@
   --dur-slow: 0.3s;
 }
 
-/* ═══ Page Header ═══ */
+/* === Page Header === */
 .page-header {
   display: flex;
   align-items: baseline;
@@ -115,7 +115,7 @@
   box-shadow: var(--shadow-focus);
 }
 
-/* ═══ Card Container ═══ */
+/* === Card Container === */
 .card {
   background: white;
   border-radius: var(--radius-xl);
@@ -143,7 +143,7 @@
   margin-bottom: 0;
 }
 
-/* ═══ Search Area ═══ */
+/* === Search Area === */
 .search-area {
   display: flex;
   align-items: center;
@@ -191,7 +191,7 @@
   box-shadow: var(--shadow-focus);
 }
 
-/* ═══ Select Wrapper ═══ */
+/* === Select Wrapper === */
 .select-wrapper {
   position: relative;
   display: inline-block;
@@ -206,7 +206,7 @@
   cursor: pointer;
 }
 
-/* ═══ Buttons ═══ */
+/* === Buttons === */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -272,7 +272,7 @@
   border-radius: 50px;
 }
 
-/* ═══ Table Styles ═══ */
+/* === Table Styles === */
 .table-wrap {
   overflow-x: auto;
   border-radius: var(--radius-lg);
@@ -423,7 +423,7 @@ td.actions .btn:first-child {
   margin-left: 0;
 }
 
-/* ═══ States (Loading, Error, Empty) ═══ */
+/* === States (Loading, Error, Empty) === */
 .loading-wrap {
   display: flex;
   align-items: center;
@@ -495,7 +495,7 @@ td.actions .btn:first-child {
   font-weight: 500;
 }
 
-/* ═══ Avatar Modal (Zoom) ═══ */
+/* === Avatar Modal (Zoom) === */
 .avatar-modal-overlay {
   position: fixed;
   inset: 0;
@@ -578,7 +578,7 @@ td.actions .btn:first-child {
   transform: scale(1.1);
 }
 
-/* ═══ Modal Formulaire ═══ */
+/* === Modal Formulaire === */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -725,7 +725,7 @@ select.form-control {
   justify-content: center;
 }
 
-/* ═══ Animations ═══ */
+/* === Animations === */
 @keyframes fadeUp {
   from {
     opacity: 0;
@@ -771,7 +771,7 @@ select.form-control {
 .users-table tbody tr:nth-child(9) { animation-delay: 0.18s; }
 .users-table tbody tr:nth-child(10) { animation-delay: 0.20s; }
 
-/* ═══ Responsive Design ═══ */
+/* === Responsive Design === */
 @media (max-width: 1024px) {
   .card {
     padding: 24px;
@@ -873,7 +873,7 @@ select.form-control {
   }
 }
 
-/* ═══ Print Styles ═══ */
+/* === Print Styles === */
 @media print {
   .sidebar,
   .topbar,

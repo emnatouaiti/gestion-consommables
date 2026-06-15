@@ -343,8 +343,14 @@ class StockMovementController extends Controller
         if ($movementType === 'in' && !$request->filled('supplier_id')) {
             throw ValidationException::withMessages(['supplier_id' => ['Le fournisseur est requis pour une entrÃe.']]);
         }
-        if (in_array($movementType, ['out', 'transfer']) && !$request->filled('source_warehouse_location_id') && !$request->filled('source_cabinet_id')) {
-            throw ValidationException::withMessages(['source_warehouse_location_id' => ['L\'emplacement source est requis.']]);
+        if (in_array($movementType, ['out', 'transfer'])) {
+            $lines = $request->input('lines', []);
+            foreach ($lines as $i => $line) {
+                $hasSource = !empty($line['source_warehouse_location_id']) || !empty($line['source_cabinet_id']) || $request->filled('source_warehouse_location_id') || $request->filled('source_cabinet_id');
+                if (!$hasSource) {
+                    throw ValidationException::withMessages(["lines.$i.source" => ["L'emplacement source est requis pour chaque produit."]]);
+                }
+            }
         }
         if (in_array($movementType, ['in', 'transfer']) && !$request->filled('destination_warehouse_location_id') && !$request->filled('destination_cabinet_id')) {
             throw ValidationException::withMessages(['destination_warehouse_location_id' => ['L\'emplacement destination est requis.']]);
@@ -356,35 +362,46 @@ class StockMovementController extends Controller
             $isManager = $this->userHasAnyRole($user, ['administrateur', 'responsable', 'responsable de stock', 'gestionnaire', 'validateur']);
             $status = $isManager ? 'executed' : 'pending_validation';
 
-            // Pour les agents/responsables, valider que les emplacements appartiennent Ã  leur dÃpÃ´t
+            // Pour les agents/responsables, valider que les emplacements appartiennent a leur depot
             if ($autoAssignDepot) {
-                $sourceLocationId = $request->input('source_warehouse_location_id');
-                $sourceCabinetId = $request->input('source_cabinet_id');
                 $destLocationId = $request->input('destination_warehouse_location_id');
                 $destCabinetId = $request->input('destination_cabinet_id');
 
-                if ($sourceLocationId) {
-                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($sourceLocationId);
+                $sourceLocsToCheck = array_filter(array_merge(
+                    [$request->input('source_warehouse_location_id')],
+                    collect($request->input('lines', []))->pluck('source_warehouse_location_id')->all()
+                ));
+                $sourceCabsToCheck = array_filter(array_merge(
+                    [$request->input('source_cabinet_id')],
+                    collect($request->input('lines', []))->pluck('source_cabinet_id')->all()
+                ));
+
+                foreach ($sourceLocsToCheck as $sLocId) {
+                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($sLocId);
                     if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['source_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃpÃ´t.']]);
+                        throw ValidationException::withMessages(['source_warehouse_location_id' => ['Un emplacement source n\'appartient pas a votre depot.']]);
                     }
                 }
-                if ($sourceCabinetId) {
-                    $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($sourceCabinetId);
+                foreach ($sourceCabsToCheck as $sCabId) {
+                    $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($sCabId);
                     if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['source_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃpÃ´t.']]);
+                        throw ValidationException::withMessages(['source_cabinet_id' => ['Une armoire source n\'appartient pas a votre depot.']]);
                     }
                 }
-                if ($destLocationId) {
-                    $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($destLocationId);
-                    if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['destination_warehouse_location_id' => ['Cet emplacement n\'appartient pas Ã  votre dÃpÃ´t.']]);
+                // Pour une Entree ('in'), on s'assure que la destination est bien dans leur depot.
+                // Pour un transfert, la destination peut etre n'importe ou.
+                if ($movementType === 'in') {
+                    if ($destLocationId) {
+                        $loc = \App\Models\WarehouseLocation::with('room.warehouse')->find($destLocationId);
+                        if (!$loc || $loc->room->warehouse_id != $user->depot_id) {
+                            throw ValidationException::withMessages(['destination_warehouse_location_id' => ['Cet emplacement n\'appartient pas a votre depot.']]);
+                        }
                     }
-                }
-                if ($destCabinetId) {
-                    $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($destCabinetId);
-                    if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
-                        throw ValidationException::withMessages(['destination_cabinet_id' => ['Cette armoire n\'appartient pas Ã  votre dÃpÃ´t.']]);
+                    if ($destCabinetId) {
+                        $cab = \App\Models\WarehouseCabinet::with('room.warehouse')->find($destCabinetId);
+                        if (!$cab || $cab->room->warehouse_id != $user->depot_id) {
+                            throw ValidationException::withMessages(['destination_cabinet_id' => ['Cette armoire n\'appartient pas a votre depot.']]);
+                        }
                     }
                 }
             }
@@ -437,8 +454,8 @@ class StockMovementController extends Controller
             $linesData = collect($request->input('lines'))->map(fn ($line) => [
                 'product_id' => (int) $line['product_id'],
                 'quantity'   => (int) $line['quantity'],
-                'warehouse_location_id' => $request->input('source_warehouse_location_id') ?: $request->input('destination_warehouse_location_id'),
-                'cabinet_id'            => $request->input('source_cabinet_id') ?: $request->input('destination_cabinet_id'),
+                'warehouse_location_id' => $line['source_warehouse_location_id'] ?? $request->input('source_warehouse_location_id') ?: $request->input('destination_warehouse_location_id'),
+                'cabinet_id'            => $line['source_cabinet_id'] ?? $request->input('source_cabinet_id') ?: $request->input('destination_cabinet_id'),
             ])->all();
 
             $movement->lines()->createMany($linesData);
@@ -451,7 +468,7 @@ class StockMovementController extends Controller
                         'user_id'      => $user ? $user->id : null,
                         'product_id'   => $pid,
                         'supplier_id'  => $movement->supplier_id,
-                        'title'        => ($movement->movement_type === 'in' ? 'Bon d\'entrÃe - ' : 'Bon de sortie - ') . $movement->reference,
+                        'title'        => ($movement->movement_type === 'in' ? 'Bon d\'entree - ' : 'Bon de sortie - ') . $movement->reference,
                         'type'         => $movement->movement_type === 'in' ? 'bon_livraison' : 'bon_sortie',
                         'direction'    => in_array($movement->movement_type, ['in', 'out']) ? $movement->movement_type : 'unknown',
                         'status'       => 'applied',

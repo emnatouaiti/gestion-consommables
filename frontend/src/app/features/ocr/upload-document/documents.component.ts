@@ -157,7 +157,7 @@ export class DocumentsComponent implements OnInit {
     this.http.get('/api/documents').subscribe({
       next: (res: any) => {
         const rawDocs = Array.isArray(res) ? res : [];
-        // Filtrer pour ne garder que ce qui est lié à l'OCR/Livraison
+        // Filtrer pour ne garder que ce qui est lie a l'OCR/Livraison
         this.documents = rawDocs.filter((d: any) =>
           d.type === 'bon_livraison' || d.type === 'document' || !d.type
         );
@@ -302,7 +302,7 @@ export class DocumentsComponent implements OnInit {
         console.error('Erreur backend:', err);
         if (err?.error) {
           // eslint-disable-next-line no-console
-          console.error('Détail err.error:', err.error);
+          console.error('Detail err.error:', err.error);
         }
         const suggested = err?.suggested_supplier || err?.error?.suggested_supplier;
         const suggestedExisting = err?.suggested_existing_supplier || err?.error?.suggested_existing_supplier;
@@ -325,7 +325,7 @@ export class DocumentsComponent implements OnInit {
           return;
         }
 
-        // Affichage détaillé de l'erreur de validation
+        // Affichage detaille de l'erreur de validation
         if (err?.error && typeof err.error === 'object') {
           if (err.error.errors) {
             // Laravel retourne souvent un objet errors { champ: [msg] }
@@ -418,7 +418,7 @@ export class DocumentsComponent implements OnInit {
   }
 
   private executeApply(doc: any, items: any[], autoCreateProduct: boolean): void {
-    // Fermer les modaux immédiatement pour une meilleure UX
+    // Fermer les modaux immediatement pour une meilleure UX
     this.showEditLines = null;
     this.locationConfirmation = null;
     this.productConfirmation = null;
@@ -428,16 +428,16 @@ export class DocumentsComponent implements OnInit {
     this.http.post(`/api/documents/${doc.id}/apply`, { items, auto_create_product: autoCreateProduct }).subscribe({
       next: (res: any) => {
         const isPending = res?.message?.toLowerCase().includes('validation');
-        this.message = res?.message || 'Document appliqué au stock.';
+        this.message = res?.message || 'Document applique au stock.';
         if (isPending) {
-          this.message += ' Vous pouvez suivre l\'état de vos mouvements dans l\'onglet "Mouvements".';
+          this.message += ' Vous pouvez suivre l\'etat de vos mouvements dans l\'onglet "Mouvements".';
         }
         this.error = '';
         setTimeout(() => this.load(), 500);
         this.isLoading = false;
         this.cdr.detectChanges();
 
-        // Si c'est en attente, on redirige après un court délai pour que l'utilisateur voit le message
+        // Si c'est en attente, on redirige apres un court delai pour que l'utilisateur voit le message
         if (isPending) {
            setTimeout(() => {
              this.router.navigate(['/mouvements-stock']);
@@ -838,7 +838,7 @@ export class DocumentsComponent implements OnInit {
     a.click();
     document.body.removeChild(a);
   }
-  // ── À ajouter dans ta classe ──────────────────────────────────
+  // -- A ajouter dans ta classe ----------------------------------
 
 // Pagination
 pageSizes    = [5, 10, 20];
@@ -850,7 +850,7 @@ min          = Math.min;
 statusFilter: string | null    = null;
 directionFilter: string | null = null;
 
-// ── Filtrage ──────────────────────────────────────────────────
+// -- Filtrage --------------------------------------------------
 get filteredDocuments() {
   return this.documents.filter(d => {
     const matchStatus    = !this.statusFilter    || d.status    === this.statusFilter;
@@ -886,7 +886,7 @@ clearFilters(): void {
   this.expandedDocId   = null;
 }
 
-// ── Stats ─────────────────────────────────────────────────────
+// -- Stats -----------------------------------------------------
 countByStatus(status: string): number {
   return this.documents.filter(d => d.status === status).length;
 }
@@ -911,13 +911,13 @@ getDocTypeLabel(type: string): string {
     'bon_sortie': 'Bon de Sortie',
     'refus': 'Refus',
     'bon_livraison': 'Bon de Livraison',
-    'demande_approuvee': 'Demande Approuvée',
+    'demande_approuvee': 'Demande Approuvee',
     'document': 'Document'
   };
   return labels[type] || type;
 }
 
-// ── Pagination ────────────────────────────────────────────────
+// -- Pagination ------------------------------------------------
 get totalPages(): number {
   return Math.ceil(this.filteredDocuments.length / this.pageSize);
 }

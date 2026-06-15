@@ -1,7 +1,7 @@
 
-/* ══════════════════════════════════════════════════════════════════════
-   VARIABLES — reprend le design system fournisseurs
-══════════════════════════════════════════════════════════════════════ */
+/* ======================================================================
+   VARIABLES - reprend le design system fournisseurs
+====================================================================== */
 :host {
   --etap-50:   #e8f1fb;
   --etap-100:  #c5d9f4;
@@ -35,22 +35,22 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ── Animations globales ──────────────────────────────────────────────── */
+/* -- Animations globales ------------------------------------------------ */
 @keyframes fadeIn  { from { opacity: 0; }                    to { opacity: 1; } }
 @keyframes fadeUp  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin    { to   { transform: rotate(360deg); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes pulse   { 0%,100% { opacity: 1; } 50% { opacity: .6; } }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    CONTAINER
-══════════════════════════════════════════════════════════════════════ */
+====================================================================== */
 .warehouses-container {
   padding: 4px 0;
   animation: fadeIn .4s var(--ease-out) both;
 }
 
-/* ── Messages ──────────────────────────────────────────────────────────── */
+/* -- Messages ------------------------------------------------------------ */
 .success-msg, .error-msg {
   display: flex;
   align-items: center;
@@ -73,9 +73,34 @@
   color: #be123c;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* Alerte d'erreur a l'interieur des modals */
+.modal-error-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #fff1f2;
+  border: 1.5px solid #fecdd3;
+  color: #be123c;
+  font-size: 13.5px;
+  font-weight: 500;
+  margin-bottom: 18px;
+  animation: slideDown .25s ease both;
+}
+.modal-error-alert svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: #e11d48;
+}
+.modal-error-alert span {
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+/* ======================================================================
    LAYOUT 3 COLONNES
-══════════════════════════════════════════════════════════════════════ */
+====================================================================== */
 .layout-3columns {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -84,7 +109,7 @@
   animation: fadeUp .4s var(--ease-out) .1s both;
 }
 
-/* ── Colonne ───────────────────────────────────────────────────────────── */
+/* -- Colonne ------------------------------------------------------------- */
 .column {
   background: var(--bg-white);
   border-radius: var(--radius-lg);
@@ -100,7 +125,7 @@
   border-color: var(--etap-100);
 }
 
-/* ── En-tête de colonne ────────────────────────────────────────────────── */
+/* -- En-tete de colonne -------------------------------------------------- */
 .column-header {
   display: flex;
   align-items: center;
@@ -195,7 +220,7 @@
   white-space: nowrap;
 }
 
-/* ── Barre de recherche ────────────────────────────────────────────────── */
+/* -- Barre de recherche -------------------------------------------------- */
 .search-box {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border);
@@ -229,7 +254,7 @@
   opacity: .6;
 }
 
-/* ── Liste des items ───────────────────────────────────────────────────── */
+/* -- Liste des items ----------------------------------------------------- */
 .items-list {
   flex: 1;
   overflow-y: auto;
@@ -244,7 +269,7 @@
   border-radius: 4px;
 }
 
-/* ── Item ──────────────────────────────────────────────────────────────── */
+/* -- Item ---------------------------------------------------------------- */
 .list-item {
   position: relative;
   padding: 12px 14px;
@@ -291,7 +316,7 @@
   transform: scaleY(1);
 }
 
-/* ── Item title ────────────────────────────────────────────────────────── */
+/* -- Item title ---------------------------------------------------------- */
 .item-title {
   font-family: 'Plus Jakarta Sans', sans-serif;
   font-size: 13.5px;
@@ -316,7 +341,7 @@
   margin-top: 2px;
 }
 
-/* ── Infos dépôt ──────────────────────────────────────────────────────── */
+/* -- Infos depot -------------------------------------------------------- */
 .warehouse-info {
   display: flex;
   align-items: center;
@@ -343,7 +368,7 @@
 .warehouse-city i { color: #e11d48; }
 .warehouse-phone i { color: var(--etap-500); }
 
-/* ── Bouton carte ─────────────────────────────────────────────────────── */
+/* -- Bouton carte ------------------------------------------------------- */
 .btn-map-consult {
   display: inline-flex;
   align-items: center;
@@ -368,7 +393,7 @@
 }
 .btn-map-consult i { font-size: 10px; }
 
-/* ── Actions item ──────────────────────────────────────────────────────── */
+/* -- Actions item -------------------------------------------------------- */
 .item-actions {
   display: flex;
   align-items: center;
@@ -378,9 +403,9 @@
   border-top: 1px solid rgba(226,232,240,.6);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    BOUTONS
-══════════════════════════════════════════════════════════════════════ */
+====================================================================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -465,7 +490,7 @@
   color: var(--etap-600);
 }
 
-/* ── Loading ───────────────────────────────────────────────────────────── */
+/* -- Loading ------------------------------------------------------------- */
 .loading-state {
   display: flex;
   align-items: center;
@@ -481,7 +506,7 @@
   animation: spin .7s linear infinite;
 }
 
-/* ── Empty state ───────────────────────────────────────────────────────── */
+/* -- Empty state --------------------------------------------------------- */
 .empty-state, .empty-col {
   display: flex;
   flex-direction: column;
@@ -505,9 +530,9 @@
   background: var(--bg-soft);
 }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    MODALS
-══════════════════════════════════════════════════════════════════════ */
+====================================================================== */
 .modal-backdrop, .modal-overlay {
   position: fixed;
   inset: 0;
@@ -541,7 +566,7 @@
   max-width: 720px;
 }
 
-/* ── Modal header ─────────────────────────────────────────────────────── */
+/* -- Modal header ------------------------------------------------------- */
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -594,7 +619,7 @@
   transform: scale(1.1);
 }
 
-/* ── Modal body / content ─────────────────────────────────────────────── */
+/* -- Modal body / content ----------------------------------------------- */
 .modal-content, .modal-body {
   padding: 20px 22px;
   overflow-y: auto;
@@ -608,7 +633,7 @@
   border-radius: 4px;
 }
 
-/* ── Texte localisation ───────────────────────────────────────────────── */
+/* -- Texte localisation ------------------------------------------------- */
 .map-location-text {
   display: flex;
   align-items: center;
@@ -627,7 +652,7 @@
   font-size: 14px;
 }
 
-/* ── Formulaire ───────────────────────────────────────────────────────── */
+/* -- Formulaire --------------------------------------------------------- */
 .form-group {
   margin-bottom: 16px;
 }
@@ -682,7 +707,7 @@ select.form-control {
   cursor: pointer;
 }
 
-/* ── Recherche d'adresse ────────────────────────────────────────────────── */
+/* -- Recherche d'adresse -------------------------------------------------- */
 .address-search-group .search-input-wrapper {
   display: flex;
   gap: 8px;
@@ -705,7 +730,7 @@ select.form-control {
   color: white;
 }
 
-/* ── Geo inputs ────────────────────────────────────────────────────────── */
+/* -- Geo inputs ---------------------------------------------------------- */
 .geo-inputs {
   display: flex;
   gap: 10px;
@@ -728,7 +753,7 @@ select.form-control {
   font-size: 12px;
 }
 
-/* ── Modal actions / footer ───────────────────────────────────────────── */
+/* -- Modal actions / footer --------------------------------------------- */
 .modal-actions, .modal-footer {
   display: flex;
   justify-content: flex-end;
@@ -739,9 +764,9 @@ select.form-control {
   flex-shrink: 0;
 }
 
-/* ══════════════════════════════════════════════════════════════════════
+/* ======================================================================
    RESPONSIVE
-══════════════════════════════════════════════════════════════════════ */
+====================================================================== */
 @media (max-width: 1024px) {
   .layout-3columns {
     grid-template-columns: 1fr 1fr;

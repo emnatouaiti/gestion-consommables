@@ -62,7 +62,10 @@ class CategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
 
         $data = $validator->validated();
@@ -74,7 +77,7 @@ class CategoryController extends Controller
 
             if ($level > 3) {
                 return response()->json([
-                    'message' => 'Impossible de crÃer plus de 3 niveaux de catÃgories.',
+                    'message' => 'Impossible de creer plus de 3 niveaux de categories.',
                 ], 422);
             }
 
@@ -87,7 +90,7 @@ class CategoryController extends Controller
         $category = Category::create($data);
 
         return response()->json([
-            'message' => 'CatÃgorie crÃÃe',
+            'message' => 'Categorie creee',
             'category' => $category->load('recursiveChildren'),
         ], 201);
     }
@@ -111,7 +114,9 @@ class CategoryController extends Controller
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json([
+                'message' => $validator->errors()->first(),
+            ], 422);
         }
 
         $data = $validator->validated();
@@ -121,7 +126,7 @@ class CategoryController extends Controller
             // Prevent setting parent to self or own descendant
             if ($data['parent_id'] == $category->id) {
                 return response()->json([
-                    'message' => 'Une catÃgorie ne peut pas Ãªtre son propre parent.',
+                    'message' => 'Une categorie ne peut pas etre son propre parent.',
                 ], 422);
             }
 
@@ -130,7 +135,7 @@ class CategoryController extends Controller
 
             if ($level > 3) {
                 return response()->json([
-                    'message' => 'Impossible de dÃpasser 3 niveaux de catÃgories.',
+                    'message' => 'Impossible de depasser 3 niveaux de categories.',
                 ], 422);
             }
 
@@ -143,7 +148,7 @@ class CategoryController extends Controller
         $category->update($data);
 
         return response()->json([
-            'message' => 'CatÃgorie mise Ã  jour',
+            'message' => 'Categorie mise a jour',
             'category' => $category->load('recursiveChildren'),
         ]);
     }
@@ -152,19 +157,15 @@ class CategoryController extends Controller
     {
         $category = Category::withCount(['products', 'children'])->findOrFail($id);
 
-        if ($category->products_count > 0) {
+        if ($category->products()->count() > 0) {
             return response()->json([
-                'message' => 'Suppression impossible: cette catÃgorie contient des produits.',
-            ], 422);
+                'message' => 'Suppression impossible: cette categorie contient des produits.'
+            ], 400);
         }
 
         // Cascade delete is handled by the FK, but warn the user
         $category->delete();
 
-        return response()->json(['message' => 'CatÃgorie supprimÃe']);
+        return response()->json(['message' => 'Categorie supprimee']);
     }
 }
-
-
-
-

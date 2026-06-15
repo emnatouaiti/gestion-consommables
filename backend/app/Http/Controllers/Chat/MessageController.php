@@ -160,9 +160,15 @@ class MessageController extends Controller
             ->where('id', '<>', $auth->id)
             ->orderBy('nomprenom');
 
-        // For responsables/agents: only users from same depot.
+        // For responsables/agents: only users from same depot, or managers/admins.
         if (in_array($authRole, ['manager', 'employee'], true) && !empty($auth->depot_id)) {
-            $query->where('depot_id', $auth->depot_id);
+            $query->where(function ($q) use ($auth) {
+                $q->where('depot_id', $auth->depot_id)
+                  ->orWhereNull('depot_id')
+                  ->orWhereHas('role', function ($r) {
+                      $r->whereIn('name', ['Administrateur', 'Admin', 'Responsable', 'Responsable de stock', 'Manager', 'Gestionnaire', 'Directeur']);
+                  });
+            });
         }
 
         $users = $query->get()

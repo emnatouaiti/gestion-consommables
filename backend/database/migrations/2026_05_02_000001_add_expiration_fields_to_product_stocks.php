@@ -7,17 +7,17 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Migration: Ajouter les champs d'expiration à la table product_stocks
+     * Migration: Ajouter les champs d'expiration a la table product_stocks
      *
      * Contexte:
-     * - Chaque stock à une localisation précise peut avoir une date d'expiration
-     * - Un batch (lot) avec un numéro spécifique = une date d'expiration unique
-     * - Permet de tracker les produits périméés par localisation
+     * - Chaque stock a une localisation precise peut avoir une date d'expiration
+     * - Un batch (lot) avec un numero specifique = une date d'expiration unique
+     * - Permet de tracker les produits perimees par localisation
      */
     public function up(): void
     {
         Schema::table('product_stocks', function (Blueprint $table) {
-            // Numéro de lot/batch unique pour ce stock
+            // Numero de lot/batch unique pour ce stock
             $table->string('batch_number')->nullable()->after('quantity');
 
             // Date d'expiration du lot
@@ -28,7 +28,7 @@ return new class extends Migration
                 ->comment('active|expired|disposed')
                 ->after('expiration_date');
 
-            // Date de la dernière vérification d'expiration
+            // Date de la derniere verification d'expiration
             $table->timestamp('last_expiration_check')->nullable()->after('batch_status');
 
             // Index pour recherches rapides sur expiration

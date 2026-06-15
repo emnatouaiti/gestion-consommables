@@ -39,10 +39,10 @@ class UserManagementController extends Controller
         });
     }
 
-    // Restriction : Les Admins voient tout. Les Directeurs ne voient que leur siège + staff stock.
+    // Restriction : Les Admins voient tout. Les Directeurs ne voient que leur siege + staff stock.
     $currentUser = auth()->user();
 
-    // Ne filtrer que si l'utilisateur a un siège défini
+    // Ne filtrer que si l'utilisateur a un siege defini
     if (!$currentUser->hasRole('administrateur') && !empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
         $query->where(function($sub) use ($currentUser) {
             $sub->where('siege', $currentUser->siege)
@@ -59,22 +59,30 @@ class UserManagementController extends Controller
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nomprenom' => 'required|string|max:255',
+            'nomprenom' => ['required', 'string', 'max:255', 'regex:/^[a-zA-Z\x{00C0}-\x{00FF}\s\-\']+$/u'],
             'email' => 'required|email|unique:users,email',
+            'telephone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s]{8,15}$/'],
             'service' => 'nullable|string|max:255',
             'poste' => 'nullable|string|max:255',
             'siege' => 'nullable|string|max:255',
             'depot_id' => 'nullable|exists:warehouses,id',
             'roles' => 'nullable',
+        ], [
+            'nomprenom.required' => 'Le nom est obligatoire.',
+            'nomprenom.regex' => 'Le nom ne doit contenir que des lettres, espaces, tirets ou apostrophes (pas de chiffres).',
+            'email.required' => 'L\'email est obligatoire.',
+            'email.email' => 'Le format de l\'email est invalide (ex: nom@domaine.com).',
+            'email.unique' => 'Cet email est deja utilise par un autre utilisateur.',
+            'telephone.regex' => 'Le numero de telephone est invalide (8 a 15 chiffres, ex: +216 XX XXX XXX).',
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors(), 422);
+            return response()->json(['errors' => $validator->errors()], 422);
         }
 
+        // Verifier unicite admin par siege
         $rolesInput = $request->input('roles');
         $roleName = 'Utilisateur';
-
         if ($rolesInput) {
             if (is_array($rolesInput) && count($rolesInput) > 0) {
                 $roleName = is_array($rolesInput[0]) ? ($rolesInput[0]['name'] ?? 'Utilisateur') : $rolesInput[0];
@@ -82,6 +90,25 @@ class UserManagementController extends Controller
                 $roleName = $rolesInput;
             }
         }
+
+        if (strtolower($roleName) === 'administrateur' && $request->input('siege')) {
+            $siegeLabel = str_replace('_', ' ', $request->input('siege'));
+            $existingAdmin = User::whereNull('deleted_at')
+                ->where('siege', $request->input('siege'))
+                ->whereHas('role', function($q) {
+                    $q->whereRaw('LOWER(name) = ?', ['administrateur']);
+                })
+                ->first();
+            if ($existingAdmin) {
+                return response()->json([
+                    'errors' => [
+                        'siege' => ["Un administrateur existe deja pour le siege \"$siegeLabel\". Chaque siege ne peut avoir qu'un seul administrateur."]
+                    ]
+                ], 422);
+            }
+        }
+
+
 
         $plain = bin2hex(random_bytes(4));
         $primaryRole = strtolower($roleName);
@@ -104,19 +131,19 @@ class UserManagementController extends Controller
             $userData['poste'] = null;
             $userData['siege'] = null;
         } else {
-            $userData['service'] = $request->input('service', 'Non défini');
-            $userData['poste'] = $request->input('poste', 'Non défini');
+            $userData['service'] = $request->input('service', 'Non defini');
+            $userData['poste'] = $request->input('poste', 'Non defini');
 
-            // Restriction Directeur & Administrateur : forcer son siège
+            // Restriction Directeur & Administrateur : forcer son siege
             $currentUser = auth()->user();
             if ($currentUser && (($currentUser->role?->name ?? '') === 'Directeur' || ($currentUser->role?->name ?? '') === 'Administrateur')) {
-                if (!empty($currentUser->siege) && $currentUser->siege !== 'Non défini') {
+                if (!empty($currentUser->siege) && $currentUser->siege !== 'Non defini') {
                     $userData['siege'] = $currentUser->siege;
                 } else {
-                    $userData['siege'] = $request->input('siege', 'Non défini');
+                    $userData['siege'] = $request->input('siege', 'Non defini');
                 }
             } else {
-                $userData['siege'] = $request->input('siege', 'Non défini');
+                $userData['siege'] = $request->input('siege', 'Non defini');
             }
 
             $userData['depot_id'] = null;
@@ -132,7 +159,7 @@ class UserManagementController extends Controller
         }
 
         return response()->json([
-            'message' => 'Utilisateur créé',
+            'message' => 'Utilisateur cree',
             'user' => $user->load('depot')
         ]);
     }
@@ -147,6 +174,54 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
 
+        $validator = Validator::make($request->all(), [
+            'nomprenom' => ['nullable', 'string', 'max:255', 'regex:/^[a-zA-Z\x{00C0}-\x{00FF}\s\-\']+$/u'],
+            'email' => 'nullable|email|unique:users,email,' . $id,
+            'telephone' => ['nullable', 'string', 'max:50', 'regex:/^\+?[0-9\s]{8,15}$/'],
+            'service' => 'nullable|string|max:255',
+            'poste' => 'nullable|string|max:255',
+            'siege' => 'nullable|string|max:255',
+            'depot_id' => 'nullable|exists:warehouses,id',
+        ], [
+            'nomprenom.regex' => 'Le nom ne doit contenir que des lettres, espaces, tirets ou apostrophes (pas de chiffres).',
+            'email.email' => 'Le format de l\'email est invalide (ex: nom@domaine.com).',
+            'email.unique' => 'Cet email est deja utilise par un autre utilisateur.',
+            'telephone.regex' => 'Le numero de telephone est invalide (8 a 15 chiffres, ex: +216 XX XXX XXX).',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        // Verifier unicite admin par siege
+        $rolesInput = $request->input('roles');
+        $roleName = null;
+        if ($rolesInput) {
+            if (is_array($rolesInput) && count($rolesInput) > 0) {
+                $roleName = is_array($rolesInput[0]) ? ($rolesInput[0]['name'] ?? null) : $rolesInput[0];
+            } else if (is_string($rolesInput)) {
+                $roleName = $rolesInput;
+            }
+        }
+
+        if ($roleName && strtolower($roleName) === 'administrateur' && $request->input('siege')) {
+            $siegeLabel = str_replace('_', ' ', $request->input('siege'));
+            $existingAdmin = User::whereNull('deleted_at')
+                ->where('siege', $request->input('siege'))
+                ->where('id', '!=', $id)
+                ->whereHas('role', function($q) {
+                    $q->whereRaw('LOWER(name) = ?', ['administrateur']);
+                })
+                ->first();
+            if ($existingAdmin) {
+                return response()->json([
+                    'errors' => [
+                        'siege' => ["Un administrateur existe deja pour le siege \"$siegeLabel\". Chaque siege ne peut avoir qu'un seul administrateur."]
+                    ]
+                ], 422);
+            }
+        }
+
         $data = $request->only(['nomprenom', 'email', 'adresse', 'telephone', 'service', 'poste', 'siege', 'depot_id']);
 
         if ($request->filled('password')) {
@@ -155,23 +230,18 @@ class UserManagementController extends Controller
 
         $user->update($data);
 
-            $roleName = 'Utilisateur';
-            if (is_array($request->roles) && count($request->roles) > 0) {
-                $roleName = is_array($request->roles[0]) ? ($request->roles[0]['name'] ?? 'Utilisateur') : $request->roles[0];
-            } else if (is_string($request->roles)) {
-                $roleName = $request->roles;
-            }
+            $assignRoleName = $roleName ?? 'Utilisateur';
 
-            $primaryRole = strtolower($roleName);
+            $primaryRole = strtolower($assignRoleName);
             $isResponsableOrAgent = in_array($primaryRole, ['responsable', 'agent', 'responsable de stock', 'agent de stock']);
 
-            $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', [strtolower(trim($roleName))])->first();
+            $roleRecord = \App\Models\Role::whereRaw('LOWER(name) = ?', [strtolower(trim($assignRoleName))])->first();
             if ($roleRecord) {
                 $user->update(['role_id' => $roleRecord->id]);
             }
 
         return response()->json([
-            'message' => 'Utilisateur mis à jour',
+            'message' => 'Utilisateur mis a jour',
             'user' => $user->load('depot')
         ]);
     }
@@ -180,21 +250,21 @@ class UserManagementController extends Controller
     {
         $user = User::findOrFail($id);
         $user->delete();
-        return response()->json(['message' => 'Utilisateur archivé']);
+        return response()->json(['message' => 'Utilisateur archive']);
     }
 
     public function restore($id)
     {
         $user = User::onlyTrashed()->findOrFail($id);
         $user->restore();
-        return response()->json(['message' => 'Utilisateur restauré', 'user' => $user->load('depot')]);
+        return response()->json(['message' => 'Utilisateur restaure', 'user' => $user->load('depot')]);
     }
 
     public function forceDestroy($id)
     {
         $user = User::withTrashed()->findOrFail($id);
         $user->forceDelete();
-        return response()->json(['message' => 'Utilisateur supprimé définitivement']);
+        return response()->json(['message' => 'Utilisateur supprime definitivement']);
     }
 
     public function roles()

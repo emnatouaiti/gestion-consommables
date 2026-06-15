@@ -17,10 +17,8 @@ class SupplierController extends Controller
     {
         return Supplier::with([
             'products' => function ($q) {
-                $q->where('status', 'active');
-            },
-            'reviews.user',
-            'contacts'
+                $q->where('status', 'active')->select('products.id', 'products.title', 'products.reference');
+            }
         ])
             ->withCount(['products as products_count' => function ($q) {
                 $q->where('status', 'active');
@@ -192,7 +190,7 @@ class SupplierController extends Controller
 
         if ($linkedProducts > 0 || $linkedStocks > 0) {
             return response()->json([
-                'message' => 'Suppression impossible: ce fournisseur est lie a des produits ou a des stocks.'
+                'message' => 'Suppression impossible : Ce fournisseur a deja fourni des produits ou est lie a l\'historique des stocks.'
             ], 422);
         }
 

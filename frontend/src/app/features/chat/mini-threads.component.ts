@@ -12,7 +12,7 @@ import { ThreadWidgetComponent } from './thread-widget.component';
   template: `
     <div class="mt-root">
       <div class="mt-sidebar">
-        <div class="mt-title">Discussions récentes</div>
+        <div class="mt-title">Discussions recentes</div>
         <div class="mt-list">
           <div
             *ngFor="let c of conversations"

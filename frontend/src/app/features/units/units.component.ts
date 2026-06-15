@@ -1,13 +1,15 @@
-﻿import { CommonModule, isPlatformBrowser } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { ChangeDetectorRef, Component, Inject, OnInit, PLATFORM_ID } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { UnitService } from '../../core/services/unit.service';
 import { ApiService } from '../../core/services/api.service';
 
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
+
 @Component({
   selector: 'app-units',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmModalComponent],
   templateUrl: './units.component.html',
   styleUrls: ['./units.component.css']
 })
@@ -126,22 +128,26 @@ export class UnitsComponent implements OnInit {
   }
 
   remove(id: number): void {
-    if (!confirm('Supprimer cette unite ?')) {
-      return;
-    }
-
-    this.unitService.delete(id).subscribe({
-      next: () => {
-        this.successMessage = 'Unite supprimee.';
-        this.load();
-        this.cdr.detectChanges();
-        setTimeout(() => (this.successMessage = ''), 2000);
+    this.openConfirmModal(
+      'Supprimer l\'unite',
+      'Voulez-vous vraiment supprimer cette unite ?',
+      () => {
+        this.unitService.delete(id).subscribe({
+          next: () => {
+            this.successMessage = 'Unite supprimee.';
+            this.load();
+            this.cdr.detectChanges();
+            setTimeout(() => (this.successMessage = ''), 2000);
+          },
+          error: (err: any) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err: any) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   private resetForm(): void {
@@ -149,4 +155,44 @@ export class UnitsComponent implements OnInit {
     this.form = { name: '', code: '', description: '' };
     this.errorMessage = '';
   }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = true;
+    this.pendingAction = null;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
 }

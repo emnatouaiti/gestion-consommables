@@ -2,9 +2,9 @@
     <form method="POST" action="{{ route('register') }}">
         @csrf
 
-        <!-- Nom & Prénom -->
+        <!-- Nom & Prenom -->
         <div>
-            <x-input-label for="nomprenom" :value="__('Nom & Prénom')" />
+            <x-input-label for="nomprenom" :value="__('Nom & Prenom')" />
             <x-text-input id="nomprenom" class="block mt-1 w-full" type="text" name="nomprenom" :value="old('nomprenom')" required autofocus autocomplete="name" />
             <x-input-error :messages="$errors->get('nomprenom')" class="mt-2" />
         </div>

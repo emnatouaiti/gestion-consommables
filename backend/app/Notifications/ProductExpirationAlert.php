@@ -41,15 +41,15 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
         $total = count($this->expiringSoon) + count($this->expired);
 
         $mail = (new MailMessage)
-                    ->subject("Alerte Stock : $total lot(s) avec des problèmes d'expiration")
+                    ->subject("Alerte Stock : $total lot(s) avec des problemes d'expiration")
                     ->greeting("Bonjour {$notifiable->name},")
-                    ->line("Ceci est un récapitulatif automatique concernant les dates d'expiration de vos stocks de consommables.")
-                    ->line("Nombre de lots expirés : " . count($this->expired))
+                    ->line("Ceci est un recapitulatif automatique concernant les dates d'expiration de vos stocks de consommables.")
+                    ->line("Nombre de lots expires : " . count($this->expired))
                     ->line("Nombre de lots expirant dans les 7 prochains jours : " . count($this->expiringSoon))
                     ->action('Consulter le Dashboard', url(config('app.frontend_url', 'http://localhost:4200') . '/dashboard'));
 
         if (count($this->expired) > 0) {
-            $mail->line("\n**Lots Expirés :**");
+            $mail->line("\n**Lots Expires :**");
             foreach (array_slice($this->expired, 0, 5) as $item) {
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
@@ -57,7 +57,7 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
                 $location = $this->formatStockLocation($stock);
 
                 $mail->line("- **{$productName}** (Lot: {$batch})");
-                $mail->line("  Statut: Expiré depuis {$item['days']} jour(s) ({$stock->quantity} unités)");
+                $mail->line("  Statut: Expire depuis {$item['days']} jour(s) ({$stock->quantity} unites)");
                 if ($location) $mail->line("   Emplacement: {$location}");
             }
             if (count($this->expired) > 5) {
@@ -66,7 +66,7 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
         }
 
         if (count($this->expiringSoon) > 0) {
-            $mail->line("\n**Lots expirant bientôt :**");
+            $mail->line("\n**Lots expirant bientot :**");
             foreach (array_slice($this->expiringSoon, 0, 5) as $item) {
                 $stock = $item['stock'];
                 $productName = $stock->product->title ?? 'Produit inconnu';
@@ -74,7 +74,7 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
                 $location = $this->formatStockLocation($stock);
 
                 $mail->line("- **{$productName}** (Lot: {$batch})");
-                $mail->line("  Statut: Expire dans {$item['days']} jour(s) ({$stock->quantity} unités)");
+                $mail->line("  Statut: Expire dans {$item['days']} jour(s) ({$stock->quantity} unites)");
                 if ($location) $mail->line("   Emplacement: {$location}");
             }
             if (count($this->expiringSoon) > 5) {
@@ -86,13 +86,13 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
     }
 
     /**
-     * Construit une chaîne lisible de l'emplacement du stock
+     * Construit une chaine lisible de l'emplacement du stock
      */
     private function formatStockLocation($stock): string
     {
         $parts = [];
 
-        // Via Warehouse Location (Emplacement précis)
+        // Via Warehouse Location (Emplacement precis)
         if ($stock->warehouseLocation) {
             $loc = $stock->warehouseLocation;
             if ($loc->room?->warehouse) $parts[] = $loc->room->warehouse->name;
@@ -119,7 +119,7 @@ class ProductExpirationAlert extends Notification implements ShouldQueue
     {
         return [
             'type' => 'expiration_alert',
-            'message' => count($this->expired) . ' lot(s) expiré(s) et ' . count($this->expiringSoon) . ' expirant bientôt.',
+            'message' => count($this->expired) . ' lot(s) expire(s) et ' . count($this->expiringSoon) . ' expirant bientot.',
             'expiring_count' => count($this->expiringSoon),
             'expired_count' => count($this->expired)
         ];

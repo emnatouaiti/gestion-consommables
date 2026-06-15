@@ -1,11 +1,11 @@
 <?php
 
 /**
- * EXEMPLE D'INTÉGRATION: ProductStockController
+ * EXEMPLE D'INTEGRATION: ProductStockController
  *
- * Montrer comment intégrer le service d'expiration dans le contrôleur existant
+ * Montrer comment integrer le service d'expiration dans le controleur existant
  *
- * À ajouter dans: backend/app/Http/Controllers/API/ProductStockController.php
+ * A ajouter dans: backend/app/Http/Controllers/API/ProductStockController.php
  */
 
 namespace App\Http\Controllers\API;
@@ -26,7 +26,7 @@ class ProductStockController extends Controller
     }
 
     /**
-     * EXEMPLE - Créer/mettre à jour un stock avec date d'expiration
+     * EXEMPLE - Creer/mettre a jour un stock avec date d'expiration
      *
      * POST /api/product-stocks
      * PUT /api/product-stocks/{id}
@@ -45,16 +45,16 @@ class ProductStockController extends Controller
             'expiration_date' => 'nullable|date',
         ]);
 
-        // Créer le stock
+        // Creer le stock
         $stock = ProductStock::create($validated);
 
-        // Si une date d'expiration a été fournie, vérifier tout de suite
+        // Si une date d'expiration a ete fournie, verifier tout de suite
         if ($validated['expiration_date']) {
             $this->expirationService->checkExpirationStatus($stock);
         }
 
         return response()->json([
-            'message' => 'Stock créé',
+            'message' => 'Stock cree',
             'stock' => $stock,
             'expiration_status' => $this->expirationService->getExpirationStatus($stock),
         ], 201);
@@ -113,7 +113,7 @@ class ProductStockController extends Controller
         $filter = $request->get('filter');
 
         if ($filter === 'expired') {
-            // Voir uniquement les produits expiréés
+            // Voir uniquement les produits expirees
             $query->where('batch_status', 'expired');
         } elseif ($filter === 'expiring_soon') {
             // Voir les produits expirant dans 7 jours
@@ -126,7 +126,7 @@ class ProductStockController extends Controller
                     $threshold->endOfDay()
                 ]);
         } elseif ($filter === 'valid') {
-            // Voir uniquement les produits valides (non expiréés, avec stock)
+            // Voir uniquement les produits valides (non expirees, avec stock)
             $query->where('batch_status', '!=', 'expired')
                 ->where('quantity', '>', 0);
         } elseif ($filter === 'no_expiration') {
@@ -148,9 +148,9 @@ class ProductStockController extends Controller
     }
 
     /**
-     * EXEMPLE - Lors de la création d'une consommation
+     * EXEMPLE - Lors de la creation d'une consommation
      *
-     * Vérifier AVANT que le produit peut être consommé
+     * Verifier AVANT que le produit peut etre consomme
      *
      * POST /api/consumable-requests
      */
@@ -158,10 +158,10 @@ class ProductStockController extends Controller
     {
         $stock = ProductStock::findOrFail($productStockId);
 
-        // Vérifier si peut être consommé
+        // Verifier si peut etre consomme
         if (!$this->expirationService->canBeConsumed($stock)) {
             return response()->json([
-                'error' => 'Ce produit est expiré et ne peut pas être consommé',
+                'error' => 'Ce produit est expire et ne peut pas etre consomme',
                 'expiration_status' => $this->expirationService->getExpirationStatus($stock),
                 'batch_number' => $stock->batch_number,
                 'expiration_date' => $stock->expiration_date,
@@ -170,7 +170,7 @@ class ProductStockController extends Controller
 
         return response()->json([
             'can_consume' => true,
-            'message' => 'Ce stock peut être consommé',
+            'message' => 'Ce stock peut etre consomme',
         ]);
     }
 }
@@ -178,7 +178,7 @@ class ProductStockController extends Controller
 /**
  * INTEGRATION DANS LE CONSUMABLE REQUEST CONTROLLER
  *
- * Avant d'approuver une consommation, vérifier l'expiration
+ * Avant d'approuver une consommation, verifier l'expiration
  */
 
 class ConsumableRequestController extends Controller
@@ -193,22 +193,22 @@ class ConsumableRequestController extends Controller
     /**
      * POST /api/consumable-requests/{id}/approve
      *
-     * Avant d'approuver: vérifier que le produit n'est pas expiré
+     * Avant d'approuver: verifier que le produit n'est pas expire
      */
     public function approve($requestId): JsonResponse
     {
         $request = ConsumableRequest::findOrFail($requestId);
 
-        // Chercher le stock à consommer
+        // Chercher le stock a consommer
         $stock = ProductStock::where('product_id', $request->product_id)
             ->whereNotNull('expiration_date')
             ->orderBy('expiration_date', 'asc')
             ->first();
 
-        // Vérifier l'expiration
+        // Verifier l'expiration
         if ($stock && !$this->expirationService->canBeConsumed($stock)) {
             return response()->json([
-                'error' => 'Stock expiré',
+                'error' => 'Stock expire',
                 'message' => $this->expirationService->getExpirationStatus($stock),
                 'available_alternatives' => null,
             ], 422);
@@ -218,7 +218,7 @@ class ConsumableRequestController extends Controller
         $request->update(['status' => 'approved']);
 
         return response()->json([
-            'message' => 'Consommation approuvée',
+            'message' => 'Consommation approuvee',
             'request' => $request,
         ]);
     }
@@ -227,10 +227,10 @@ class ConsumableRequestController extends Controller
 /**
  * INTEGRATION DANS LES ROUTES
  *
- * À ajouter dans: backend/routes/api.php
+ * A ajouter dans: backend/routes/api.php
  */
 
-// Vérifier si un stock peut être consumé
+// Verifier si un stock peut etre consume
 Route::get(
     '/product-stocks/{id}/can-consume',
     [ProductStockController::class, 'checkCanConsume']
@@ -255,7 +255,7 @@ export class ConsumableRequestComponent {
   constructor(private adminStockService: AdminStockService) {}
 
   async onRequestConsumption(productStockId: number, quantity: number) {
-    // Vérifier d'abord que le stock peut être consommé
+    // Verifier d'abord que le stock peut etre consomme
     try {
       const response = await firstValueFrom(
         this.adminStockService.checkCanConsume(productStockId)
@@ -266,14 +266,14 @@ export class ConsumableRequestComponent {
         this.submitRequest();
       } else {
         // Afficher l'erreur
-        this.showError('Ce produit est expiré et ne peut pas être consommé');
+        this.showError('Ce produit est expire et ne peut pas etre consomme');
       }
     } catch (error) {
       this.showError(error.error.message);
     }
   }
 
-  // Afficher les produits expirant bientôt
+  // Afficher les produits expirant bientot
   async loadExpiringProducts() {
     try {
       const response = await firstValueFrom(

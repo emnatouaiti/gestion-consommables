@@ -1,4 +1,4 @@
-﻿import { Component, OnInit, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, PLATFORM_ID, Inject, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { isPlatformBrowser } from '@angular/common';
 import { CommonModule } from '@angular/common';
@@ -8,11 +8,12 @@ import { SupplierService } from '../../core/services/supplier.service';
 import { Supplier } from '../../core/models/supplier.model';
 import { SupplierContact } from '../../core/models/supplier-contact.model';
 import { ApiService } from '../../core/services/api.service';
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 
 @Component({
     selector: 'app-suppliers',
     standalone: true,
-    imports: [CommonModule, FormsModule, ReactiveFormsModule],
+    imports: [CommonModule, FormsModule, ReactiveFormsModule, ConfirmModalComponent],
     templateUrl: './suppliers.component.html',
     styleUrls: ['./suppliers.component.css']
 })
@@ -46,6 +47,7 @@ export class SuppliersComponent implements OnInit {
     photoPreview: string | null = null;
     successMessage = '';
     errorMessage = '';
+    formError = '';
 
     newReviewContent = '';
     newReviewRating: number | undefined = 5;
@@ -308,6 +310,7 @@ export class SuppliersComponent implements OnInit {
     openAddContactModal(): void {
         this.editingContactId = null;
         this.contactForm.reset();
+        this.formError = '';
         this.showContactModal = true;
     }
 
@@ -320,6 +323,7 @@ export class SuppliersComponent implements OnInit {
             email: contact.email || '',
             notes: contact.notes || ''
         });
+        this.formError = '';
         this.showContactModal = true;
     }
 
@@ -336,7 +340,7 @@ export class SuppliersComponent implements OnInit {
 
         if (this.contactForm.invalid) {
             this.contactForm.markAllAsTouched();
-            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
+            this.formError = 'Veuillez corriger les erreurs dans le formulaire.';
             return;
         }
 
@@ -349,14 +353,14 @@ export class SuppliersComponent implements OnInit {
             next: () => {
                 this.loadSupplierContacts(supplierId);
                 this.closeContactModal();
-                this.successMessage = this.editingContactId ? 'Contact mis é jour' : 'Contact ajouté';
+                this.successMessage = this.editingContactId ? 'Contact mis e jour' : 'Contact ajoute';
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
                 console.error('Error saving contact', err);
-                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de léenregistrement du contact');
+                this.formError = this.api.extractErrorMessage(err, 'Erreur lors de l\'enregistrement du contact');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -368,24 +372,30 @@ export class SuppliersComponent implements OnInit {
         const supplierId = this.contactsSupplierId ?? this.selectedSupplier?.id ?? null;
         if (!supplierId) return;
 
-        if (!confirm('étes-vous sér de vouloir supprimer ce contact ?')) return;
-
-        this.isLoading = true;
-        this.supplierService.deleteSupplierContact(supplierId, contactId).subscribe({
-            next: () => {
-                this.loadSupplierContacts(supplierId);
-                this.successMessage = 'Contact supprimé';
-                this.isLoading = false;
-                this.cdr.detectChanges();
-                setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+        this.openConfirmModal(
+            'Supprimer le contact',
+            'Etes-vous sur de vouloir supprimer ce contact ?',
+            () => {
+                this.isLoading = true;
+                this.supplierService.deleteSupplierContact(supplierId, contactId).subscribe({
+                    next: () => {
+                        this.loadSupplierContacts(supplierId);
+                        this.successMessage = 'Contact supprime';
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                        setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
+                    },
+                    error: (err) => {
+                        console.error('Error deleting contact', err);
+                        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le contact');
+                        this.isLoading = false;
+                        this.cdr.detectChanges();
+                    }
+                });
             },
-            error: (err) => {
-                console.error('Error deleting contact', err);
-                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le contact');
-                this.isLoading = false;
-                this.cdr.detectChanges();
-            }
-        });
+            'danger',
+            'Supprimer'
+        );
     }
 
     openAddModal(): void {
@@ -393,6 +403,7 @@ export class SuppliersComponent implements OnInit {
         this.selectedProductIds = [];
         this.availableProducts = this.availableProducts.map(p => ({ ...p, selected: false }));
         this.resetForm();
+        this.formError = '';
         this.showModal = true;
     }
 
@@ -411,6 +422,7 @@ export class SuppliersComponent implements OnInit {
             ...p,
             selected: this.selectedProductIds.includes(p.id)
         }));
+        this.formError = '';
         this.showModal = true;
     }
 
@@ -438,7 +450,7 @@ export class SuppliersComponent implements OnInit {
     saveSupplier(): void {
         if (this.supplierForm.invalid) {
             this.supplierForm.markAllAsTouched();
-            this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire';
+            this.formError = 'Veuillez corriger les erreurs dans le formulaire.';
             return;
         }
 
@@ -463,14 +475,14 @@ export class SuppliersComponent implements OnInit {
             next: () => {
                 this.loadSuppliers();
                 this.closeModal();
-                this.successMessage = this.editingSupplierId ? 'Fournisseur mis é jour' : 'Fournisseur créé';
+                this.successMessage = this.editingSupplierId ? 'Fournisseur mis e jour' : 'Fournisseur cree';
                 this.isLoading = false;
                 this.cdr.detectChanges();
                 setTimeout(() => { this.successMessage = ''; this.cdr.detectChanges(); }, 3000);
             },
             error: (err) => {
                 console.error('Error saving supplier', err);
-                this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de l\'enregistrement');
+                this.formError = this.api.extractErrorMessage(err, 'Erreur lors de l\'enregistrement');
                 this.isLoading = false;
                 this.cdr.detectChanges();
             }
@@ -478,18 +490,25 @@ export class SuppliersComponent implements OnInit {
     }
 
     deleteSupplier(id: number): void {
-        if (!confirm('étes-vous sér de vouloir supprimer ce fournisseur ?')) return;
-        this.supplierService.deleteSupplier(id).subscribe({
-            next: () => {
-                this.loadSuppliers();
-                this.successMessage = 'Fournisseur supprimé';
-                setTimeout(() => this.successMessage = '', 3000);
+        this.openConfirmModal(
+            'Supprimer le fournisseur',
+            'Etes-vous sur de vouloir supprimer ce fournisseur ?',
+            () => {
+                this.supplierService.deleteSupplier(id).subscribe({
+                    next: () => {
+                        this.loadSuppliers();
+                        this.successMessage = 'Fournisseur supprime';
+                        setTimeout(() => this.successMessage = '', 3000);
+                    },
+                    error: (err) => {
+                        console.error('Error deleting supplier', err);
+                        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le fournisseur');
+                    }
+                });
             },
-            error: (err) => {
-                console.error('Error deleting supplier', err);
-                this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer le fournisseur');
-            }
-        });
+            'danger',
+            'Supprimer'
+        );
     }
 
     submitReview(): void {
@@ -508,7 +527,7 @@ export class SuppliersComponent implements OnInit {
                 this.newReviewContent = '';
                 this.newReviewRating = 5;
                 this.isLoading = false;
-                this.successMessage = 'Avis publié !';
+                this.successMessage = 'Avis publie !';
                 this.cdr.detectChanges();
                 setTimeout(() => this.successMessage = '', 3000);
             },
@@ -535,4 +554,44 @@ export class SuppliersComponent implements OnInit {
         if (!rating) return [];
         return Array(rating).fill(0);
     }
+
+    /* --- Confirm Modal helpers --- */
+    confirmModalVisible = false;
+    confirmModalTitle = '';
+    confirmModalMessage = '';
+    confirmModalConfirmText = 'Confirmer';
+    confirmModalCancelText = 'Annuler';
+    confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+    confirmModalAlertOnly = false;
+    private pendingAction: (() => void) | null = null;
+
+    private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+        this.confirmModalTitle = title;
+        this.confirmModalMessage = message;
+        this.confirmModalConfirmText = confirmText;
+        this.confirmModalType = type;
+        this.confirmModalAlertOnly = false;
+        this.pendingAction = action;
+        this.confirmModalVisible = true;
+        this.cdr.detectChanges();
+    }
+
+    private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+        this.confirmModalTitle = title;
+        this.confirmModalMessage = message;
+        this.confirmModalType = type;
+        this.confirmModalAlertOnly = true;
+        this.pendingAction = null;
+        this.confirmModalVisible = true;
+        this.cdr.detectChanges();
+    }
+
+    onConfirmModalConfirmed(): void {
+        this.confirmModalVisible = false;
+        if (this.pendingAction) {
+            this.pendingAction();
+            this.pendingAction = null;
+        }
+    }
+
 }

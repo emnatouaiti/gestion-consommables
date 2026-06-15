@@ -4,8 +4,8 @@
     <div class="header-left">
       <button class="btn-back" (click)="goBack()">← Retour</button>
       <div>
-        <h2 *ngIf="warehouse">{{ warehouse.name || 'Dépôt' }}</h2>
-        <h2 *ngIf="!warehouse">Produits par dépôt</h2>
+        <h2 *ngIf="warehouse">{{ warehouse.name || 'Depot' }}</h2>
+        <h2 *ngIf="!warehouse">Produits par depot</h2>
         <p class="warehouse-details" *ngIf="warehouse">
           {{ warehouse.address || '' }} {{ warehouse.city || '' }}
         </p>
@@ -24,17 +24,17 @@
   <!-- Table -->
   <div class="table-card" *ngIf="!isLoading">
     <div class="empty-state" *ngIf="products.length === 0">
-      <p>Aucun produit dans ce dépôt</p>
+      <p>Aucun produit dans ce depot</p>
     </div>
     <div class="table-wrap" *ngIf="products.length > 0">
       <table>
         <thead>
           <tr>
             <th>Produit</th>
-            <th>Réf</th>
-            <th>Catégorie</th>
+            <th>Ref</th>
+            <th>Categorie</th>
             <th>Salle / Emplacement</th>
-            <th>Quantité</th>
+            <th>Quantite</th>
             <th>Seuil min</th>
             <th>Statut</th>
           </tr>

@@ -15,7 +15,7 @@ class CheckStockLevels extends Command
 
     public function handle()
     {
-        $this->info('ðŸ” VÃrification des seuils de stock...');
+        $this->info('ðŸ" VÃrification des seuils de stock...');
 
         // Trouver les produits sous le seuil (et actifs)
         $lowStockProducts = Product::where('status', 'active')
@@ -31,7 +31,7 @@ class CheckStockLevels extends Command
             })->toArray();
 
         if (empty($lowStockProducts)) {
-            $this->info('âœ… Aucun produit en stock critique.');
+            $this->info('aœ... Aucun produit en stock critique.');
             Log::info("Scan Stock : Aucun produit sous le seuil minimum.");
             return;
         }

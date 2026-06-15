@@ -1,4 +1,4 @@
-﻿import { NgModule } from '@angular/core';
+import { NgModule } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -18,6 +18,7 @@ import { ReferencesComponent } from './references/references.component';
 import { UserDashboardComponent } from './dashboard/user-dashboard.component';
 
 // Shared standalone components
+import { ConfirmModalComponent } from '../shared/confirm-modal/confirm-modal.component';
 
 // Non-standalone (declared) components
 import { AdminLayoutComponent } from './admin-layout.component';
@@ -71,6 +72,7 @@ import { ProductsByCabinetComponent } from './produits/products-by-cabinet/produ
     UserDashboardComponent,
     // Shared UI
     Storage3dViewerComponent,
+    ConfirmModalComponent,
     // Shared UI components omitted here to avoid cross-folder service imports
   ],
   providers: []

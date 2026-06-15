@@ -86,6 +86,7 @@ class DocumentController extends Controller
 
     public function store(Request $request)
     {
+        set_time_limit(300);
         $request->validate([
             'file'         => 'required|file',
             'title'        => 'nullable|string|max:255',
@@ -608,9 +609,9 @@ class DocumentController extends Controller
         }
         $text = Str::lower($ocrText);
         if (str_contains($text, 'bon de livraison') || $guessedType === 'bon_livraison') return 'Bon de livraison';
-        if (str_contains($text, 'bon de reception') || str_contains($text, 'bon de rÃception')) return 'Bon de rÃception';
+        if (str_contains($text, 'bon de reception') || str_contains($text, 'bon de rÃception')) return 'Bon de reception';
         if (str_contains($text, 'bon de sortie')) return 'Bon de sortie';
-        if (str_contains($text, 'rÃception de marchandise') || str_contains($text, 'reception de marchandise')) return 'Bon de rÃception';
+        if (str_contains($text, 'rÃception de marchandise') || str_contains($text, 'reception de marchandise')) return 'Bon de reception';
         if (str_contains($text, 'facture')) return 'Facture';
         $first = $this->firstLine($ocrText);
         return $first ?: $fallbackName;
@@ -735,19 +736,19 @@ class DocumentController extends Controller
         if ($t === '' || mb_strlen($t) < 3) return false;
 
         // Must contain letters
-        if (!preg_match('/[a-zÃ Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼Ã§]/iu', $t)) return false;
+        if (!preg_match('/[a-zÃ Ã¢Ã¤ÃÃ¨ÃªÃ"ÃÃ¯Ã´Ã¶Ã¹Ã"Ã¼Ã§]/iu', $t)) return false;
 
         // Reject metadata-like lines
-        if (preg_match('/gmail|email|date|numero|bon de livraison|client|adresse|livraison|destinataire|recu|regu|contact|phone/i', $t)) {
+        if (preg_match('/gmail|email|date|numero|bon de livraison|bon de prelevement|client|adresse|livraison|destinataire|recu|regu|contact|phone|service demandeur|direction|partie reserv|localisation|observation|demandeur|responsable|signature|emargement|monsieur|n\.b|detected diacritics|janvier|fevrier|mars|avril|mai|juin|juillet|aout|septembre|octobre|novembre|decembre/i', $t)) {
             return false;
         }
 
         // Reject highly noisy fragments with too many symbols
-        $symbols = preg_match_all('/[^a-z0-9Ã Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼Ã§\s\-]/iu', $t);
+        $symbols = preg_match_all('/[^a-z0-9Ã Ã¢Ã¤ÃÃ¨ÃªÃ"ÃÃ¯Ã´Ã¶Ã¹Ã"Ã¼Ã§\s\-]/iu', $t);
         if ($symbols !== false && $symbols > 3) return false;
 
         // Very short vowel-less gibberish
-        if (mb_strlen($t) <= 8 && !preg_match('/[aeiouyÃ Ã¢Ã¤ÃÃ¨ÃªÃ«ÃÃ¯Ã´Ã¶Ã¹Ã»Ã¼]/iu', $t)) return false;
+        if (mb_strlen($t) <= 8 && !preg_match('/[aeiouyÃ Ã¢Ã¤ÃÃ¨ÃªÃ"ÃÃ¯Ã´Ã¶Ã¹Ã"Ã¼]/iu', $t)) return false;
 
         return true;
     }
@@ -771,9 +772,9 @@ class DocumentController extends Controller
      * FIX SUMMARY vs original:
      *  - Upper cap raised from 500 to 9999
      *  - Date patterns are rejected before all other logic
-     *  - Year guard covers 1900â€“2199
+     *  - Year guard covers 1900a€"2199
      *  - knownQtyMisreads expanded with 'oe'=>40, 'ea'=>80, 'go'=>60
-     *  - Fuzzy substitution only on tokens â‰¤ 3 chars
+     *  - Fuzzy substitution only on tokens a‰¤ 3 chars
      */
     private function tryParseQuantity(string $token): ?int
     {
@@ -811,7 +812,7 @@ class DocumentController extends Controller
             return $val;
         }
 
-        // 4. Fuzzy substitution only for very short tokens (â‰¤ 3 chars)
+        // 4. Fuzzy substitution only for very short tokens (a‰¤ 3 chars)
         //    Prevents turning normal words like "Sos" into numbers (505)
         if (strlen($tok) <= 3) {
             $fuzzy = strtr($lower, [
@@ -998,7 +999,7 @@ class DocumentController extends Controller
             if ($this->isHeaderRow($rowText)) continue;
             if (preg_match('/adresse|livraison|destinataire|client|nom du/i', $rowTextLower)) continue;
 
-            // Sort words left â†’ right
+            // Sort words left a†' right
             usort($row, fn($a, $b) => $a['left'] <=> $b['left']);
 
             $refTokens   = [];
@@ -1038,7 +1039,7 @@ class DocumentController extends Controller
                         break;
                     }
                 }
-                // 4-digit number only â†’ treat as INV sequence
+                // 4-digit number only a†' treat as INV sequence
                 if (preg_match('/^(\d{4})$/', $tok, $m)) {
                     $ref = 'INV-' . $m[1];
                     break;
@@ -1095,7 +1096,7 @@ class DocumentController extends Controller
             // STEP 1: Targeted numeric-only OCR on the quantity column area.
             // This is the primary, document-agnostic method: it re-reads the
             // cropped image region with a digits-only whitelist, so OCR noise
-            // like "Oe", "tC i", "7 as" never matters — we never trust the
+            // like "Oe", "tC i", "7 as" never matters - we never trust the
             // alphabetic reading of a numeric cell.
             if (!empty($qtyTokens) && $storedPath) {
                 $qtyLeft   = min(array_column($qtyTokens, 'left'));
@@ -1106,8 +1107,8 @@ class DocumentController extends Controller
                 $qty = $this->runTargetedNumericOcr($storedPath, $qtyLeft - 10, $qtyTop - 5, $qtyRight + 10, $qtyBottom + 5);
             }
 
-            // STEP 2: if two quantity columns exist (commandée/livrée), prefer
-            // the right-most ("livrée") one — re-run targeted OCR on that zone.
+            // STEP 2: if two quantity columns exist (commandee/livree), prefer
+            // the right-most ("livree") one - re-run targeted OCR on that zone.
             if (!empty($qtyTokens) && $storedPath && ($qtyPrimaryStart !== null && $qtyPrimaryEnd !== null)) {
                 $rightZone = array_values(array_filter($qtyTokens, fn($w) => $w['left'] >= $qtyPrimaryStart && $w['right'] <= $qtyPrimaryEnd));
                 if (!empty($rightZone)) {
@@ -1121,7 +1122,7 @@ class DocumentController extends Controller
             }
 
             // STEP 3: fallback when targeted OCR is unavailable (no Imagick) or
-            // returned nothing — try the text tokens directly.
+            // returned nothing - try the text tokens directly.
             if ($qty === null && !empty($qtyTokens)) {
                 foreach (array_reverse($qtyTokens) as $w) {
                     $qty = $this->tryParseQuantity($w['text']);
@@ -1129,7 +1130,7 @@ class DocumentController extends Controller
                 }
             }
 
-            // STEP 4: last-resort fallback — scan title tokens right → left
+            // STEP 4: last-resort fallback - scan title tokens right → left
             // (only used if the quantity column produced absolutely nothing).
             if ($qty === null && !empty($titleTokens)) {
                 $tw = array_column($titleTokens, 'text');
@@ -1158,7 +1159,7 @@ class DocumentController extends Controller
             if ($titleStr === '') continue;
             if (preg_match('/@|gmail|yahoo|hotmail|client|adresse|date|numero|bon de livraison/i', $titleStr)) continue;
 
-            // STEP 5: generic recovery — if quantity is still missing or
+            // STEP 5: generic recovery - if quantity is still missing or
             // suspiciously low (1 digit), re-read the right ~38% of the row
             // with targeted numeric OCR. Pure image-based, no document-specific rules.
             if ($storedPath && ($qty === null || $qty < 10)) {
@@ -1478,7 +1479,6 @@ class DocumentController extends Controller
                 $cmd = $binArg . ' ' . $fileArg . ' stdout -l ' . $lang
                     . ' --psm ' . $psm . ' --oem 1'
                     . ' -c preserve_interword_spaces=1'
-                    . ' -c tessedit_char_whitelist=ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ÃÃ¨ÃªÃ Ã¢Ã¹Ã»Ã§Ã‰ÃˆÃŠÃ€Ã‚ÃÃ›Ã‡.:/_-,"()Â°+*%@\' '
                     . ' -c user_defined_dpi=300';
 
                 $tdp = env('TESSDATA_PREFIX');
@@ -1531,7 +1531,7 @@ class DocumentController extends Controller
             $h = $img->getImageHeight();
             $img->resizeImage((int)($w * 2.0), (int)($h * 2.0), \Imagick::FILTER_LANCZOS, 1);
             $img->setImageColorspace(\Imagick::COLORSPACE_GRAY);
-            $img->adaptiveThresholdImage(40, 40, 20); // More aggressive thresholding
+            $img->normalizeImage();
             $img->stripImage();
             $tmp = tempnam(sys_get_temp_dir(), 'ocr_') . '.tif';
             $img->writeImage($tmp);
@@ -1569,11 +1569,12 @@ class DocumentController extends Controller
      */
     private function parseLines(string $text): array
     {
-        $lines  = array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text)));
+        $lines  = array_values(array_filter(array_map('trim', preg_split('/\r\n|\r|\n/', $text))));
         $parsed = [];
         $headerFound = false;
 
-        foreach ($lines as $line) {
+        for ($lineIdx = 0; $lineIdx < count($lines); $lineIdx++) {
+            $line = $lines[$lineIdx];
             $lowLine = strtolower($line);
 
             // Skip clear metadata lines
@@ -1594,7 +1595,9 @@ class DocumentController extends Controller
             if ($clean === '') continue;
 
             $tokens = preg_split('/\s+/', $clean);
-            if (count($tokens) < 2) continue;
+            
+            // Allow single token lines if it's a number and we might be looking for a quantity
+            if (count($tokens) < 2 && !preg_match('/^\d+$/', $clean)) continue;
 
             $qty     = null;
             $ordered = null;
@@ -1613,8 +1616,26 @@ class DocumentController extends Controller
                 }
             }
 
+            // Look ahead for quantity on the next 1-2 lines if missing
             if ($qty === null) {
-                // Fallback: individual tokens right â†’ left
+                for ($k = 1; $k <= 2; $k++) {
+                    if ($lineIdx + $k < count($lines)) {
+                        $origLookAhead = $lines[$lineIdx + $k];
+                        $lookAheadClean = trim((string) preg_replace('/[^\d]/u', '', $origLookAhead));
+                        if ($lookAheadClean !== '' && is_numeric($lookAheadClean) && (int)$lookAheadClean > 0 && (int)$lookAheadClean < 1000) {
+                            $alphaCount = preg_match_all('/[a-zA-Z]/', $origLookAhead);
+                            if ($alphaCount < 3) {
+                                $qty = (int)$lookAheadClean;
+                                $lineIdx += $k; // consume the noise lines + number
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if ($qty === null) {
+                // Fallback: individual tokens right -> left
                 for ($i = count($tokens) - 1; $i >= count($tokens) - $maxSearch; $i--) {
                     if ($this->looksLikeDate($tokens[$i])) continue;
                     $candidate = $this->tryParseQuantity($tokens[$i]);
@@ -1689,7 +1710,8 @@ class DocumentController extends Controller
             $title = preg_replace('/\b(\w+)\s+\1\b/i', '$1', $title);
             $title = trim($title, ',.:;+- ');
 
-            if (!$ref || in_array(strtolower($ref), $refBlacklist)) continue;
+            if ($ref && in_array(strtolower($ref), $refBlacklist)) continue;
+            if (!$ref) $ref = 'REF-' . strtoupper(substr(md5($title), 0, 6)); // Generate fallback reference
             if (strlen($ref) < 3 && strlen($title) < 3) continue;
             if (preg_match('/@|gmail|yahoo|hotmail/i', $title)) continue;
             if (!$this->isLikelyValidTitle($title)) continue;
@@ -1861,7 +1883,7 @@ class DocumentController extends Controller
         foreach (explode("\n", $text) as $line) {
             $lower = strtolower(trim($line));
             if (str_contains($lower, 'contact') || str_contains($lower, 'email') || str_contains($lower, 'mail')) {
-                // Match pattern like "contacttechpro.tn" â†’ try inserting @ before the domain
+                // Match pattern like "contacttechpro.tn" a†' try inserting @ before the domain
                 if (preg_match('/\b([a-z0-9._%+\-]+)([a-z0-9\-]+\.[a-z]{2,})\b/i', $line, $m2)) {
                     $candidate = $m2[1] . '@' . $m2[2];
                     if (filter_var($candidate, FILTER_VALIDATE_EMAIL)) {

@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Décision Mouvement de Stock - {{ $movement->reference }}</title>
+    <title>Decision Mouvement de Stock - {{ $movement->reference }}</title>
     <style>
         body { font-family: sans-serif; font-size: 14px; color: #333; }
         .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 10px; }
@@ -21,7 +21,7 @@
 </head>
 <body>
 
-    {{-- ===== EN-TÊTE ===== --}}
+    {{-- ===== EN-TETE ===== --}}
     <div class="header">
         <table style="border: none; width: 100%;">
             <tr>
@@ -44,14 +44,14 @@
             $isApproved = $movement->status === 'approved' || $movement->status === 'executed';
             $isRejected = $movement->status === 'cancelled';
             $titleColor = $isApproved ? '#16a34a' : ($isRejected ? '#dc2626' : '#004a99');
-            $titleText  = $isApproved ? 'BON DE MOUVEMENT APPROUVÉ' : ($isRejected ? 'BON DE MOUVEMENT REJETÉ' : 'DÉCISION DE MOUVEMENT');
+            $titleText  = $isApproved ? 'BON DE MOUVEMENT APPROUVE' : ($isRejected ? 'BON DE MOUVEMENT REJETE' : 'DECISION DE MOUVEMENT');
         @endphp
 
         <h1 style="margin-top: 20px; color: {{ $titleColor }}; text-transform: uppercase; font-size: 22px;">
             {{ $titleText }}
         </h1>
-        <p style="font-size: 16px; font-weight: bold;">Référence: {{ $movement->reference }}</p>
-        <p>Date de la décision: {{ now()->format('d/m/Y H:i') }}</p>
+        <p style="font-size: 16px; font-weight: bold;">Reference: {{ $movement->reference }}</p>
+        <p>Date de la decision: {{ now()->format('d/m/Y H:i') }}</p>
 
         @if($isRejected && $movement->response_notes)
             <div class="refus-box">
@@ -69,10 +69,10 @@
     {{-- ===== INFORMATIONS ACTEURS ===== --}}
     <div class="section">
         <div class="section-title">Informations du Flux</div>
-        <p><strong>Agent Émetteur :</strong> {{ $movement->creator->nomprenom ?? $movement->creator->name ?? 'Non spécifié' }}</p>
-        <p><strong>Responsable Validation :</strong> {{ $movement->validator->nomprenom ?? $movement->validator->name ?? 'Non spécifié' }}</p>
+        <p><strong>Agent Emetteur :</strong> {{ $movement->creator->nomprenom ?? $movement->creator->name ?? 'Non specifie' }}</p>
+        <p><strong>Responsable Validation :</strong> {{ $movement->validator->nomprenom ?? $movement->validator->name ?? 'Non specifie' }}</p>
         <p><strong>Type de mouvement :</strong>
-            @if($movement->movement_type === 'in') Entrée
+            @if($movement->movement_type === 'in') Entree
             @elseif($movement->movement_type === 'out') Sortie
             @elseif($movement->movement_type === 'transfer') Transfert
             @else {{ $movement->movement_type }}
@@ -90,8 +90,8 @@
             <thead>
                 <tr>
                     <th>Produit</th>
-                    <th>Référence</th>
-                    <th>Quantité</th>
+                    <th>Reference</th>
+                    <th>Quantite</th>
                 </tr>
             </thead>
             <tbody>
@@ -109,7 +109,7 @@
 
 
     <div class="footer">
-        <p>Document généré automatiquement le {{ date('d/m/Y H:i') }}</p>
+        <p>Document genere automatiquement le {{ date('d/m/Y H:i') }}</p>
     </div>
 
 </body>

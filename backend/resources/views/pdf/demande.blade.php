@@ -17,7 +17,7 @@
         <thead>
             <tr>
                 <th>Produit</th>
-                <th>Quantité</th>
+                <th>Quantite</th>
             </tr>
         </thead>
         <tbody>

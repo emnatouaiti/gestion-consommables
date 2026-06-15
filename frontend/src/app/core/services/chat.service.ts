@@ -1,5 +1,6 @@
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
+import { Observable, timer } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { ApiService } from './api.service';
 
 @Injectable({ providedIn: 'root' })
@@ -31,10 +32,14 @@ export class ChatService {
   }
 
   pollConversations(periodMs = 5000): Observable<any[]> {
-    return this.conversations();
+    return timer(0, periodMs).pipe(
+      switchMap(() => this.conversations())
+    );
   }
 
   pollMessages(userId: number, periodMs = 5000): Observable<any[]> {
-    return this.messages(userId);
+    return timer(0, periodMs).pipe(
+      switchMap(() => this.messages(userId))
+    );
   }
 }

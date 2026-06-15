@@ -1,18 +1,18 @@
 <div class="documents-page">
 
-  <!-- ══════════════════════════════════════════════════════════
-       EN-TÊTE
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       EN-TETE
+  ========================================================== -->
   <div class="page-header">
     <div class="page-title">
       <h2>Documents OCR</h2>
-      <p class="page-subtitle">Importez et gérez vos documents avec extraction automatique</p>
+      <p class="page-subtitle">Importez et gerez vos documents avec extraction automatique</p>
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
+  <!-- ==========================================================
        STATS RAPIDES
-  ══════════════════════════════════════════════════════════ -->
+  ========================================================== -->
   <div class="stats-row">
     <div class="stat-card">
       <div class="stat-icon total">
@@ -60,16 +60,16 @@
       </div>
       <div class="stat-body">
         <span class="stat-value applied">{{ countByStatus('applied') }}</span>
-        <span class="stat-label">Appliqués</span>
+        <span class="stat-label">Appliques</span>
       </div>
     </div>
 
   </div>
 
 
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL — Création fournisseur
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       MODAL - Creation fournisseur
+  ========================================================== -->
   <div class="modal-backdrop" *ngIf="supplierConfirmation" (click)="cancelSupplierCreation()">
     <div class="modal-panel" (click)="$event.stopPropagation()">
       <div class="modal-panel-header">
@@ -77,7 +77,7 @@
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
           <circle cx="12" cy="7" r="4"/>
         </svg>
-        <h3>Création fournisseur nécessaire</h3>
+        <h3>Creation fournisseur necessaire</h3>
       </div>
       <p *ngIf="supplierConfirmation.suggested.name || supplierConfirmation.suggested.email">
         Fournisseur propose :
@@ -123,16 +123,16 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL — Création de produit requise
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       MODAL - Creation de produit requise
+  ========================================================== -->
   <div class="modal-backdrop" *ngIf="productConfirmation" (click)="cancelProductCreation()">
     <div class="modal-panel wide" (click)="$event.stopPropagation()">
       <div class="modal-panel-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-        <h3>Création de produit requise</h3>
+        <h3>Creation de produit requise</h3>
       </div>
-      <p style="margin: -6px 0 0; font-size: 13.5px; color: var(--text-mid);">Renseignez les détails manquants pour les nouveaux produits.</p>
+      <p style="margin: -6px 0 0; font-size: 13.5px; color: var(--text-mid);">Renseignez les details manquants pour les nouveaux produits.</p>
 
       <div style="flex: 1; overflow-y: auto; padding-right: 4px; display: flex; flex-direction: column; gap: 20px;">
         <div *ngFor="let s of productConfirmation.suggestedProducts; let i = index" style="padding: 20px; border: 1.5px solid var(--border); border-radius: var(--radius-md); background: #fafafa;">
@@ -147,9 +147,9 @@
               <input type="text" [(ngModel)]="s.title" placeholder="Nom du produit" />
             </div>
             <div class="field">
-              <label>Catégorie *</label>
+              <label>Categorie *</label>
               <select [(ngModel)]="s.category_id">
-                <option [ngValue]="null">Sélectionner...</option>
+                <option [ngValue]="null">Selectionner...</option>
                 <option *ngFor="let c of flatCategories" [ngValue]="c.id">{{ c.displayTitle }}</option>
               </select>
             </div>
@@ -165,9 +165,9 @@
               <input type="number" min="0" [(ngModel)]="s.seuil_max" placeholder="0" />
             </div>
             <div class="field">
-              <label>Unité</label>
+              <label>Unite</label>
               <select [(ngModel)]="s.unit_id">
-                <option [ngValue]="null">Sélectionner...</option>
+                <option [ngValue]="null">Selectionner...</option>
                 <option *ngFor="let u of units" [ngValue]="u.id">{{ u.name }}<span *ngIf="u.code"> ({{ u.code }})</span></option>
               </select>
             </div>
@@ -177,7 +177,7 @@
             <div class="field full">
               <label class="checkbox-label" style="margin-top:10px;">
                 <input type="checkbox" [(ngModel)]="s.has_expiration" style="margin-right:8px; width:auto;" />
-                <span>Gérer les dates et lots (Expiration)</span>
+                <span>Gerer les dates et lots (Expiration)</span>
               </label>
             </div>
           </div>
@@ -186,14 +186,14 @@
             <div class="field">
               <label>Marque</label>
               <select [(ngModel)]="s.marque_id" (ngModelChange)="onMarqueSelect(s)">
-                <option [ngValue]="null">Sélectionner...</option>
+                <option [ngValue]="null">Selectionner...</option>
                 <option *ngFor="let b of brands" [ngValue]="b.id">{{ b.name }}</option>
               </select>
             </div>
             <div class="field">
-              <label>Modèle</label>
+              <label>Modele</label>
               <select [(ngModel)]="s.model">
-                <option value="">Sélectionner...</option>
+                <option value="">Selectionner...</option>
                 <option *ngFor="let m of s.modelsList" [value]="m.name">{{ m.name }}</option>
               </select>
             </div>
@@ -201,20 +201,20 @@
 
           <div class="form-row">
             <div class="field">
-              <label>N° Série</label>
+              <label>N deg Serie</label>
               <input type="text" [(ngModel)]="s.num_serie" placeholder="SN..." />
             </div>
           </div>
 
           <div class="form-row">
             <div class="field">
-              <label>N° Inventaire</label>
+              <label>N deg Inventaire</label>
               <input type="text" placeholder="Auto..." [disabled]="true" />
             </div>
             <div class="field">
               <label>Fournisseur</label>
               <select [(ngModel)]="s.supplier_id">
-                <option [ngValue]="null">Sélectionner...</option>
+                <option [ngValue]="null">Selectionner...</option>
                 <option *ngFor="let sup of suppliers" [ngValue]="sup.id">{{ sup.name }}</option>
               </select>
             </div>
@@ -225,15 +225,15 @@
               <label>Description</label>
               <button type="button" class="btn secondary" style="padding:4px 8px; font-size:11px;"
                       (click)="generateDescriptions(s)" [disabled]="!s.title">
-                Générer auto
+                Generer auto
               </button>
             </div>
-            <textarea [(ngModel)]="s.description" placeholder="Description détaillée..." rows="3" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
+            <textarea [(ngModel)]="s.description" placeholder="Description detaillee..." rows="3" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
           </div>
 
           <div class="field">
             <label>Description courte</label>
-            <textarea [(ngModel)]="s.short_description" placeholder="Résumé court..." rows="2" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
+            <textarea [(ngModel)]="s.short_description" placeholder="Resume court..." rows="2" style="width:100%; border:1px solid var(--border); border-radius:var(--radius-sm); padding:8px;"></textarea>
           </div>
 
           <div class="field" style="margin-top:12px;">
@@ -245,16 +245,16 @@
 
       <div class="modal-actions" style="margin-top: 10px; border-top: 1px solid var(--border); padding-top: 15px;">
         <button class="btn primary" (click)="confirmProductCreation()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Valider la création
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Valider la creation
         </button>
         <button class="btn ghost" (click)="cancelProductCreation()">Annuler</button>
       </div>
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       MODAL — Confirmation des emplacements
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       MODAL - Confirmation des emplacements
+  ========================================================== -->
   <div class="modal-backdrop" *ngIf="locationConfirmation" (click)="cancelLocationConfirmation()">
     <div class="modal-panel" (click)="$event.stopPropagation()">
       <div class="modal-panel-header">
@@ -263,7 +263,7 @@
       </div>
       
       <div class="location-progress" style="margin-top:5px;">
-        <span class="progress-step">Élément {{ locationStepIndex + 1 }}</span>
+        <span class="progress-step">Element {{ locationStepIndex + 1 }}</span>
         <span class="progress-sep">/</span>
         <span class="progress-total">{{ locationConfirmation.items.length }}</span>
         <div class="progress-bar-wrap">
@@ -274,23 +274,23 @@
       <div *ngIf="currentLocationItem() as item" class="location-item" style="margin-top: 16px;">
         <div class="location-title">
           <h4 style="margin:0;">{{ item.title }}</h4>
-          <span class="qty-badge" style="background:#f1f5f9; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">Qté: {{ item.quantity }}</span>
+          <span class="qty-badge" style="background:#f1f5f9; padding:4px 8px; border-radius:4px; font-size:12px; font-weight:bold;">Qte: {{ item.quantity }}</span>
         </div>
         
         <div class="location-grid">
           <div class="field">
-            <label>Dépôt</label>
+            <label>Depot</label>
             <select [(ngModel)]="item.warehouse_id" (ngModelChange)="onWarehouseSelected(item)" [disabled]="item.depot_locked" [class.locked-select]="item.depot_locked">
-              <option [ngValue]="null">Sélectionner un dépôt</option>
+              <option [ngValue]="null">Selectionner un depot</option>
               <option *ngFor="let w of warehouses" [ngValue]="w.id">{{ w.name }}</option>
             </select>
-            <small *ngIf="item.depot_locked" class="locked-hint">Dépôt verrouillé selon profil.</small>
+            <small *ngIf="item.depot_locked" class="locked-hint">Depot verrouille selon profil.</small>
           </div>
 
           <div class="field">
             <label>Salle</label>
             <select [(ngModel)]="item.room_id" (ngModelChange)="onRoomSelected(item)">
-              <option [ngValue]="null">Sélectionner une salle</option>
+              <option [ngValue]="null">Selectionner une salle</option>
               <option *ngFor="let r of item.rooms" [ngValue]="r.id">{{ r.name }}</option>
             </select>
           </div>
@@ -331,14 +331,14 @@
           </div>
 
           <div class="field full" *ngIf="item.has_expiration">
-            <label>Numéro de lot (Optionnel)</label>
+            <label>Numero de lot (Optionnel)</label>
             <input type="text" [(ngModel)]="item.batch_number" placeholder="Ex: LOT-2026-A" />
           </div>
         </div>
       </div>
 
       <div class="modal-actions" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
-        <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">Précédent</button>
+        <button class="btn secondary" (click)="previousLocationStep()" [disabled]="locationStepIndex === 0">Precedent</button>
         <button class="btn primary" (click)="nextLocationStep()" [disabled]="!canGoNextLocation()">
           <span *ngIf="locationStepIndex < locationConfirmation.items.length - 1">Suivant</span>
           <span *ngIf="locationStepIndex >= locationConfirmation.items.length - 1">Valider</span>
@@ -348,9 +348,9 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       CARD — Importer un document
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       CARD - Importer un document
+  ========================================================== -->
   <div class="card upload-card">
     <h3>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -371,7 +371,7 @@
             <polyline points="17 8 12 3 7 8"/>
             <line x1="12" y1="3" x2="12" y2="15"/>
           </svg>
-          <span *ngIf="!file">Cliquez ou déposez votre fichier ici</span>
+          <span *ngIf="!file">Cliquez ou deposez votre fichier ici</span>
           <span *ngIf="file" class="file-name">{{ file.name }}</span>
         </label>
       </div>
@@ -391,7 +391,7 @@
       <label>Direction</label>
       <select [(ngModel)]="direction">
         <option value="unknown">Inconnue</option>
-        <option value="in">Entrée</option>
+        <option value="in">Entree</option>
         <option value="out">Sortie</option>
       </select>
     </div>
@@ -422,9 +422,9 @@
     </div>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       CARD — Liste des documents
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ==========================================================
+       CARD - Liste des documents
+  ========================================================== -->
   <div class="card">
     <h3>
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -435,7 +435,7 @@
         <circle cx="4" cy="12" r="1"/>
         <circle cx="4" cy="18" r="1"/>
       </svg>
-      Documents importés
+      Documents importes
       <span class="h3-badge" *ngIf="filteredDocuments.length !== documents.length">
         {{ filteredDocuments.length }} / {{ documents.length }}
       </span>
@@ -459,7 +459,7 @@
       <button class="btn ghost sm" (click)="clearFilters()">Tout effacer</button>
     </div>
 
-    <!-- Sélecteur de type -->
+    <!-- Selecteur de type -->
     
 
     <div *ngIf="isLoading" class="loading">Chargement...</div>
@@ -468,12 +468,12 @@
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
         <polyline points="14 2 14 8 20 8"/>
       </svg>
-      <p>{{ statusFilter || directionFilter ? 'Aucun document pour ce filtre.' : 'Aucun document importé.' }}</p>
+      <p>{{ statusFilter || directionFilter ? 'Aucun document pour ce filtre.' : 'Aucun document importe.' }}</p>
     </div>
 
     <ng-container *ngIf="!isLoading && filteredDocuments.length > 0">
 
-      <!-- Contrôles de pagination (haut) -->
+      <!-- Controles de pagination (haut) -->
       <div class="pagination-controls">
         <div class="per-page-selector">
           <span>Afficher</span>
@@ -484,29 +484,29 @@
           <span>par page</span>
         </div>
         <div class="pagination-info">
-          {{ (currentPage - 1) * pageSize + 1 }}–{{ min(currentPage * pageSize, filteredDocuments.length) }}
+          {{ (currentPage - 1) * pageSize + 1 }}-{{ min(currentPage * pageSize, filteredDocuments.length) }}
           sur {{ filteredDocuments.length }} document{{ filteredDocuments.length > 1 ? 's' : '' }}
         </div>
       </div>
 
-      <!-- Liste paginée -->
+      <!-- Liste paginee -->
       <div class="documents-list">
         <div *ngFor="let d of paginatedDocuments" class="document-item" [class.expanded]="expandedDocId === d.id">
 
-          <!-- En-tête cliquable -->
+          <!-- En-tete cliquable -->
           <div class="document-header" (click)="toggleExpanded(d.id)">
             <div class="doc-info">
-              <strong>#{{ d.id }} — {{ d.title || d.path }}</strong>
+              <strong>#{{ d.id }} - {{ d.title || d.path }}</strong>
               <span class="type" *ngIf="d.type">{{ d.type }}</span>
               <span class="status" [class]="d.status">
-                {{ d.status === 'pending_validation' ? 'Validation en attente' : (d.status === 'applied' ? 'Appliqué' : d.status) }}
+                {{ d.status === 'pending_validation' ? 'Validation en attente' : (d.status === 'applied' ? 'Applique' : d.status) }}
               </span>
               <span class="type">Fournisseur: {{ d.supplier?.name || 'Non associe' }}</span>
             </div>
             <div class="ocr-count">
               <strong>{{ d.ocr_lines?.length || 0 }}</strong> ligne(s)
             </div>
-            <button class="expand-btn" [attr.aria-label]="expandedDocId === d.id ? 'Réduire' : 'Développer'">
+            <button class="expand-btn" [attr.aria-label]="expandedDocId === d.id ? 'Reduire' : 'Developper'">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
                 [style.transform]="expandedDocId === d.id ? 'rotate(90deg)' : 'rotate(0)'"
                 style="transition: transform .2s">
@@ -515,7 +515,7 @@
             </button>
           </div>
 
-          <!-- Détails (expanded) -->
+          <!-- Details (expanded) -->
           <div *ngIf="expandedDocId === d.id" class="document-details">
 
             <!-- Section OCR -->
@@ -531,7 +531,7 @@
                 </h4>
                 <div class="buttons">
                   <button class="btn secondary sm" (click)="toggleEditLines(d.id)">
-                    {{ showEditLines === d.id ? 'Masquer' : 'Éditer' }}
+                    {{ showEditLines === d.id ? 'Masquer' : 'Editer' }}
                   </button>
                   <button class="btn secondary sm" (click)="runDiagnostic(d)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -543,14 +543,14 @@
                 </div>
               </div>
 
-              <!-- Mode édition -->
+              <!-- Mode edition -->
               <div *ngIf="showEditLines === d.id" class="edit-mode">
                 <table class="edit-table">
                   <thead>
                     <tr>
-                      <th>Référence</th>
+                      <th>Reference</th>
                       <th>Titre</th>
-                      <th>Quantité</th>
+                      <th>Quantite</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -582,14 +582,14 @@
               <!-- Mode lecture -->
               <div *ngIf="showEditLines !== d.id" class="view-mode">
                 <div *ngIf="!d.ocr_lines?.length" class="empty-ocr">
-                  Aucune ligne OCR trouvée. Cliquez sur "Diagnostiquer" pour vérifier.
+                  Aucune ligne OCR trouvee. Cliquez sur "Diagnostiquer" pour verifier.
                 </div>
                 <table *ngIf="d.ocr_lines?.length > 0" class="ocr-table">
                   <thead>
                     <tr>
-                      <th>Référence</th>
+                      <th>Reference</th>
                       <th>Titre</th>
-                      <th>Quantité</th>
+                      <th>Quantite</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -626,7 +626,7 @@
                     <polyline points="7 10 12 15 17 10"/>
                     <line x1="12" y1="15" x2="12" y2="3"/>
                   </svg>
-                  Télécharger l'image
+                  Telecharger l'image
                 </button>
               </div>
               <button class="btn primary" (click)="apply(d)"
@@ -635,14 +635,14 @@
                 Appliquer au stock
               </button>
               <span class="applied-badge" *ngIf="d.status === 'applied'">
-                Document appliqué au stock
+                Document applique au stock
               </span>
               <span class="applied-badge pending" *ngIf="d.status === 'pending_validation'" style="background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa;">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                   <circle cx="12" cy="12" r="10"/>
                   <polyline points="12 6 12 12 16 14"/>
                 </svg>
-                Application soumise à validation
+                Application soumise a validation
               </span>
             </div>
             
@@ -654,10 +654,10 @@
 
       <!-- Pagination basse -->
       <div class="pagination-bar" *ngIf="totalPages > 1">
-        <button class="page-btn nav" (click)="goToPage(1)" [disabled]="currentPage === 1" title="Première page">
+        <button class="page-btn nav" (click)="goToPage(1)" [disabled]="currentPage === 1" title="Premiere page">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="11 17 6 12 11 7"/><polyline points="18 17 13 12 18 7"/></svg>
         </button>
-        <button class="page-btn nav" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1" title="Précédent">
+        <button class="page-btn nav" (click)="goToPage(currentPage - 1)" [disabled]="currentPage === 1" title="Precedent">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
 
@@ -673,7 +673,7 @@
         <button class="page-btn nav" (click)="goToPage(currentPage + 1)" [disabled]="currentPage === totalPages" title="Suivant">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <button class="page-btn nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Dernière page">
+        <button class="page-btn nav" (click)="goToPage(totalPages)" [disabled]="currentPage === totalPages" title="Derniere page">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="13 17 18 12 13 7"/><polyline points="6 17 11 12 6 7"/></svg>
         </button>
       </div>

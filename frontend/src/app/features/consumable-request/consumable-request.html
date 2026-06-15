@@ -1,4 +1,4 @@
-﻿<div class="cr-container">
+<div class="cr-container">
 
   <!-- Header -->
   <div class="cr-header">
@@ -39,7 +39,7 @@
   </div>
 
   <!-- Flash message -->
-  <div *ngIf="message" class="cr-alert" [class.cr-alert--error]="message.includes('Erreur')" [class.cr-alert--warning]="message.includes('dépôt')">
+  <div *ngIf="message" class="cr-alert" [class.cr-alert--error]="message.includes('Erreur')" [class.cr-alert--warning]="message.includes('depot')">
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <circle cx="12" cy="12" r="10"/>
       <line x1="12" y1="8" x2="12" y2="12"/>
@@ -59,7 +59,7 @@
       <strong>{{ depotWarningMessage }}</strong>
       <ul style="margin: 4px 0 0 20px; font-size: 13px;">
         <li *ngFor="let warning of depotWarnings">
-          {{ warning.product }} (demandé: {{ warning.requested }}) - disponible dans plusieurs dépôts
+          {{ warning.product }} (demande: {{ warning.requested }}) - disponible dans plusieurs depots
         </li>
       </ul>
     </div>
@@ -208,12 +208,12 @@
           <ng-container *ngIf="viewMode === 'validation'">
             <!-- Pour directeur : seulement les statuts pertinents -->
             <option value="approved_pending_exit">Approuve (Attente sortie)</option>
-            <option value="approved">Livre / Termine</option>
+            
             <option value="rejected">Refuse</option>
             <option value="partiellement_accepte">Partiellement accepte</option>
           </ng-container>
           <ng-container *ngIf="isResponsable">
-            <!-- Pour responsable : seulement Livre/Terminé -->
+            <!-- Pour responsable : seulement Livre/Termine -->
             <option value="approved">Livre / Termine</option>
           </ng-container>
         </select>
@@ -276,13 +276,13 @@
               >Valider tout</button>
 
               <button
-                *ngIf="(r.status === 'pending' || r.status === 'draft') && canEditDeleteOwnRequests"
+                *ngIf="r.status === 'draft' && canEditDeleteOwnRequests"
                 class="cr-btn cr-btn--edit"
                 (click)="openEditRequestModal(r)"
               >Modifier</button>
 
               <button
-                *ngIf="(r.status === 'pending' || r.status === 'draft') && canEditDeleteOwnRequests"
+                *ngIf="r.status === 'draft' && canEditDeleteOwnRequests"
                 class="cr-btn cr-btn--danger-text"
                 (click)="deleteRequest(r.items?.[0]?.id || r.id)"
               >Supprimer</button>
@@ -310,7 +310,7 @@
                   PDF Refuses
                 </button>
               </ng-container>
-              <!-- PDF visible pour tous les autres statuts si pdf_path existe et pas de PDFs séparés -->
+              <!-- PDF visible pour tous les autres statuts si pdf_path existe et pas de PDFs separes -->
               <button *ngIf="r.pdf_path && !r.pdf_path_approved && !r.pdf_path_rejected" class="cr-btn cr-btn--pdf" (click)="downloadPdf(r)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
@@ -386,7 +386,7 @@
         <span class="cr-modal-label">Article a sortir</span>
         <strong style="font-size: 16px; color: var(--e-800);">{{ selectedRequestForExit.item_name }}</strong>
         <span *ngIf="selectedRequestForExit.depot?.name" style="font-size: 13px; color: var(--e-600); font-weight: 500;">
-          Dépôt assigné : {{ selectedRequestForExit.depot.name }}
+          Depot assigne : {{ selectedRequestForExit.depot.name }}
         </span>
       </div>
       <div style="margin-left: auto; text-align: right;">
@@ -543,6 +543,11 @@
       <button class="cr-modal-close" (click)="closeRequestModal()">&times;</button>
     </div>
 
+    <!-- Error message specific to the modal -->
+    <div *ngIf="requestModalErrorMessage" class="cr-alert cr-alert--error" style="margin: 0 20px 15px; border-radius: 6px;">
+      {{ requestModalErrorMessage }}
+    </div>
+
     <form [formGroup]="form" (ngSubmit)="submitRequest()">
       <small *ngIf="loadingProducts" class="cr-loading-small">Chargement des produits...</small>
       <div class="cr-lines">
@@ -615,6 +620,11 @@
     <div class="cr-modal-header">
       <h3>Validation de la demande</h3>
       <button class="cr-modal-close" (click)="closeApproveModal()">&times;</button>
+    </div>
+
+    <!-- Error message specific to the approve modal -->
+    <div *ngIf="approveModalErrorMessage" class="cr-alert cr-alert--error" style="margin: 0 20px 15px; border-radius: 6px;">
+      {{ approveModalErrorMessage }}
     </div>
 
     <!-- CAS LOT : plusieurs produits => approbation produit par produit -->
@@ -711,7 +721,7 @@
         </div>
       </div>
 
-      <!-- Résumé des decisions -->
+      <!-- Resume des decisions -->
       <div style="margin: 12px 20px 0; padding: 10px 14px; background: var(--e-50); border-radius: 6px; font-size: 13px; display: flex; gap: 16px; flex-wrap: wrap;">
         <span style="color: #10b981; font-weight: 600;">
           Approuves : {{ countDecisions('approved') }} / {{ selectedRequestForApproval.items.length }}
@@ -924,3 +934,17 @@
     </div>
   </div>
 </div>
+
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

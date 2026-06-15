@@ -1,10 +1,10 @@
-/* ═══════════════════════════════════════════════════════
-   ETAP LOGIN — Redesign 2026
+/* =======================================================
+   ETAP LOGIN - Redesign 2026
    Aesthetic: Refined dark-left / clean-right enterprise split
    Font stack: Sora (display) + DM Sans (body)
-═══════════════════════════════════════════════════════ */
+======================================================= */
 
-/* ── Tokens ── */
+/* -- Tokens -- */
 :host {
   /* ETAP blue */
   --blue-50:  #e8f1fb;
@@ -39,9 +39,9 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ═══════════════════════════════════════════════════════
-   LAYOUT — Centered card on ambient background
-═══════════════════════════════════════════════════════ */
+/* =======================================================
+   LAYOUT - Centered card on ambient background
+======================================================= */
 :host {
   display: flex;
   align-items: center;
@@ -73,9 +73,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    COLONNE GAUCHE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 .brand-immersion {
   position: relative;
   background: var(--ink);
@@ -86,7 +86,7 @@
   overflow: hidden;
 }
 
-/* ── Background layers ── */
+/* -- Background layers -- */
 .brand-bg { position: absolute; inset: 0; }
 
 .bg-mesh {
@@ -113,7 +113,7 @@
   background: radial-gradient(ellipse at center, transparent 40%, rgba(6,12,22,.6) 100%);
 }
 
-/* ── Content ── */
+/* -- Content -- */
 .brand-stage {
   position: relative;
   z-index: 2;
@@ -202,7 +202,7 @@
   animation: fadeUp .7s var(--ease) .5s both;
 }
 
-/* Badges — supprimés, remplacés par rien */
+/* Badges - supprimes, remplaces par rien */
 .brand-badges { display: none; }
 
 /* Year */
@@ -216,9 +216,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    COLONNE DROITE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 .login-arena {
   background: var(--surface);
   display: flex;
@@ -232,7 +232,7 @@
   max-width: 460px;
 }
 
-/* ── Header ── */
+/* -- Header -- */
 .login-header {
   margin-bottom: 36px;
   animation: fadeUp .6s var(--ease) .2s both;
@@ -267,7 +267,7 @@
   color: var(--muted);
 }
 
-/* ── Form ── */
+/* -- Form -- */
 .login-form {
   animation: fadeUp .6s var(--ease) .35s both;
 }
@@ -362,7 +362,7 @@
   color: var(--error);
 }
 
-/* ── Alert ── */
+/* -- Alert -- */
 .alert-error {
   display: flex;
   align-items: center;
@@ -378,7 +378,7 @@
   animation: alertPop .2s var(--ease) both;
 }
 
-/* ── Buttons ── */
+/* -- Buttons -- */
 .btn-primary {
   width: 100%;
   display: flex;
@@ -496,9 +496,9 @@
 .register-link:hover { color: var(--blue-700); }
 
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    ANIMATIONS
-═══════════════════════════════════════════════════════ */
+======================================================= */
 @keyframes slideLeft {
   from { opacity: 0; transform: translateX(-32px); }
   to   { opacity: 1; transform: translateX(0); }
@@ -539,9 +539,9 @@
 }
 
 
-/* ═══════════════════════════════════════════════════════
+/* =======================================================
    RESPONSIVE
-═══════════════════════════════════════════════════════ */
+======================================================= */
 @media (max-width: 1060px) {
   .login-stage {
     grid-template-columns: 1fr;

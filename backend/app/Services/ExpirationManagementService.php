@@ -11,22 +11,22 @@ use Illuminate\Pagination\Paginator;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 
 /**
- * Service pour gérer le cycle de vie des produits en rapport avec l'expiration
+ * Service pour gerer le cycle de vie des produits en rapport avec l'expiration
  *
- * Responsabilités:
- * - Détecter les produits expirant bientôt (7 jours)
- * - Marquer les produits périmés
- * - Créer les alertes d'expiration
- * - Bloquer la consommation de produits expirés
- * - Auditer les actions sur les produits expirés
+ * Responsabilites:
+ * - Detecter les produits expirant bientot (7 jours)
+ * - Marquer les produits perimes
+ * - Creer les alertes d'expiration
+ * - Bloquer la consommation de produits expires
+ * - Auditer les actions sur les produits expires
  */
 class ExpirationManagementService
 {
     /**
-    * Paramètres de configuration
+    * Parametres de configuration
      */
     private int $alertDaysBefore = 7;  // Alerte 7 jours avant
-    private int $blockDaysAfter = 1;   // Bloquer après 1 jour d'expiration
+    private int $blockDaysAfter = 1;   // Bloquer apres 1 jour d'expiration
 
     public function setAlertDaysBefore(int $days): self
     {
@@ -40,11 +40,11 @@ class ExpirationManagementService
         return $this;
     }
 
-    /* ============ DÉTECTION & ALERTES ============ */
+    /* ============ DETECTION & ALERTES ============ */
 
     /**
-    * Scanner tous les produits et détecter les expirations
-    * À exécuter via un scheduler (cron job)
+    * Scanner tous les produits et detecter les expirations
+    * A executer via un scheduler (cron job)
      */
     public function checkAllExpirations(): array
     {
@@ -81,20 +81,20 @@ class ExpirationManagementService
     }
 
     /**
-    * Vérifier le statut d'un stock particulier
+    * Verifier le statut d'un stock particulier
      */
     public function checkExpirationStatus(ProductStock $stock): void
     {
         $expirationDate = $stock->expiration_date;
         $today = Carbon::now()->startOfDay();
 
-        // Déjà expiré - créer événement et bloquer
+        // Deja expire - creer evenement et bloquer
         if ($expirationDate < $today) {
             if ($stock->batch_status !== 'expired') {
-                $this->markAsExpired($stock, 'Période expiration dépassée');
+                $this->markAsExpired($stock, 'Periode expiration depassee');
             }
         }
-        // Expiration très bientôt (7 jours) - alerte
+        // Expiration tres bientot (7 jours) - alerte
         elseif ($expirationDate <= $today->addDays($this->alertDaysBefore)) {
             $this->createExpirationAlert($stock, 'alert_7days',
                 "{$stock->batch_number}: Expiration dans " . $expirationDate->diffInDays($today) . " jours");
@@ -109,7 +109,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Vérifie si un produit est en train d'expirer (dans 7 jours)
+    * Verifie si un produit est en train d'expirer (dans 7 jours)
      */
     public function isExpiringSoon(?\DateTime $expirationDate, int $daysBefore = null): bool
     {
@@ -125,7 +125,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Vérifie si un produit est expiré
+    * Verifie si un produit est expire
      */
     public function isExpired(?\DateTime $expirationDate): bool
     {
@@ -136,17 +136,17 @@ class ExpirationManagementService
         return Carbon::instance($expirationDate) < Carbon::now();
     }
 
-    /* ============ ACTIONS SUR PRODUITS EXPIRÉS ============ */
+    /* ============ ACTIONS SUR PRODUITS EXPIRES ============ */
 
     /**
-    * Action 1: CRÉER UNE ALERTE (notification)
+    * Action 1: CREER UNE ALERTE (notification)
      */
     public function createExpirationAlert(
         ProductStock $stock,
         string $eventType = 'alert_expired',
         string $details = null
     ): ExpirationEvent {
-        // Chercher si une alerte existe déjà - éviter les doublons
+        // Chercher si une alerte existe deja - eviter les doublons
         $existing = ExpirationEvent::where('product_stock_id', $stock->id)
             ->where('event_type', $eventType)
             ->where('status', 'pending')
@@ -166,10 +166,10 @@ class ExpirationManagementService
             'event_type' => $eventType,
             'status' => 'pending',
                 'action_details' => $details ?? "Alerte automatique pour {$stock->batch_number}",
-            'created_by' => 1, // Système
+            'created_by' => 1, // Systeme
         ]);
 
-        // Dispatcher une notification (à implémenter)
+        // Dispatcher une notification (a implementer)
         // event(new ProductExpirationAlert($event));
 
         return $event;
@@ -177,7 +177,7 @@ class ExpirationManagementService
 
     /**
      * Action 2: BLOQUER LA CONSOMMATION
-    * Les produits expirés ne peuvent plus être consommés
+    * Les produits expires ne peuvent plus etre consommes
      */
     public function blockFromConsumption(ProductStock $stock, string $reason = null): ExpirationEvent
     {
@@ -189,13 +189,13 @@ class ExpirationManagementService
             'quantity_affected' => $stock->quantity,
             'event_type' => 'blocked_from_consumption',
             'status' => 'pending',
-            'action_details' => $reason ?? "Produit expiré - consommation bloquée",
+            'action_details' => $reason ?? "Produit expire - consommation bloquee",
             'created_by' => 1,
         ]);
     }
 
     /**
-    * Action 3: MARQUER COMME EXPIRÉ
+    * Action 3: MARQUER COMME EXPIRE
      * Change le statut du batch et archive
      */
     public function markAsExpired(
@@ -203,13 +203,13 @@ class ExpirationManagementService
         string $reason = null,
         ?int $userId = null
     ): ExpirationEvent {
-        // Mettre à jour le stock
+        // Mettre a jour le stock
         $stock->update([
             'batch_status' => 'expired',
             'last_expiration_check' => now(),
         ]);
 
-        // Créer l'événement dans l'historique
+        // Creer l'evenement dans l'historique
         $event = ExpirationEvent::create([
             'product_id' => $stock->product_id,
             'product_stock_id' => $stock->id,
@@ -217,8 +217,8 @@ class ExpirationManagementService
             'expiration_date' => $stock->expiration_date,
             'quantity_affected' => $stock->quantity,
             'event_type' => 'marked_as_expired',
-            'status' => 'acknowledged', // Auto-acknowledged par le système
-            'action_details' => $reason ?? 'Marqué automatiquement comme expiré',
+            'status' => 'acknowledged', // Auto-acknowledged par le systeme
+            'action_details' => $reason ?? 'Marque automatiquement comme expire',
             'created_by' => $userId ?? 1,
             'acknowledged_by' => $userId ?? 1,
             'acknowledged_at' => now(),
@@ -228,8 +228,8 @@ class ExpirationManagementService
     }
 
     /**
-    * OVERRIDE ADMIN: Consommer un produit expiré (urgence)
-    * Nécessite l'autorisation d'un admin
+    * OVERRIDE ADMIN: Consommer un produit expire (urgence)
+    * Necessite l'autorisation d'un admin
      */
     public function forceConsumeExpired(
         ProductStock $stock,
@@ -237,8 +237,8 @@ class ExpirationManagementService
         int $userId,
         string $justification
     ): ExpirationEvent {
-        // La vérification des droits est faite au niveau du middleware de routes
-        // Réduire le stock
+        // La verification des droits est faite au niveau du middleware de routes
+        // Reduire le stock
         $stock->update([
             'quantity' => max(0, $stock->quantity - $quantity),
         ]);
@@ -252,7 +252,7 @@ class ExpirationManagementService
             'quantity_affected' => $quantity,
             'event_type' => 'consumed_expired',
             'status' => 'acknowledged',
-            'action_details' => "Consommation forcée par admin - Justification: {$justification}",
+            'action_details' => "Consommation forcee par admin - Justification: {$justification}",
             'created_by' => $userId,
             'acknowledged_by' => $userId,
             'acknowledged_at' => now(),
@@ -260,7 +260,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Éliminer un lot expiré ou endommagé
+    * Eliminer un lot expire ou endommage
      */
     public function eliminateBatch(
         ProductStock $stock,
@@ -269,7 +269,7 @@ class ExpirationManagementService
     ): ExpirationEvent {
         $quantity = $stock->quantity;
 
-        // Vider le stock et mettre à jour le statut
+        // Vider le stock et mettre a jour le statut
         $stock->update([
             'quantity' => 0,
             'batch_status' => 'eliminated',
@@ -283,7 +283,7 @@ class ExpirationManagementService
             'quantity_affected' => $quantity,
             'event_type' => 'eliminated_batch',
             'status' => 'acknowledged',
-            'action_details' => "Lot éliminé - Justification: {$justification}",
+            'action_details' => "Lot elimine - Justification: {$justification}",
             'created_by' => $userId,
             'acknowledged_by' => $userId,
             'acknowledged_at' => now(),
@@ -300,7 +300,7 @@ class ExpirationManagementService
     ): ExpirationEvent {
         $quantity = $stock->quantity;
 
-        // Vider le stock et mettre à jour le statut
+        // Vider le stock et mettre a jour le statut
         $stock->update([
             'quantity' => 0,
             'batch_status' => 'returned_to_supplier',
@@ -321,10 +321,10 @@ class ExpirationManagementService
         ]);
     }
 
-    /* ============ REQUÊTES & RAPPORTS ============ */
+    /* ============ REQUETES & RAPPORTS ============ */
 
     /**
-    * Obtenir tous les produits expirés
+    * Obtenir tous les produits expires
      */
     public function getExpiredProducts(int $perPage = 15): LengthAwarePaginator
     {
@@ -335,7 +335,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Obtenir les produits expirant bientôt (7 jours)
+    * Obtenir les produits expirant bientot (7 jours)
      */
     public function getExpiringProducts(int $daysBefore = 7): Collection
     {
@@ -354,7 +354,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Obtenir les alertes non traitées
+    * Obtenir les alertes non traitees
      */
     public function getPendingAlerts(int $perPage = 15): LengthAwarePaginator
     {
@@ -375,7 +375,7 @@ class ExpirationManagementService
     }
 
     /**
-    * Vérifier si un produit peut être consommé
+    * Verifier si un produit peut etre consomme
      */
     public function canBeConsumed(ProductStock $stock): bool
     {
@@ -384,12 +384,12 @@ class ExpirationManagementService
             return true;
         }
 
-        // Si expiré = ne peut pas être consommé
+        // Si expire = ne peut pas etre consomme
         if ($this->isExpired($stock->expiration_date)) {
             return false;
         }
 
-        // Si expiration_date est valide = peut être consommé
+        // Si expiration_date est valide = peut etre consomme
         return true;
     }
 
@@ -404,7 +404,7 @@ class ExpirationManagementService
 
         if ($this->isExpired($stock->expiration_date)) {
             $daysOverdue = abs($stock->expiration_date->diffInDays(Carbon::now()));
-            return " EXPIRÉ depuis {$daysOverdue} jour(s)";
+            return " EXPIRE depuis {$daysOverdue} jour(s)";
         }
 
         if ($this->isExpiringSoon($stock->expiration_date)) {
@@ -416,8 +416,8 @@ class ExpirationManagementService
     }
 
     /**
-    * Nettoyer les données obsolètes
-    * À exécuter mensuellement
+    * Nettoyer les donnees obsoletes
+    * A executer mensuellement
      */
     public function cleanupOldEvents(int $monthsOld = 12): int
     {

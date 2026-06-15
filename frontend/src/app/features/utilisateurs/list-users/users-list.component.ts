@@ -13,7 +13,7 @@ import { ApiService } from '../../../core/services/api.service';
   providers: [AdminUsersService]
 })
 export class UsersListComponent implements OnInit {
-  // Liste des utilisateurs et gestion des rôles
+  // Liste des utilisateurs et gestion des roles
   users: any[] = [];
   q: string = '';
   isLoading = false;
@@ -84,6 +84,16 @@ export class UsersListComponent implements OnInit {
   avatarModalUrl = '';
   avatarModalName = '';
 
+  // Confirm modal
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
   private readonly apiBase = '/api';
 
   constructor(
@@ -133,7 +143,7 @@ export class UsersListComponent implements OnInit {
       this.depots = warehouses.filter((w: any) => !w.kind || w.kind === 'depot');
       this.cdr.detectChanges();
     } catch (err: any) {
-      console.error('Erreur chargement dépôts:', err);
+      console.error('Erreur chargement depots:', err);
     }
   }
 
@@ -173,7 +183,7 @@ export class UsersListComponent implements OnInit {
   }
 
   updateFieldVisibility(): void {
-    // La logique d'affichage est gérée dans le template avec les helpers
+    // La logique d'affichage est geree dans le template avec les helpers
   }
 
   photoUrl(path: string | null | undefined): string {
@@ -301,13 +311,13 @@ export class UsersListComponent implements OnInit {
   }
 
   get displayedUsers(): any[] {
-    // Récupérer le rôle de l'utilisateur connecté
+    // Recuperer le role de l'utilisateur connecte
     const currentUser: any = this.getCurrentUser();
     const userRole = currentUser?.role || '';
     const userSiege = currentUser?.siege || '';
 
     return this.users.filter((u) => {
-      // Pour les Administrateurs et Directeurs : ne montrer que les users de son siège
+      // Pour les Administrateurs et Directeurs : ne montrer que les users de son siege
       if (this.isDirecteurRestricted) {
         const userSiege = this.currentUserSiege;
         const isStorageRole = this.isStorageRole(u.role);
@@ -316,7 +326,7 @@ export class UsersListComponent implements OnInit {
           return false;
         }
         
-        // Exclure les autres de même niveau (un siège n'a qu'un seul responsable de ce type)
+        // Exclure les autres de meme niveau (un siege n'a qu'un seul responsable de ce type)
         if (!isStorageRole && (u.role === 'Administrateur' || u.role === 'Directeur') && u.id !== currentUser?.id) {
           return false;
         }
@@ -378,7 +388,7 @@ export class UsersListComponent implements OnInit {
   }
 
   private ensureRoleMatchesService(): void {
-    // Tous les rôles sont permis
+    // Tous les roles sont permis
   }
 
 
@@ -386,25 +396,59 @@ export class UsersListComponent implements OnInit {
   save(): void {
     if (this.isSaving) return;
 
-    if (!this.form.nomprenom || !this.form.email || !this.form.roles) {
-      this.errorMessage = 'Nom, email et role sont obligatoires.';
+    // --- Validations detaillees cote client ---
+    if (!this.form.nomprenom || !this.form.nomprenom.trim()) {
+      this.errorMessage = 'Le nom est obligatoire.';
+      return;
+    }
+
+    // Nom : uniquement lettres, espaces, tirets, apostrophes
+    const nameRegex = /^[a-zA-ZA-ÿ\s\-']+$/;
+    if (!nameRegex.test(this.form.nomprenom.trim())) {
+      this.errorMessage = 'Le nom ne doit contenir que des lettres, espaces, tirets ou apostrophes (pas de chiffres).';
+      return;
+    }
+
+    if (!this.form.email || !this.form.email.trim()) {
+      this.errorMessage = 'L\'email est obligatoire.';
+      return;
+    }
+
+    // Email : format valide
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.form.email.trim())) {
+      this.errorMessage = 'Le format de l\'email est invalide (ex: nom@domaine.com).';
+      return;
+    }
+
+    // Telephone : si renseigne, doit etre 8-15 chiffres avec optionnel +
+    if (this.form.telephone && this.form.telephone.trim()) {
+      const phoneRegex = /^\+?[0-9\s]{8,15}$/;
+      if (!phoneRegex.test(this.form.telephone.trim())) {
+        this.errorMessage = 'Le numero de telephone est invalide (8 a 15 chiffres, ex: +216 XX XXX XXX).';
+        return;
+      }
+    }
+
+    if (!this.form.roles) {
+      this.errorMessage = 'Le role est obligatoire.';
       return;
     }
 
     // Pour Responsable/Agent, depot_id est obligatoire
     const needsDepot = this.isStorageRole(this.form.roles);
     if (needsDepot && !this.form.depot_id) {
-      this.errorMessage = 'Le dépôt est obligatoire pour les responsables et agents.';
+      this.errorMessage = 'Le depot est obligatoire pour les responsables et agents.';
       return;
     }
 
     // Pour Administrateur, siege est obligatoire
     if (this.form.roles === 'Administrateur' && !this.form.siege) {
-      this.errorMessage = 'Le siège est obligatoire pour les administrateurs.';
+      this.errorMessage = 'Le siege est obligatoire pour les administrateurs.';
       return;
     }
 
-    // Vérifier qu'il n'y a qu'un seul admin par siège
+    // Verifier qu'il n'y a qu'un seul admin par siege
     if (this.form.roles === 'Administrateur' && this.form.siege) {
       const existingAdmin = this.users.find(u =>
         u.role === 'Administrateur' &&
@@ -412,7 +456,7 @@ export class UsersListComponent implements OnInit {
         u.id !== this.editingId
       );
       if (existingAdmin) {
-        this.errorMessage = `Un administrateur existe déjà pour le siège ${this.form.siege}.`;
+        this.errorMessage = `Un administrateur existe deja pour le siege "${this.form.siege.replace(/_/g, ' ')}". Chaque siege ne peut avoir qu'un seul administrateur.`;
         return;
       }
     }
@@ -446,7 +490,34 @@ export class UsersListComponent implements OnInit {
       },
       error: (err: any) => {
         this.isSaving = false;
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        // Extraire les messages d'erreur detailles du backend (422)
+        const payload = err?.error ?? err;
+        // Le backend peut renvoyer {errors: {field: [msgs]}} ou directement {field: [msgs]}
+        const errors = payload?.errors ?? (err?.status === 422 ? payload : null);
+        if (errors && typeof errors === 'object' && !Array.isArray(errors)) {
+          const fieldLabels: Record<string, string> = {
+            nomprenom: 'Nom',
+            email: 'Email',
+            telephone: 'Telephone',
+            siege: 'Siege',
+            service: 'Service',
+            poste: 'Poste',
+            roles: 'Role',
+            depot_id: 'Depot',
+            adresse: 'Adresse'
+          };
+          const messages: string[] = [];
+          Object.entries(errors).forEach(([field, msgs]: [string, any]) => {
+            const fieldMessages = Array.isArray(msgs) ? msgs : [String(msgs)];
+            fieldMessages.forEach((msg: string) => {
+              // Si le message contient deja du texte descriptif, l'utiliser tel quel
+              messages.push(msg);
+            });
+          });
+          this.errorMessage = messages.join(' | ') || 'Erreur de validation.';
+        } else {
+          this.errorMessage = payload?.message || this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        }
         this.cdr.detectChanges();
       }
     });
@@ -464,24 +535,51 @@ export class UsersListComponent implements OnInit {
   remove(id: any, user?: any): void {
     // Check if user is an Admin
     if (user && !this.canDelete(user)) {
-      this.errorMessage = 'Les administrateurs ne peuvent pas être archivés.';
+      this.errorMessage = 'Les administrateurs ne peuvent pas etre archives.';
       this.cdr.detectChanges();
       return;
     }
 
-    if (!confirm('Archiver cet utilisateur ?')) return;
-
-    this.usersService.delete(id).subscribe({
-      next: () => {
-        this.successMessage = 'Utilisateur archive !';
-        this.load();
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Archiver l\'utilisateur',
+      'Etes-vous sur de vouloir archiver cet utilisateur ? Il pourra etre restaure depuis les archives.',
+      () => {
+        this.usersService.delete(id).subscribe({
+          next: () => {
+            this.successMessage = 'Utilisateur archive !';
+            this.load();
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err: any) => {
+            this.errorMessage = this.api.extractErrorMessage(err, "Impossible d'archiver cet utilisateur.");
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err: any) => {
-        this.errorMessage = this.api.extractErrorMessage(err, "Impossible d'archiver cet utilisateur.");
-        this.cdr.detectChanges();
-      }
-    });
+      'warning',
+      'Archiver'
+    );
+  }
+
+  /* --- Confirm Modal helpers --- */
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
   }
 
   resetFilters(): void {

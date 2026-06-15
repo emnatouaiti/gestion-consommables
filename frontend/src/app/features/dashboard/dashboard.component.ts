@@ -49,7 +49,7 @@ export class DashboardComponent implements OnInit {
     movementsTrend: 0
   };
 
-  // Filtres de période
+  // Filtres de periode
   selectedPeriod: string = '7days';
   periodOptions = [
     { value: '7days', label: '7 derniers jours' },
@@ -58,18 +58,18 @@ export class DashboardComponent implements OnInit {
     { value: 'all', label: 'Tout' }
   ];
 
-  // État des alertes
+  // Etat des alertes
   criticalAlerts: any[] = [];
   showCriticalAlerts = true;
 
-  // État des graphiques interactifs
+  // Etat des graphiques interactifs
   selectedTrendDay: string | null = null;
   selectedTrendDetails: any = null;
 
   categoryStock: any[] = [];
   movementsTrend: any[] = [];
 
-  // Données simulées
+  // Donnees simulees
   recentActivities: any[] = [];
   recentUsers: any[] = [];
   roles: any[] = [];
@@ -123,7 +123,7 @@ export class DashboardComponent implements OnInit {
   }
 
   private calculateTrends(): void {
-    // Calculer les tendances basées sur les données historiques
+    // Calculer les tendances basees sur les donnees historiques
     if (this.movementsTrend.length >= 2) {
       const recent = this.movementsTrend.slice(0, 3).reduce((sum, m) => sum + m.count, 0);
       const previous = this.movementsTrend.slice(3, 6).reduce((sum, m) => sum + m.count, 0);
@@ -142,7 +142,7 @@ export class DashboardComponent implements OnInit {
   private extractCriticalAlerts(): void {
     this.criticalAlerts = [];
 
-    if (this.stats.lowStockAlerts > 0) {
+    if (!this.isDirector && this.stats.lowStockAlerts > 0) {
       this.criticalAlerts.push({
         type: 'stock',
         message: `${this.stats.lowStockAlerts} produits en alerte stock bas`,
@@ -175,7 +175,7 @@ export class DashboardComponent implements OnInit {
 
   onPeriodChange(period: string): void {
     this.selectedPeriod = period;
-    this.loadDashboardData(); // Recharger les données avec la nouvelle période
+    this.loadDashboardData(); // Recharger les donnees avec la nouvelle periode
   }
 
   toggleCriticalAlerts(): void {
@@ -210,39 +210,39 @@ export class DashboardComponent implements OnInit {
   }
 
   get isManager(): boolean {
-    return this.authService.userHasAnyRole(this.user, ['Agent', 'Responsable', 'Gestionnaire', 'Responsable de stock']);
+    return this.authService.userHasAnyRole(this.user, ['Agent', 'Agent de stock', 'Responsable', 'Responsable de stock', 'Gestionnaire']);
   }
 
   get dashboardBadge(): string {
     if (this.isAdmin) return 'Administration';
     if (this.isDirector) return 'Direction';
-    if (this.isManager) return 'Opérations';
+    if (this.isManager) return 'Operations';
     return 'Espace utilisateur';
   }
 
   get dashboardTitle(): string {
     if (this.isAdmin) return `Pilotage global, ${this.user?.nomprenom || 'Administrateur'}`;
-    if (this.isDirector) return `Vue décisionnelle, ${this.user?.nomprenom || 'Direction'}`;
-    if (this.isManager) return `Suivi opérationnel, ${this.user?.nomprenom || 'Responsable'}`;
+    if (this.isDirector) return `Vue decisionnelle, ${this.user?.nomprenom || 'Direction'}`;
+    if (this.isManager) return `Suivi operationnel, ${this.user?.nomprenom || 'Responsable'}`;
     return `Bienvenue, ${this.user?.nomprenom || 'Utilisateur'}`;
   }
 
   get dashboardDescription(): string {
-    if (this.isAdmin) return 'Supervisez les utilisateurs, le stock et les dépôts sans passer par le menu de connexion.';
-    if (this.isDirector) return 'Retrouvez les indicateurs de validation, les alertes de stock et les accès rapides utiles à la direction.';
-    if (this.isManager) return 'Suivez les mouvements, les demandes et les points de stockage utiles à vos opérations quotidiennes.';
-    return 'Accédez rapidement à votre profil, à vos demandes et à la situation générale du stock.';
+    if (this.isAdmin) return 'Supervisez les utilisateurs, le stock et les depots sans passer par le menu de connexion.';
+    if (this.isDirector) return 'Retrouvez les indicateurs de validation, les alertes de stock et les acces rapides utiles a la direction.';
+    if (this.isManager) return 'Suivez les mouvements, les demandes et les points de stockage utiles a vos operations quotidiennes.';
+    return 'Accedez rapidement a votre profil, a vos demandes et a la situation generale du stock.';
   }
 
   get sidePanelTitle(): string {
-    if (this.isAdmin) return 'Utilisateurs récents';
+    if (this.isAdmin) return 'Utilisateurs recents';
     if (this.isDirector) return 'Points de vigilance';
     if (this.isManager) return 'Actions rapides';
     return 'Mon espace';
   }
 
   private buildDashboardView(): void {
-    // Réinitialiser les cartes
+    // Reinitialiser les cartes
     this.dashboardCards = [];
     this.quickLinks = [];
 
@@ -266,7 +266,7 @@ export class DashboardComponent implements OnInit {
           route: '/users'
         },
         {
-          label: 'Utilisateurs archivés',
+          label: 'Utilisateurs archives',
           value: this.stats.archivedUsers,
           icon: 'fas fa-user-slash',
           color: 'yellow',
@@ -290,7 +290,7 @@ export class DashboardComponent implements OnInit {
           trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
         },
         {
-          label: 'Demandes à valider',
+          label: 'Demandes a valider',
           value: this.stats.pendingValidations,
           icon: 'fas fa-clipboard-check',
           color: 'yellow',
@@ -305,7 +305,7 @@ export class DashboardComponent implements OnInit {
     }
 
     if (this.isManager) {
-      // Responsable et Agent voient TOUT: produits, catégories, stock
+      // Responsable et Agent voient TOUT: produits, categories, stock
       this.dashboardCards = [
         {
           label: 'Produits',
@@ -316,8 +316,8 @@ export class DashboardComponent implements OnInit {
           trend: this.trends.productsTrend,
           trendLabel: this.trends.productsTrend > 0 ? '+ croissance' : '- stable'
         },
-        { label: 'Catégories', value: this.stats.totalCategories, icon: 'fas fa-tags', color: 'purple', route: '/gerer-categories' },
-        { label: 'Dépôts', value: this.stats.totalWarehouses, icon: 'fas fa-warehouse', color: 'green', route: '/gerer-depots' },
+        { label: 'Categories', value: this.stats.totalCategories, icon: 'fas fa-tags', color: 'purple', route: '/gerer-categories' },
+        { label: 'Depots', value: this.stats.totalWarehouses, icon: 'fas fa-warehouse', color: 'green', route: '/gerer-depots' },
         {
           label: 'Mouvements en attente',
           value: this.stats.pendingStockMovements,
@@ -363,8 +363,8 @@ export class DashboardComponent implements OnInit {
         route: '/demandes-consommables',
         critical: this.stats.myPendingRequests > 0
       },
-      { label: 'Demandes approuvées', value: this.stats.myApprovedRequests, icon: 'fas fa-check-circle', color: 'green', route: '/demandes-consommables' },
-      { label: 'Demandes rejetées', value: this.stats.myRejectedRequests, icon: 'fas fa-times-circle', color: 'red', route: '/demandes-consommables' },
+      { label: 'Demandes approuvees', value: this.stats.myApprovedRequests, icon: 'fas fa-check-circle', color: 'green', route: '/demandes-consommables' },
+      { label: 'Demandes rejetees', value: this.stats.myRejectedRequests, icon: 'fas fa-times-circle', color: 'red', route: '/demandes-consommables' },
     ];
     this.quickLinks = [
       { label: 'Mon profil', route: '/profile', icon: '' },
@@ -410,8 +410,55 @@ export class DashboardComponent implements OnInit {
       error: (err: any) => {
         console.error('Erreur tel', err);
         this.isDownloadingReport = false;
-        alert('Erreur lors du telechargement du rapport.');
+        const status = Number(err?.status || 0);
+        if (status === 403) {
+          this.showAlertModal('Acces refuse', "Vous n'avez pas les droits necessaires pour telecharger ce rapport.", 'danger');
+        } else if (status === 401) {
+          this.showAlertModal('Authentification requise', 'Veuillez vous reconnecter pour telecharger le rapport.', 'danger');
+        } else {
+          this.showAlertModal('Erreur', 'Erreur lors du telechargement du rapport.', 'danger');
+        }
       }
     });
   }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = true;
+    this.pendingAction = null;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
 }

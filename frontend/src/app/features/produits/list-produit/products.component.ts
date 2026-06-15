@@ -47,9 +47,13 @@ export class ProductsComponent implements OnInit {
     lastPage: 1
   };
   updatingPhotoId: number | null = null;
-  // Réactivation modal
+  // Reactivation modal
   showReactivateModal = false;
   reactivateProduct: any | null = null;
+  
+  // Suppression modal
+  showDeleteConfirmModal = false;
+  productToDelete: number | null = null;
 
   warehouses: any[] = [];
   rooms: any[] = [];
@@ -98,10 +102,10 @@ export class ProductsComponent implements OnInit {
       commentaire: [''],
       num_serie: ['', [Validators.required]], // Identifiant unique
       num_inventaire: [{ value: '', disabled: true }], // Toujours auto
-      model: [''],
-      marque: [''],
+      model: ['', Validators.required],
+      marque: ['', Validators.required],
       seuil_min: [0, [Validators.required, Validators.min(0)]],
-      seuil_max: [null, [Validators.min(0)]],
+      seuil_max: [null, [Validators.required, Validators.min(0)]],
       reference: [''],
       categorie_id: [null, Validators.required],
       has_expiration: [false],
@@ -206,7 +210,7 @@ export class ProductsComponent implements OnInit {
   generateDescriptions(): void {
     const title = this.productForm.get('title')?.value;
     if (!title || !title.trim()) {
-      this.errorMessage = 'Titre requis pour générer la description.';
+      this.errorMessage = 'Titre requis pour generer la description.';
       return;
     }
     this.errorMessage = '';
@@ -222,7 +226,7 @@ export class ProductsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de générer la description.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de generer la description.');
       }
     });
   }
@@ -280,7 +284,7 @@ export class ProductsComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err: any) => {
-        this.errorMessage = err?.message || 'Erreur de chargement des catégories.';
+        this.errorMessage = err?.message || 'Erreur de chargement des categories.';
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -410,9 +414,27 @@ export class ProductsComponent implements OnInit {
   }
 
   save(): void {
-    if (this.productForm.invalid) {
+    if (this.productForm.invalid || !this.selectedMarqueId) {
       this.productForm.markAllAsTouched();
-      this.errorMessage = 'Veuillez corriger les erreurs dans le formulaire.';
+      const errors: string[] = [];
+      const c = this.productForm.controls;
+      
+      if (c['title']?.invalid) errors.push('• Le nom du produit est obligatoire (min 2 caracteres).');
+      if (c['categorie_id']?.invalid) errors.push('• La categorie est obligatoire.');
+      if (c['seuil_min']?.invalid) errors.push('• Le seuil minimum est obligatoire et doit etre ≥ 0.');
+      if (c['seuil_max']?.invalid && !this.productForm.hasError('thresholdError')) errors.push('• Le seuil maximum est obligatoire.');
+      if (this.productForm.hasError('thresholdError')) errors.push('• Le seuil maximum doit etre superieur au seuil minimum.');
+      if (c['marque']?.invalid || !this.selectedMarqueId) errors.push('• La marque est obligatoire.');
+      if (c['model']?.invalid) errors.push('• Le modele est obligatoire.');
+      if (c['num_serie']?.invalid) errors.push('• Le numero de serie est obligatoire.');
+      
+      this.errorMessage = errors.length > 0 ? errors.join('\n') : 'Veuillez corriger les erreurs dans le formulaire.';
+      this.cdr.detectChanges();
+      // Scroll to error message inside modal
+      setTimeout(() => {
+        const errEl = document.querySelector('.modal-body .modal-error');
+        if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 50);
       return;
     }
 
@@ -440,7 +462,7 @@ export class ProductsComponent implements OnInit {
     }
 
     if (this.editingId && (!payload.reference || payload.reference === '')) {
-      this.errorMessage = 'Référence est obligatoire lors de la modification.';
+      this.errorMessage = 'Reference est obligatoire lors de la modification.';
       return;
     }
     this.errorMessage = '';
@@ -453,12 +475,12 @@ export class ProductsComponent implements OnInit {
       next: (res: any) => {
         const created = res?.product || res?.data || null;
         if (this.editingId) {
-          this.successMessage = 'Produit mis à jour !';
+          this.successMessage = 'Produit mis a jour !';
         } else if (created && created.reference) {
-          this.successMessage = 'Produit créé ! Réf : ' + created.reference;
+          this.successMessage = 'Produit cree ! Ref : ' + created.reference;
           this.highlightedProductId = created.id || null;
         } else {
-          this.successMessage = 'Produit créé !';
+          this.successMessage = 'Produit cree !';
         }
         this.closeModal();
         this.loadProducts();
@@ -492,24 +514,36 @@ export class ProductsComponent implements OnInit {
   }
 
   remove(id: number): void {
-    if (!confirm('Supprimer ce produit ?')) return;
-    this.stockService.deleteProduct(id).subscribe({
+    this.productToDelete = id;
+    this.showDeleteConfirmModal = true;
+  }
+
+  confirmDeleteProduct(): void {
+    if (!this.productToDelete) return;
+    this.stockService.deleteProduct(this.productToDelete).subscribe({
       next: () => {
-        this.successMessage = 'Produit supprimé !';
+        this.successMessage = 'Produit supprime !';
         this.loadProducts();
+        this.cancelDeleteProduct();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err: any) => {
         this.errorMessage = this.extractApiError(err, 'Suppression impossible.');
+        this.cancelDeleteProduct();
       }
     });
+  }
+
+  cancelDeleteProduct(): void {
+    this.showDeleteConfirmModal = false;
+    this.productToDelete = null;
   }
 
   confirmReactivate(): void {
     if (!this.reactivateProduct?.id) return;
     this.stockService.activateProduct(this.reactivateProduct.id).subscribe({
       next: () => {
-        this.successMessage = `Produit "${this.reactivateProduct.title}" réactivé !`;
+        this.successMessage = `Produit "${this.reactivateProduct.title}" reactive !`;
         this.showReactivateModal = false;
         this.reactivateProduct = null;
         this.closeModal();
@@ -517,7 +551,7 @@ export class ProductsComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 4000);
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de réactiver le produit.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de reactiver le produit.');
       }
     });
   }
@@ -566,13 +600,13 @@ export class ProductsComponent implements OnInit {
     this.updatingPhotoId = product.id;
     this.stockService.updateProduct(product.id, { photos: [file] }).subscribe({
       next: () => {
-        this.successMessage = 'Photo mise à jour.';
+        this.successMessage = 'Photo mise a jour.';
         this.updatingPhotoId = null;
         this.loadProducts();
         setTimeout(() => (this.successMessage = ''), 2000);
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de mettre a jour la photo.');
         this.updatingPhotoId = null;
       }
     });
@@ -693,7 +727,7 @@ export class ProductsComponent implements OnInit {
   }
 
   supplierNames(product: any): string {
-    if (!product?.suppliers?.length) return 'â€”';
+    if (!product?.suppliers?.length) return 'a€"';
     return product.suppliers.map((s: any) => s.name || s).join(', ');
   }
 
@@ -731,7 +765,7 @@ export class ProductsComponent implements OnInit {
   private flattenTree(nodes: any[], level = 0): { id: number; title: string; level: number; displayTitle: string }[] {
     const result: { id: number; title: string; level: number; displayTitle: string }[] = [];
     for (const node of nodes) {
-      const prefix = level === 0 ? '' : '\u00A0\u00A0'.repeat(level) + 'â”” ';
+      const prefix = level === 0 ? '' : '\u00A0\u00A0'.repeat(level) + '└ ';
       result.push({
         id: node.id,
         title: node.title,
@@ -788,7 +822,7 @@ export class ProductsComponent implements OnInit {
         }
         this.newReviewContent = '';
         this.isLoading = false;
-        this.successMessage = 'Avis publié !';
+        this.successMessage = 'Avis publie !';
         this.cdr.detectChanges();
         setTimeout(() => this.successMessage = '', 3000);
       },

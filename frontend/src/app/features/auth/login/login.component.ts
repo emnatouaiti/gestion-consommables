@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
@@ -17,7 +17,8 @@ export class LoginComponent {
     constructor(
         private fb: FormBuilder,
         private authService: AuthService,
-        private router: Router
+        private router: Router,
+        private cdr: ChangeDetectorRef
     ) {
         this.loginForm = this.fb.group({
             email: ['', [Validators.required, Validators.email]],
@@ -45,10 +46,12 @@ export class LoginComponent {
         this.authService.login(this.loginForm.value).subscribe({
             next: () => {
                 this.isLoading = false;
+                this.cdr.detectChanges();
             },
             error: (err) => {
                 this.isLoading = false;
                 this.errorMessage = err.message || 'Login failed. Please check your credentials.';
+                this.cdr.detectChanges();
             }
         });
     }
@@ -67,6 +70,7 @@ export class LoginComponent {
         this.authService.loginWithGoogle().subscribe({
             next: (res: any) => {
                 this.isLoading = false;
+                this.cdr.detectChanges();
                 if (res && res.url) {
                     window.location.href = res.url;
                 } else {
@@ -77,6 +81,7 @@ export class LoginComponent {
                 this.isLoading = false;
                 console.error('Google login error:', err);
                 this.errorMessage = 'Google login failed: ' + (err.message || 'Unknown error');
+                this.cdr.detectChanges();
             }
         });
     }

@@ -16,7 +16,7 @@ import { AdminExpirationService } from '../../../core/services/admin-expiration.
 })
 export class ProductStocksComponent implements OnInit {
 
-  // ── Données produit ────────────────────────────────────
+  // -- Donnees produit ------------------------------------
   productId: number | null = null;
   product: any = null;
   stocks: any[] = [];
@@ -25,13 +25,13 @@ export class ProductStocksComponent implements OnInit {
   allRooms: any[] = [];
   allCabinets: any[] = [];
 
-  // ── État UI ────────────────────────────────────────────
+  // -- Etat UI --------------------------------------------
   isLoading = false;
   errorMessage = '';
   successMessage = '';
   activeSection: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history' = 'stock';
 
-  // ── Modal stock ────────────────────────────────────────
+  // -- Modal stock ----------------------------------------
   showAddStockModal = false;
   editingStockId: number | null = null;
   stockForm!: FormGroup;
@@ -44,7 +44,7 @@ export class ProductStocksComponent implements OnInit {
   returnJustification = '';
   returnTargetBatch: any = null;
 
-  // Modale Élimination lot
+  // Modale Elimination lot
   showEliminateModal = false;
   eliminateJustification = '';
   eliminateTargetBatch: any = null;
@@ -57,13 +57,13 @@ export class ProductStocksComponent implements OnInit {
   show3DViewerModal = false;
   viewerData = { id: null as number | null, title: '', capacity: 0, current: 0, type: 'location' as 'location' | 'cabinet' };
 
-  // ── Stocks / entrepôts ─────────────────────────────────
+  // -- Stocks / entrepots ---------------------------------
   productSuppliers: any[] = [];
   totalStock: any = { product_name: '', total_quantity: 0, is_in_stock: false, details: [] };
   warehousesAvailability: any[] = [];
   selectedWarehouseId: number | null = null;
 
-  // ── Historique ─────────────────────────────────────────
+  // -- Historique -----------------------------------------
   productHistory: any[] = [];
   historyLoading = false;
   historyPagination = { page: 1, perPage: 10, total: 0, lastPage: 1 };
@@ -72,7 +72,7 @@ export class ProductStocksComponent implements OnInit {
     date_end: ''
   };
 
-  // ── Photos / Documents ─────────────────────────────────
+  // -- Photos / Documents ---------------------------------
   selectedPhotoIndex = 0;
   photoUploadInProgress = false;
   productDocuments: any[] = [];
@@ -83,7 +83,7 @@ export class ProductStocksComponent implements OnInit {
   availableDocStatuses: string[] = [];
   docPagination = { page: 1, perPage: 5 };
 
-  // ── Expiration & Lots ──────────────────────────────────
+  // -- Expiration & Lots ----------------------------------
   productHasExpiration = false;
   batchLifecycles: any[] = [];
   expiringAlerts: any[] = [];
@@ -138,9 +138,9 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // NAVIGATION
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   setSection(section: 'details' | 'stock' | 'documents' | 'images' | 'expiration' | 'history'): void {
     this.activeSection = section as any;
     if (section === 'history') this.loadHistory();
@@ -148,9 +148,9 @@ export class ProductStocksComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ──────────────────────────────────────────────────────
-  // CHARGEMENT DONNÉES
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
+  // CHARGEMENT DONNEES
+  // ------------------------------------------------------
   loadProductDetails(): void {
     if (!this.productId) return;
     this.adminStockService.getProduct(this.productId).subscribe({
@@ -181,8 +181,11 @@ export class ProductStocksComponent implements OnInit {
         this.isLoading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.errorMessage = 'Impossible de charger les stocks.';
+      error: (err: any) => {
+        this.totalStock = { product_name: '', total_quantity: 0, is_in_stock: false, details: [] };
+        this.stocks = [];
+        this.warehousesAvailability = [];
+        this.errorMessage = err?.error?.message || err?.message || 'Aucun stock disponible ou impossible de charger les stocks.';
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -227,7 +230,7 @@ export class ProductStocksComponent implements OnInit {
   loadWarehouses(): void {
     this.warehouseService.listWarehouses(null, 100).subscribe({
       next: (res: any) => { this.allWarehouses = res.data || res; this.cdr.detectChanges(); },
-      error: (err: any) => console.error('Erreur dépôts:', err)
+      error: (err: any) => console.error('Erreur depots:', err)
     });
   }
 
@@ -295,7 +298,7 @@ export class ProductStocksComponent implements OnInit {
           if (movement.response_pdf_path) {
             extraDocs.push({
               id: `movement-response-${movement.id}`,
-              title: `Décision Responsable - ${movement.reference || ('MVT-' + movement.id)}`,
+              title: `Decision Responsable - ${movement.reference || ('MVT-' + movement.id)}`,
               type: 'bon_mouvement',
               status: movement.status || 'executed',
               direction: movement.movement_type,
@@ -307,7 +310,7 @@ export class ProductStocksComponent implements OnInit {
           if (movement.related_request?.pdf_path) {
             extraDocs.push({
               id: `request-pdf-${movement.related_request.id}`,
-              title: `Demande Livrée - #${movement.related_request.id}`,
+              title: `Demande Livree - #${movement.related_request.id}`,
               type: 'bon_sortie',
               status: movement.status || movement.related_request.status || 'approved',
               direction: movement.movement_type,
@@ -360,17 +363,17 @@ export class ProductStocksComponent implements OnInit {
     });
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // EXPIRATION & LOTS
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
 
-  /** Appelé publiquement depuis le template (bouton Actualiser) */
+  /** Appele publiquement depuis le template (bouton Actualiser) */
   loadExpirationData(): void {
     if (!this.productId) return;
 
     this.expirationService.getBatchLifecycle(this.productId).subscribe({
       next: (batches: any[]) => {
-        // Calcul daysLeft côté client si non fourni par le backend
+        // Calcul daysLeft cote client si non fourni par le backend
         this.batchLifecycles = batches.map(b => this.enrichBatch(b));
         this.cdr.detectChanges();
       },
@@ -390,11 +393,11 @@ export class ProductStocksComponent implements OnInit {
         this.expirationEvents = events;
         this.cdr.detectChanges();
       },
-      error: (err: any) => console.warn('Erreur événements:', err)
+      error: (err: any) => console.warn('Erreur evenements:', err)
     });
   }
 
-  /** Enrichit un batch avec daysLeft calculé si absent */
+  /** Enrichit un batch avec daysLeft calcule si absent */
   private enrichBatch(batch: any): any {
     if (batch.daysLeft !== undefined) return batch;
     if (!batch.expiration_date) return { ...batch, daysLeft: null };
@@ -413,7 +416,7 @@ export class ProductStocksComponent implements OnInit {
     return Math.ceil(this.expirationEvents.length / this.eventPagination.perPage);
   }
 
-  // ── Métriques ──────────────────────────────────────────
+  // -- Metriques ------------------------------------------
   getExpiredCount(): number {
     return this.batchLifecycles.filter(b => b.daysLeft !== null && b.daysLeft <= 0).length;
   }
@@ -426,7 +429,7 @@ export class ProductStocksComponent implements OnInit {
     return this.batchLifecycles.filter(b => b.daysLeft === null || b.daysLeft > 7).length;
   }
 
-  // ── Filtres lots ───────────────────────────────────────
+  // -- Filtres lots ---------------------------------------
   setLotFilter(filter: 'all' | 'expired' | 'expiring' | 'safe'): void {
     this.lotFilter = filter;
     this.lotsCollapsed = true;
@@ -454,7 +457,7 @@ export class ProductStocksComponent implements OnInit {
       );
     }
 
-    // Trier: expirés d'abord, puis bientôt, puis sains ; dans chaque groupe par daysLeft asc
+    // Trier: expires d'abord, puis bientot, puis sains ; dans chaque groupe par daysLeft asc
     batches = batches.sort((a, b) => {
       const rankA = a.daysLeft <= 0 ? 0 : (a.daysLeft <= 7 ? 1 : 2);
       const rankB = b.daysLeft <= 0 ? 0 : (b.daysLeft <= 7 ? 1 : 2);
@@ -494,25 +497,24 @@ export class ProductStocksComponent implements OnInit {
     this.cdr.detectChanges();
   }
 
-  // ── Helpers visuel ─────────────────────────────────────
+  // -- Helpers visuel -------------------------------------
   getBatchStatusClass(batch: any): string {
     if (batch.daysLeft === null || batch.daysLeft === undefined) return 'safe';
-    if (batch.daysLeft <= 0) return 'expired';
-    if (batch.daysLeft <= 7) return 'expiring';
+    if (batch.daysLeft <= 7) return 'expired';
     return 'safe';
   }
 
   getBatchStatusLabel(batch: any): string {
     const cls = this.getBatchStatusClass(batch);
-    if (cls === 'expired')  return 'Expiré';
-    if (cls === 'expiring') return 'Expire bientôt';
+    if (cls === 'expired')  return 'Expire';
+    if (cls === 'expiring') return 'Expire bientot';
     return 'En cours';
   }
 
   /**
    * Retourne la largeur de la barre de progression.
-   * Pour les lots expirés → 100%.
-   * Pour les lots en cours → pourcentage consommé sur la durée totale (entre création et expiration).
+   * Pour les lots expires → 100%.
+   * Pour les lots en cours → pourcentage consomme sur la duree totale (entre creation et expiration).
    */
   getBatchProgressWidth(batch: any): string {
     if (!batch.expiration_date) return '15%';
@@ -529,13 +531,13 @@ export class ProductStocksComponent implements OnInit {
       return pct + '%';
     }
 
-    // Fallback : basé sur les jours restants (max 365)
+    // Fallback : base sur les jours restants (max 365)
     const maxDays = 365;
     const consumed = Math.max(5, Math.min(95, Math.round(((maxDays - batch.daysLeft) / maxDays) * 100)));
     return consumed + '%';
   }
 
-  // ── Actions sur lots ───────────────────────────────────
+  // -- Actions sur lots -----------------------------------
   openEliminateModal(batch: any): void {
     this.eliminateTargetBatch = batch;
     this.eliminateJustification = '';
@@ -552,12 +554,12 @@ export class ProductStocksComponent implements OnInit {
     if (!this.eliminateTargetBatch || !this.eliminateJustification || this.eliminateJustification.trim().length < 5) return;
     this.expirationService.eliminateBatch(this.eliminateTargetBatch.id, this.eliminateJustification.trim()).subscribe({
       next: () => {
-        this.showSuccess('Lot marqué pour élimination.');
+        this.showSuccess('Lot marque pour elimination.');
         this.closeEliminateModal();
         this.loadExpirationData();
-        this.loadStocks(); // Mettre à jour le stock total et les emplacements
+        this.loadStocks(); // Mettre a jour le stock total et les emplacements
       },
-      error: (err: any) => this.errorMessage = this.extractApiError(err, 'Erreur lors de l\'élimination')
+      error: (err: any) => this.errorMessage = this.extractApiError(err, 'Erreur lors de l\'elimination')
     });
   }
 
@@ -577,10 +579,10 @@ export class ProductStocksComponent implements OnInit {
     if (!this.returnTargetBatch || !this.returnJustification || this.returnJustification.trim().length < 5) return;
     this.expirationService.returnToSupplierBatch(this.returnTargetBatch.id, this.returnJustification.trim()).subscribe({
       next: () => {
-        this.showSuccess('Lot retourné au fournisseur avec succès.');
+        this.showSuccess('Lot retourne au fournisseur avec succes.');
         this.closeReturnModal();
         this.loadExpirationData();
-        this.loadStocks(); // Mettre à jour le stock total et les emplacements
+        this.loadStocks(); // Mettre a jour le stock total et les emplacements
       },
       error: (err: any) => this.errorMessage = this.extractApiError(err, 'Erreur lors du retour')
     });
@@ -606,12 +608,12 @@ export class ProductStocksComponent implements OnInit {
       justification: this.forceConsumeJustification.trim()
     }).subscribe({
       next: () => {
-        this.showSuccess('Consommation forcée enregistrée.');
+        this.showSuccess('Consommation forcee enregistree.');
         this.closeForceConsumeModal();
         this.loadExpirationData();
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err?.error || err, 'Erreur lors de la consommation forcée');
+        this.errorMessage = this.extractApiError(err?.error || err, 'Erreur lors de la consommation forcee');
         this.cdr.detectChanges();
       }
     });
@@ -619,7 +621,7 @@ export class ProductStocksComponent implements OnInit {
 
   prioritizeBatch(batch: any): void {
     // TODO: appeler expirationService.prioritize(batch.id)
-    this.showSuccess(`Lot ${batch.batch_number || batch.id} mis en priorité de sortie.`);
+    this.showSuccess(`Lot ${batch.batch_number || batch.id} mis en priorite de sortie.`);
   }
 
   viewBatchHistory(batch: any): void {
@@ -628,13 +630,13 @@ export class ProductStocksComponent implements OnInit {
   }
 
   editBatch(batch: any): void {
-    // TODO: ouvrir modal d'édition du lot
+    // TODO: ouvrir modal d'edition du lot
     console.log('Edit batch:', batch.id);
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // STOCK CRUD
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   openAddStockModal(warehouseId?: number): void {
     this.resetForm();
     this.editingStockId = null;
@@ -671,11 +673,11 @@ export class ProductStocksComponent implements OnInit {
     const hasStorage = this.storageTargetForForm === 'cabinet' ? !!val.cabinet_id : !!val.warehouse_location_id;
 
     if (!hasStorage) {
-      this.errorMessage = 'Veuillez sélectionner un emplacement ou une armoire.';
+      this.errorMessage = 'Veuillez selectionner un emplacement ou une armoire.';
       return;
     }
 
-    if (!this.productId) { this.errorMessage = 'Produit non chargé.'; return; }
+    if (!this.productId) { this.errorMessage = 'Produit non charge.'; return; }
 
     const payload = {
       warehouse_location_id: (this.storageTargetForForm === 'location' && val.warehouse_location_id) ? parseInt(val.warehouse_location_id) : null,
@@ -692,7 +694,7 @@ export class ProductStocksComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.showSuccess(this.editingStockId ? 'Stock mis à jour !' : 'Stock ajouté !');
+        this.showSuccess(this.editingStockId ? 'Stock mis a jour !' : 'Stock ajoute !');
         this.closeAddStockModal();
         this.loadStocks();
       },
@@ -724,16 +726,23 @@ export class ProductStocksComponent implements OnInit {
   }
 
   deleteStock(stockId: number): void {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce stock ?')) return;
-    this.stockService.deleteStock(stockId).subscribe({
-      next: () => { this.showSuccess('Stock supprimé !'); this.loadStocks(); },
-      error: (err: any) => { this.errorMessage = err?.error?.message || 'Impossible de supprimer ce stock.'; this.cdr.detectChanges(); }
-    });
+    this.openConfirmModal(
+      'Supprimer le stock',
+      'Etes-vous sur de vouloir supprimer ce stock ?',
+      () => {
+        this.stockService.deleteStock(stockId).subscribe({
+          next: () => { this.showSuccess('Stock supprime !'); this.loadStocks(); },
+          error: (err: any) => { this.errorMessage = err?.error?.message || 'Impossible de supprimer ce stock.'; this.cdr.detectChanges(); }
+        });
+      },
+      'danger',
+      'Supprimer'
+    );
   }
 
-  // ──────────────────────────────────────────────────────
-  // DÉPÔTS
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
+  // DEPOTS
+  // ------------------------------------------------------
   toggleDepot(wh: any): void {
     this.selectedWarehouseId = this.selectedWarehouseId === wh.warehouse_id ? null : wh.warehouse_id;
     this.cdr.detectChanges();
@@ -791,12 +800,12 @@ export class ProductStocksComponent implements OnInit {
     else this.stockForm.patchValue({ warehouse_location_id: '' });
   }
 
-  // ──────────────────────────────────────────────────────
-  // ÉTAT STOCK
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
+  // ETAT STOCK
+  // ------------------------------------------------------
   getStockStatus(): string {
     return this.totalStock.is_in_stock
-      ? `En stock (${this.totalStock.total_quantity} unités)`
+      ? `En stock (${this.totalStock.total_quantity} unites)`
       : 'Rupture de stock';
   }
 
@@ -804,9 +813,9 @@ export class ProductStocksComponent implements OnInit {
     return this.totalStock.is_in_stock ? 'in-stock' : 'out-of-stock';
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // PHOTOS
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   getProductPhotos(): any[] {
     const p = this.product as any;
     if (!p) return [];
@@ -849,13 +858,13 @@ export class ProductStocksComponent implements OnInit {
     (payload as any).photos = [file];
     this.adminStockService.updateProduct(this.productId, payload).subscribe({
       next: () => {
-        this.showSuccess('Photo mise à jour.');
+        this.showSuccess('Photo mise a jour.');
         this.photoUploadInProgress = false;
         this.loadProductDetails();
         this.setSection('images');
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, 'Impossible de mettre à jour la photo.');
+        this.errorMessage = this.extractApiError(err, 'Impossible de mettre a jour la photo.');
         this.photoUploadInProgress = false;
       }
     });
@@ -868,12 +877,12 @@ export class ProductStocksComponent implements OnInit {
     (payload as any).photo = photoPath;
     this.adminStockService.updateProduct(this.productId, payload).subscribe({
       next: () => {
-        this.showSuccess("Image par défaut mise à jour.");
+        this.showSuccess("Image par defaut mise a jour.");
         this.photoUploadInProgress = false;
         this.loadProductDetails();
       },
       error: (err: any) => {
-        this.errorMessage = this.extractApiError(err, "Impossible de définir l'image par défaut.");
+        this.errorMessage = this.extractApiError(err, "Impossible de definir l'image par defaut.");
         this.photoUploadInProgress = false;
       }
     });
@@ -883,9 +892,9 @@ export class ProductStocksComponent implements OnInit {
     event.target.src = 'assets/images/placeholder-product.png';
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // DOCUMENTS
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   onDocSelected(event: any): void {
     const file = event.target.files[0];
     if (file) this.handleDocUpload(file);
@@ -901,7 +910,7 @@ export class ProductStocksComponent implements OnInit {
     formData.append('direction', 'in');
     this.http.post('/api/documents', formData).subscribe({
       next: () => {
-        this.showSuccess('Document ajouté avec succès !');
+        this.showSuccess('Document ajoute avec succes !');
         this.docUploadInProgress = false;
         this.loadDocuments();
       },
@@ -957,11 +966,11 @@ export class ProductStocksComponent implements OnInit {
     const map: Record<string, string> = {
       pending: 'En attente',
       pending_validation: 'Attente validation',
-      approved: 'Approuvé',
-      executed: 'Exécuté',
-      applied: 'Appliqué',
-      rejected: 'Rejeté',
-      cancelled: 'Annulé',
+      approved: 'Approuve',
+      executed: 'Execute',
+      applied: 'Applique',
+      rejected: 'Rejete',
+      cancelled: 'Annule',
       all: 'Tous'
     };
     return map[status] || status;
@@ -997,9 +1006,9 @@ export class ProductStocksComponent implements OnInit {
     document.body.removeChild(a);
   }
 
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   // VIEWER 3D
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
   open3DViewer(stock: any): void {
     this.viewerData = {
       id: stock.storage_type === 'cabinet' ? stock.cabinet_id : stock.warehouse_location_id,
@@ -1013,13 +1022,13 @@ export class ProductStocksComponent implements OnInit {
 
   close3DViewer(): void { this.show3DViewerModal = false; }
 
-  // ──────────────────────────────────────────────────────
-  // HELPERS PRIVÉS
-  // ──────────────────────────────────────────────────────
+  // ------------------------------------------------------
+  // HELPERS PRIVES
+  // ------------------------------------------------------
   unitLabel(): string {
     const unit = (this.product as any)?.unit;
-    if (!unit) return '—';
-    return typeof unit === 'object' ? (unit.name || '—') : (unit || '—');
+    if (!unit) return '-';
+    return typeof unit === 'object' ? (unit.name || '-') : (unit || '-');
   }
 
   private showSuccess(msg: string): void {
@@ -1068,15 +1077,55 @@ export class ProductStocksComponent implements OnInit {
   onStockAdded(newStock: any): void {
     this.loadStocks();
     this.loadExpirationData();
-    this.showSuccess('Stock ajouté avec succès !');
+    this.showSuccess('Stock ajoute avec succes !');
   }
 
   getLocationLabel(loc: any): string {
-    return `${loc.room?.warehouse?.name || 'Dépôt'}, ${loc.room?.name || 'Salle'}, ${loc.code}`;
+    return `${loc.room?.warehouse?.name || 'Depot'}, ${loc.room?.name || 'Salle'}, ${loc.code}`;
   }
 
   isLocationFull(loc: any): boolean {
     if (!loc.capacity_units) return false;
     return (loc.current_units || 0) >= loc.capacity_units;
   }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = true;
+    this.pendingAction = null;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
 }

@@ -35,7 +35,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
   photoPreviewUrl = '';
   private originalPhotoUrl = '';
 
-  // états de chargement
+  // etats de chargement
   isLoading = false;
   isSavingProfile = false;
   isChangingPassword = false;
@@ -63,10 +63,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
       nomprenom: ['', Validators.required],
       email:     ['', [Validators.required, Validators.email]],
       adresse:   [''],
-      telephone: ['']
+      telephone: ['', [Validators.pattern(/^\+?[0-9\s]{8,15}$/)]]
     });
 
-    // Formulaire mot de passe avec validation personnalisée
+    // Formulaire mot de passe avec validation personnalisee
     this.passwordForm = this.fb.group({
       currentPassword: ['', Validators.required],
       newPassword:     ['', [Validators.required, Validators.minLength(6)]],
@@ -87,7 +87,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
   }
 
-  // --- Validateur personnalisé ------------------------------------------
+  // --- Validateur personnalise ------------------------------------------
 
   private passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const newPassword = control.get('newPassword')?.value;
@@ -111,6 +111,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
   }
 
+  private getCsrfToken(): string | null {
+    if (!isPlatformBrowser(this.platformId)) return null;
+    const match = document.cookie.match(/XSRF-TOKEN=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
   private authHeaders(): Record<string, string> {
     const token = this.getToken();
     const headers: Record<string, string> = {
@@ -120,10 +126,14 @@ export class ProfileComponent implements OnInit, OnDestroy {
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    const csrfToken = this.getCsrfToken();
+    if (csrfToken) {
+      headers['X-XSRF-TOKEN'] = csrfToken;
+    }
     return headers;
   }
 
-  // --- Résolution des URLs de photo -------------------------------------
+  // --- Resolution des URLs de photo -------------------------------------
 
   private resolvePhotoUrl(photo: string | null | undefined): string {
     if (!photo) {
@@ -132,28 +142,31 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
 
     let normalizedPhoto = String(photo).trim().replace(/\\/g, '/');
-    console.log('[Photo] Entrée brute:', photo, '? Normalisée:', normalizedPhoto);
+    console.log('[Photo] Entree brute:', photo, '? Normalisee:', normalizedPhoto);
 
     if (normalizedPhoto.startsWith('http://') || normalizedPhoto.startsWith('https://')) {
-      console.log('[Photo] URL absolue détectée');
+      console.log('[Photo] URL absolue detectee');
       return normalizedPhoto;
     }
 
     const cleanPath = normalizedPhoto.replace(/^\/+/, '').replace(/^storage\//, '');
     const url = `/api/docs/${cleanPath}`;
-    console.log('[Photo] Résolu via proxy ?', url);
+    console.log('[Photo] Resolu via proxy ?', url);
     return url;
   }
 
   // --- Chargement du profil ---------------------------------------------
 
-  loadProfile(): void {
-    this.isLoading = true;
-    this.errorMessage = '';
-    this.cdr.detectChanges();
+  loadProfile(silent = false): void {
+    if (!silent) {
+      this.isLoading = true;
+      this.errorMessage = '';
+      this.cdr.detectChanges();
+    }
 
     fetch(`${this.apiBase}/user`, {
-      headers: this.authHeaders()
+      headers: this.authHeaders(),
+      credentials: 'include'
     })
       .then(async res => {
         if (!res.ok) {
@@ -162,7 +175,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         return res.json();
       })
       .then((user: UserProfile) => {
-        console.log('Profil chargé:', user);
+        console.log('Profil charge:', user);
 
         const photoUrl = user.photo || user.avatar || user.photo_url || '';
         this.photoPreviewUrl = this.resolvePhotoUrl(photoUrl);
@@ -180,13 +193,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
       })
       .catch(error => {
         console.error('Erreur chargement profil:', error);
-        this.errorMessage = 'Impossible de charger le profil. Veuillez réessayer.';
+        this.errorMessage = 'Impossible de charger le profil. Veuillez reessayer.';
         this.isLoading = false;
         this.cdr.detectChanges();
       });
   }
 
-  // --- Mise é jour du profil --------------------------------------------
+  // --- Mise e jour du profil --------------------------------------------
 
   updateProfile(): void {
     if (this.profileForm.invalid) {
@@ -211,7 +224,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     if (this.selectedPhotoFile) {
       formData.append('photo', this.selectedPhotoFile);
       formData.append('avatar', this.selectedPhotoFile);
-      console.log('Photo ajoutée:', this.selectedPhotoFile.name);
+      console.log('Photo ajoutee:', this.selectedPhotoFile.name);
     }
 
     formData.append('_method', 'PUT');
@@ -219,11 +232,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     fetch(`${this.apiBase}/user/profile`, {
       method: 'POST',
       headers: this.authHeaders(),
+      credentials: 'include',
       body: formData
     })
       .then(async res => {
         const data = await res.json();
-        console.log('Réponse serveur:', data);
+        console.log('Reponse serveur:', data);
 
         if (!res.ok) {
           if (data.errors) {
@@ -238,23 +252,23 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
         const updatedUser = data.user || data;
 
-        console.log('Données utilisateur retournées:', updatedUser);
+        console.log('Donnees utilisateur retournees:', updatedUser);
 
         if (updatedUser.photo) {
-          console.log('Photo détectée:', updatedUser.photo);
+          console.log('Photo detectee:', updatedUser.photo);
           this.photoPreviewUrl = this.resolvePhotoUrl(updatedUser.photo);
         } else if (updatedUser.avatar) {
-          console.log('Avatar détecté:', updatedUser.avatar);
+          console.log('Avatar detecte:', updatedUser.avatar);
           this.photoPreviewUrl = this.resolvePhotoUrl(updatedUser.avatar);
         } else if (updatedUser.photo_url) {
-          console.log('Photo URL détectée:', updatedUser.photo_url);
+          console.log('Photo URL detectee:', updatedUser.photo_url);
           this.photoPreviewUrl = updatedUser.photo_url;
         }
 
-        console.log('URL résolue:', this.photoPreviewUrl);
+        console.log('URL resolue:', this.photoPreviewUrl);
 
         this.originalPhotoUrl = this.photoPreviewUrl;
-        this.successMessage = 'Profil mis é jour avec succés !';
+        this.successMessage = 'Profil mis a jour avec succes !';
         this.selectedPhotoFile = null;
 
         const fileInput = document.getElementById('photo') as HTMLInputElement;
@@ -262,9 +276,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
         this.cdr.detectChanges();
 
-        // Recharger le profil aprés un court délai pour s'assurer que la photo est bien mise é jour
+        // Recharger le profil apres un court delai pour s'assurer que la photo est bien mise e jour
         setTimeout(() => {
-          this.loadProfile();
+          this.loadProfile(true);
         }, 500);
 
       })
@@ -277,7 +291,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       });
   }
 
-  // --- Sélection photo --------------------------------------------------
+  // --- Selection photo --------------------------------------------------
 
   onPhotoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
@@ -285,7 +299,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
     if (!file) return;
 
-    console.log('Fichier sélectionné:', file);
+    console.log('Fichier selectionne:', file);
 
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
@@ -326,10 +340,10 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  // --- CHANGEMENT DE MOT DE PASSE - VERSION CORRIGéE AVEC camelCase -----
+  // --- CHANGEMENT DE MOT DE PASSE - VERSION CORRIGeE AVEC camelCase -----
 
   changePassword(): void {
-    // 1. Vérifications cété client
+    // 1. Verifications cete client
     if (this.passwordForm.invalid) {
       this.passwordForm.markAllAsTouched();
 
@@ -356,16 +370,16 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.passwordErrorMessage = '';
     this.cdr.detectChanges();
 
-    // ? FORMAT CORRECT d'aprés les logs : camelCase
+    // ? FORMAT CORRECT d'apres les logs : camelCase
     const passwordData = {
       currentPassword: currentPassword,  // camelCase
       newPassword: newPassword,          // camelCase
-      // Le serveur n'attend pas confirmPassword d'aprés les logs
-      // Mais on peut l'ajouter au cas oé
+      // Le serveur n'attend pas confirmPassword d'apres les logs
+      // Mais on peut l'ajouter au cas oe
       password_confirmation: confirmPassword
     };
 
-    console.log('?? Données envoyées (format camelCase):', passwordData);
+    console.log('?? Donnees envoyees (format camelCase):', passwordData);
     console.log('?? Token:', this.getToken());
 
     fetch(`${this.apiBase}/user/password`, {
@@ -375,6 +389,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify(passwordData)
     })
       .then(async res => {
@@ -392,31 +407,33 @@ export class ProfileComponent implements OnInit, OnDestroy {
         }
 
         if (!res.ok) {
-          if (res.status === 422 && data.errors) {
-            console.log('? Erreurs de validation:', data.errors);
+          // Le backend retourne soit {errors: {...}} soit les erreurs directement
+          const errors = data.errors || (typeof data === 'object' && !data.message ? data : null);
+          if (res.status === 422 && errors) {
+            console.log('Erreurs de validation:', errors);
 
-            // Construire un message d'erreur clair
+            // Construire un message d'erreur lisible
             const errorMessages: string[] = [];
-            Object.keys(data.errors).forEach(field => {
-              const messages = data.errors[field];
+            Object.keys(errors).forEach(field => {
+              const messages = errors[field];
               if (Array.isArray(messages)) {
-                errorMessages.push(`${field}: ${messages.join(', ')}`);
+                errorMessages.push(...messages);
               } else {
-                errorMessages.push(`${field}: ${messages}`);
+                errorMessages.push(String(messages));
               }
             });
 
-            this.passwordErrorMessage = errorMessages.join(' | ');
+            this.passwordErrorMessage = errorMessages.join(' | ') || 'Erreur de validation.';
           } else {
-            this.passwordErrorMessage = data.message || `Erreur serveur (${res.status})`;
+            this.passwordErrorMessage = data.message || 'Erreur de validation.';
           }
 
           throw new Error(this.passwordErrorMessage);
         }
 
-        // Succés
-        console.log('? SUCCéS! Mot de passe changé');
-        this.passwordSuccessMessage = 'Mot de passe modifié avec succés !';
+        // Succes
+        console.log('? SUCCeS! Mot de passe change');
+        this.passwordSuccessMessage = 'Mot de passe modifie avec succes !';
         this.passwordForm.reset();
 
         Object.keys(this.passwordForm.controls).forEach(key => {
@@ -436,7 +453,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
       });
   }
 
-  // --- Version alternative si la premiére ne fonctionne pas ------------
+  // --- Version alternative si la premiere ne fonctionne pas ------------
 
   changePasswordAlternative(): void {
     if (this.passwordForm.invalid) {
@@ -452,7 +469,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.passwordErrorMessage = '';
     this.cdr.detectChanges();
 
-    // Format strictement d'aprés les logs d'erreur
+    // Format strictement d'apres les logs d'erreur
     const passwordData = {
       currentPassword: currentPassword,
       newPassword: newPassword
@@ -468,12 +485,13 @@ export class ProfileComponent implements OnInit, OnDestroy {
         'Content-Type': 'application/json',
         'Accept': 'application/json'
       },
+      credentials: 'include',
       body: JSON.stringify(passwordData)
     })
       .then(async res => {
         const data = await res.json();
         if (!res.ok) throw new Error(data.message || 'Erreur');
-        this.passwordSuccessMessage = 'Mot de passe modifié avec succés !';
+        this.passwordSuccessMessage = 'Mot de passe modifie avec succes !';
         this.passwordForm.reset();
       })
       .catch(error => {

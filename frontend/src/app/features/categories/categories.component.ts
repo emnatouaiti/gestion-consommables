@@ -158,10 +158,12 @@ export class CategoriesComponent implements OnInit {
 
     if (!payload.title) {
       this.errorMessage = 'Le titre est obligatoire.';
+      this.successMessage = '';
       return;
     }
 
     this.errorMessage = '';
+    this.successMessage = '';
 
     const req$ = this.editingId
       ? this.stockService.updateCategory(this.editingId, payload)
@@ -169,7 +171,7 @@ export class CategoriesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingId ? 'Catégorie mise é jour !' : 'Catégorie créée !';
+        this.successMessage = this.editingId ? 'Categorie mise e jour !' : 'Categorie creee !';
         this.closeModal();
         this.load();
         setTimeout(() => this.successMessage = '', 3000);
@@ -181,23 +183,32 @@ export class CategoriesComponent implements OnInit {
   }
 
   remove(id: number): void {
-    if (!confirm('Supprimer cette catégorie et toutes ses sous-catégories ?')) return;
-    this.stockService.deleteCategory(id).subscribe({
-      next: () => {
-        this.successMessage = 'Catégorie supprimée !';
-        this.load();
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Supprimer la categorie',
+      'Supprimer cette categorie et toutes ses sous-categories ?',
+      () => {
+        this.stockService.deleteCategory(id).subscribe({
+          next: () => {
+            this.successMessage = 'Categorie supprimee !';
+            this.load();
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
+          }
+        });
       },
-      error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Suppression impossible.');
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
+
 
   resetForm(): void {
     this.editingId = null;
     this.form = { title: '', description: '', status: 'active', parent_id: null };
     this.errorMessage = '';
+    this.successMessage = '';
   }
 
   getParentTitle(parentId: number | null): string {
@@ -218,10 +229,10 @@ export class CategoriesComponent implements OnInit {
 
   getLevelLabel(level: number): string {
     switch (level) {
-      case 1: return 'Catégorie';
-      case 2: return 'Sous-catégorie';
-      case 3: return 'Sous-sous-catégorie';
-      default: return 'Catégorie';
+      case 1: return 'Categorie';
+      case 2: return 'Sous-categorie';
+      case 3: return 'Sous-sous-categorie';
+      default: return 'Categorie';
     }
   }
 
@@ -231,6 +242,35 @@ export class CategoriesComponent implements OnInit {
       case 2: return 'fas fa-folder-open';
       case 3: return 'fas fa-file';
       default: return 'fas fa-folder';
+    }
+  }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
     }
   }
 }

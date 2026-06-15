@@ -1,10 +1,10 @@
 ﻿<div class="pbr-container">
   <!-- Header -->
   <div class="pbr-header">
-    <button class="btn-back" (click)="goBack()">← Retour aux dépôts</button>
+    <button class="btn-back" (click)="goBack()">← Retour aux depots</button>
     <div class="pbr-title" *ngIf="room">
       <h2>Produits de la salle : <strong>{{ room.name }}</strong></h2>
-      <span class="pbr-subtitle" *ngIf="warehouse">Dépôt : {{ warehouse.name }}<span *ngIf="warehouse.city"> · {{ warehouse.city }}</span></span>
+      <span class="pbr-subtitle" *ngIf="warehouse">Depot : {{ warehouse.name }}<span *ngIf="warehouse.city"> · {{ warehouse.city }}</span></span>
     </div>
     <div class="pbr-title" *ngIf="!room && !isLoading">
       <h2>Produits par salle</h2>
@@ -30,8 +30,8 @@
         <thead>
           <tr>
             <th>Produit</th>
-            <th>Référence</th>
-            <th>Catégorie</th>
+            <th>Reference</th>
+            <th>Categorie</th>
             <th>Emplacement</th>
             <th>Stock</th>
             <th>Actions</th>

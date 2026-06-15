@@ -47,12 +47,12 @@ class RealisticDataSeeder extends Seeder
         DB::statement('SET FOREIGN_KEY_CHECKS=1;');
 
         // 2. Create Units
-        $unitPce = Unit::create(['name' => 'Pièce', 'code' => 'PCE', 'description' => 'Unité individuelle']);
-        $unitBox = Unit::create(['name' => 'Boîte', 'code' => 'BOX', 'description' => 'Boîte de plusieurs unités']);
+        $unitPce = Unit::create(['name' => 'Piece', 'code' => 'PCE', 'description' => 'Unite individuelle']);
+        $unitBox = Unit::create(['name' => 'Boite', 'code' => 'BOX', 'description' => 'Boite de plusieurs unites']);
         $unitPkt = Unit::create(['name' => 'Paquet', 'code' => 'PKT', 'description' => 'Paquet de rame ou consommable']);
         $unitLtr = Unit::create(['name' => 'Litre', 'code' => 'LTR', 'description' => 'Volume en litres']);
 
-        // 3. Create Marques & Modèles
+        // 3. Create Marques & Modeles
         $marqueDell = Marque::create(['name' => 'Dell']);
         $marqueHP   = Marque::create(['name' => 'HP']);
         $marqueLogi = Marque::create(['name' => 'Logitech']);
@@ -69,27 +69,27 @@ class RealisticDataSeeder extends Seeder
         $suppliers = [
             Supplier::create(['name' => 'TechPro Solutions', 'email' => 'contact@techpro.tn', 'phone' => '71234567']),
             Supplier::create(['name' => 'OfficePlast', 'email' => 'vente@officeplast.com', 'phone' => '73456789']),
-            Supplier::create(['name' => 'Hygiène Plus', 'email' => 'info@hygieneplus.tn', 'phone' => '72123456']),
+            Supplier::create(['name' => 'Hygiene Plus', 'email' => 'info@hygieneplus.tn', 'phone' => '72123456']),
         ];
 
         // 5. Create Warehouses & Locations
-        $mainDepot = Warehouse::create(['name' => 'Dépôt Principal Tunis', 'address' => 'Tunis, Charguia II']);
-        $secDepot = Warehouse::create(['name' => 'Dépôt Secondaire Sfax', 'address' => 'Sfax, Route de Tunis']);
+        $mainDepot = Warehouse::create(['name' => 'Depot Principal Tunis', 'address' => 'Tunis, Charguia II']);
+        $secDepot = Warehouse::create(['name' => 'Depot Secondaire Sfax', 'address' => 'Sfax, Route de Tunis']);
 
         // Main Depot Rooms
         $roomIT = WarehouseRoom::create(['warehouse_id' => $mainDepot->id, 'name' => 'Salle Informatique']);
-        $roomOffice = WarehouseRoom::create(['warehouse_id' => $mainDepot->id, 'name' => 'Réserve Bureautique']);
+        $roomOffice = WarehouseRoom::create(['warehouse_id' => $mainDepot->id, 'name' => 'Reserve Bureautique']);
 
         // Main Depot Locations / Cabinets
-        $locLaptop = WarehouseLocation::create(['room_id' => $roomIT->id, 'name' => 'Étagère Sécurisée IT-1']);
-        $locCables = WarehouseLocation::create(['room_id' => $roomIT->id, 'name' => 'Armoire Câbles IT-2']);
+        $locLaptop = WarehouseLocation::create(['room_id' => $roomIT->id, 'name' => 'Etagere Securisee IT-1']);
+        $locCables = WarehouseLocation::create(['room_id' => $roomIT->id, 'name' => 'Armoire Cables IT-2']);
         $locPaper = WarehouseLocation::create(['room_id' => $roomOffice->id, 'name' => 'Palette Papiers']);
         $cabPens = WarehouseCabinet::create(['room_id' => $roomOffice->id, 'name' => 'Armoire Fournitures A']);
 
         // 6. Create Categories
-        $catIT = Category::create(['title' => 'Informatique', 'description' => 'Matériel informatique et accessoires']);
+        $catIT = Category::create(['title' => 'Informatique', 'description' => 'Materiel informatique et accessoires']);
         $catOffice = Category::create(['title' => 'Bureautique', 'description' => 'Fournitures de bureau']);
-        $catHygiene = Category::create(['title' => 'Entretien & Hygiène', 'description' => 'Produits de nettoyage et hygiène']);
+        $catHygiene = Category::create(['title' => 'Entretien & Hygiene', 'description' => 'Produits de nettoyage et hygiene']);
 
         // 7. Create Products
         $products = [
@@ -111,7 +111,7 @@ class RealisticDataSeeder extends Seeder
                 'unit_id' => $unitPkt->id, 'marque' => 'Double A', 'model' => 'A4 80g'
             ]),
             Product::create([
-                'categorie_id' => $catOffice->id, 'title' => 'Stylos Bic Bleus (Boîte 50)', 
+                'categorie_id' => $catOffice->id, 'title' => 'Stylos Bic Bleus (Boite 50)', 
                 'reference' => 'BIC-BLU-50', 'stock_quantity' => 40, 'seuil_min' => 5,
                 'unit_id' => $unitBox->id, 'marque' => 'Bic', 'model' => 'Cristal'
             ]),
@@ -120,7 +120,7 @@ class RealisticDataSeeder extends Seeder
                 'reference' => 'CAH-SPIR-200', 'stock_quantity' => 60, 'seuil_min' => 10,
                 'unit_id' => $unitPce->id, 'marque' => 'Standard', 'model' => '200p'
             ]),
-            // Hygiène
+            // Hygiene
             Product::create([
                 'categorie_id' => $catHygiene->id, 'title' => 'Gel Hydroalcoolique 500ml', 
                 'reference' => 'GEL-HYD-500', 'stock_quantity' => 80, 'seuil_min' => 15,

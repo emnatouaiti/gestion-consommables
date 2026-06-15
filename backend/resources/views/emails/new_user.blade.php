@@ -11,14 +11,14 @@
 <body>
     <div class="card">
         <h2>Bonjour {{ $name }},</h2>
-        <p>Un compte a été créé pour vous sur l'application.</p>
-        <p><strong>Accès :</strong></p>
+        <p>Un compte a ete cree pour vous sur l'application.</p>
+        <p><strong>Acces :</strong></p>
         <ul>
             <li>Email : {{ $email }}</li>
             <li>Mot de passe temporaire : <strong>{{ $password }}</strong></li>
         </ul>
-        <p>Veuillez vous connecter et changer votre mot de passe dès que possible.</p>
-        <p>Cordialement,<br/>L'équipe</p>
+        <p>Veuillez vous connecter et changer votre mot de passe des que possible.</p>
+        <p>Cordialement,<br/>L'equipe</p>
     </div>
 </body>
 </html>

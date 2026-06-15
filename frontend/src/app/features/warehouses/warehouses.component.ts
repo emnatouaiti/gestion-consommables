@@ -30,6 +30,12 @@ export class WarehousesComponent implements OnInit {
   errorMessage = '';
   successMessage = '';
 
+  // Erreurs specifiques a chaque modal
+  warehouseModalError = '';
+  roomModalError = '';
+  locationModalError = '';
+  cabinetModalError = '';
+
   // Modal properties
   showWarehouseModal = false;
   showRoomModal = false;
@@ -111,7 +117,7 @@ export class WarehousesComponent implements OnInit {
         this.cdr.detectChanges();
       },
       error: (err) => {
-        this.errorMessage = 'Impossible de charger les dépôts.';
+        this.errorMessage = 'Impossible de charger les depots.';
         this.isLoading = false;
         this.cdr.detectChanges();
       }
@@ -130,6 +136,7 @@ export class WarehousesComponent implements OnInit {
   openAddWarehouseModal(): void {
     this.resetWarehouseForm();
     this.editingWarehouseId = null;
+    this.warehouseModalError = '';
     this.showWarehouseModal = true;
     setTimeout(() => this.initMap(), 300);
   }
@@ -144,6 +151,7 @@ export class WarehousesComponent implements OnInit {
       phone: warehouse.phone || '',
       max_rooms: warehouse.max_rooms || null,
     };
+    this.warehouseModalError = '';
     this.showWarehouseModal = true;
     setTimeout(() => this.initMap(), 300);
   }
@@ -171,10 +179,10 @@ export class WarehousesComponent implements OnInit {
           }
           this.cdr.detectChanges();
         } else {
-          console.warn('Adresse non trouvée sur la carte');
+          console.warn('Adresse non trouvee sur la carte');
         }
       })
-      .catch(err => console.error('Erreur de géocodage:', err));
+      .catch(err => console.error('Erreur de geocodage:', err));
   }
 
   initMap(lat = 36.8065, lng = 10.1815, retryCount = 0): void {
@@ -212,7 +220,7 @@ export class WarehousesComponent implements OnInit {
     try {
       this.map = L.map('warehouseMap').setView([initialLat, initialLng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'é OpenStreetMap'
+        attribution: 'e OpenStreetMap'
       }).addTo(this.map);
 
       this.marker = L.marker([initialLat, initialLng], { draggable: true }).addTo(this.map);
@@ -276,7 +284,7 @@ export class WarehousesComponent implements OnInit {
 
       this.consultMap = L.map('consultMap').setView([lat, lng], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'é OpenStreetMap'
+        attribution: 'e OpenStreetMap'
       }).addTo(this.consultMap);
 
       if (warehouse.latitude && warehouse.longitude) {
@@ -303,16 +311,18 @@ export class WarehousesComponent implements OnInit {
 
   closeWarehouseModal(): void {
     this.showWarehouseModal = false;
+    this.warehouseModalError = '';
     this.resetWarehouseForm();
   }
 
   saveWarehouse(): void {
-    if (!this.warehouseForm.name) {
-      this.errorMessage = 'Le nom du dépôt est obligatoire.';
+    if (!this.warehouseForm.name || !this.warehouseForm.name.trim()) {
+      this.warehouseModalError = 'Le nom du depot est obligatoire.';
+      this.cdr.detectChanges();
       return;
     }
 
-    this.errorMessage = '';
+    this.warehouseModalError = '';
 
     const req$ = this.editingWarehouseId
       ? this.warehouseService.updateWarehouse(this.editingWarehouseId, this.warehouseForm)
@@ -320,13 +330,13 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingWarehouseId ? 'Dépôt mis é jour !' : 'Dépôt créé !';
+        this.successMessage = this.editingWarehouseId ? 'Depot mis a jour !' : 'Depot cree avec succes !';
         this.closeWarehouseModal();
         this.loadWarehouses();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        this.warehouseModalError = this.api.extractErrorMessage(err, 'Erreur lors de la sauvegarde du depot.');
         this.cdr.detectChanges();
       }
     });
@@ -339,22 +349,28 @@ export class WarehousesComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    if (!confirm('Etes-vous sur de vouloir supprimer ce depot ?')) return;
-
-    this.warehouseService.deleteWarehouse(id).subscribe({
-      next: () => {
-        this.successMessage = 'Dépôt supprimé !';
-        this.loadWarehouses();
-        this.selectedWarehouse = null;
-        this.rooms = [];
-        this.locations = [];
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Supprimer le depot',
+      'Etes-vous sur de vouloir supprimer ce depot ?',
+      () => {
+        this.warehouseService.deleteWarehouse(id).subscribe({
+          next: () => {
+            this.successMessage = 'Depot supprime !';
+            this.loadWarehouses();
+            this.selectedWarehouse = null;
+            this.rooms = [];
+            this.locations = [];
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer ce depot.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer ce dépôt.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   resetWarehouseForm(): void {
@@ -400,11 +416,12 @@ export class WarehousesComponent implements OnInit {
 
   openAddRoomModal(): void {
     if (!this.selectedWarehouse) {
-      this.errorMessage = 'Veuillez sélectionner un dépôt d\'abord.';
+      this.errorMessage = 'Veuillez selectionner un depot d\'abord.';
       return;
     }
     this.resetRoomForm();
     this.editingRoomId = null;
+    this.roomModalError = '';
     this.showRoomModal = true;
   }
 
@@ -415,26 +432,30 @@ export class WarehousesComponent implements OnInit {
       max_locations: room.max_locations || null,
       max_cabinets: room.max_cabinets || null
     };
+    this.roomModalError = '';
     this.showRoomModal = true;
   }
 
   closeRoomModal(): void {
     this.showRoomModal = false;
+    this.roomModalError = '';
     this.resetRoomForm();
   }
 
   saveRoom(): void {
-    if (!this.roomForm.name) {
-      this.errorMessage = 'Le nom de la salle est obligatoire.';
+    if (!this.roomForm.name || !this.roomForm.name.trim()) {
+      this.roomModalError = 'Le nom de la salle est obligatoire.';
+      this.cdr.detectChanges();
       return;
     }
 
     if (!this.selectedWarehouse) {
-      this.errorMessage = 'Dépôt non sélectionné.';
+      this.roomModalError = 'Depot non selectionne. Veuillez fermer et selectionner un depot.';
+      this.cdr.detectChanges();
       return;
     }
 
-    this.errorMessage = '';
+    this.roomModalError = '';
 
     const payload = {
       warehouse_id: this.selectedWarehouse.id,
@@ -447,13 +468,13 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingRoomId ? 'Salle mise é jour !' : 'Salle créée !';
+        this.successMessage = this.editingRoomId ? 'Salle mise a jour avec succes !' : 'Salle creee avec succes !';
         this.closeRoomModal();
         this.loadRooms();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        this.roomModalError = this.api.extractErrorMessage(err, 'Erreur lors de la sauvegarde de la salle.');
         this.cdr.detectChanges();
       }
     });
@@ -466,21 +487,27 @@ export class WarehousesComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    if (!confirm('Etes-vous sur de vouloir supprimer cette salle ?')) return;
-
-    this.warehouseService.deleteRoom(id).subscribe({
-      next: () => {
-        this.successMessage = 'Salle supprimée !';
-        this.loadRooms();
-        this.selectedRoom = null;
-        this.locations = [];
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Supprimer la salle',
+      'Etes-vous sur de vouloir supprimer cette salle ?',
+      () => {
+        this.warehouseService.deleteRoom(id).subscribe({
+          next: () => {
+            this.successMessage = 'Salle supprimee !';
+            this.loadRooms();
+            this.selectedRoom = null;
+            this.locations = [];
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette salle.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette salle.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   resetRoomForm(): void {
@@ -510,11 +537,12 @@ export class WarehousesComponent implements OnInit {
 
   openAddLocationModal(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Veuillez sélectionner une salle d\'abord.';
+      this.errorMessage = 'Veuillez selectionner une salle d\'abord.';
       return;
     }
     this.resetLocationForm();
     this.editingLocationId = null;
+    this.locationModalError = '';
     this.showLocationModal = true;
   }
 
@@ -525,26 +553,30 @@ export class WarehousesComponent implements OnInit {
       name: location.name || '',
       capacity_units: location.capacity_units || ''
     };
+    this.locationModalError = '';
     this.showLocationModal = true;
   }
 
   closeLocationModal(): void {
     this.showLocationModal = false;
+    this.locationModalError = '';
     this.resetLocationForm();
   }
 
   saveLocation(): void {
-    if (!this.locationForm.name) {
-      this.errorMessage = 'Le nom de l\'emplacement est obligatoire.';
+    if (!this.locationForm.name || !this.locationForm.name.trim()) {
+      this.locationModalError = 'Le nom de l\'emplacement est obligatoire.';
+      this.cdr.detectChanges();
       return;
     }
 
     if (!this.selectedRoom) {
-      this.errorMessage = 'Salle non sélectionnée.';
+      this.locationModalError = 'Salle non selectionnee. Veuillez fermer et selectionner une salle.';
+      this.cdr.detectChanges();
       return;
     }
 
-    this.errorMessage = '';
+    this.locationModalError = '';
 
     const payload = {
       room_id: this.selectedRoom.id,
@@ -557,13 +589,13 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingLocationId ? 'Emplacement mis é jour !' : 'Emplacement créé !';
+        this.successMessage = this.editingLocationId ? 'Emplacement mis a jour avec succes !' : 'Emplacement cree avec succes !';
         this.closeLocationModal();
         this.loadLocations();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        this.locationModalError = this.api.extractErrorMessage(err, 'Erreur lors de la sauvegarde de l\'emplacement.');
         this.cdr.detectChanges();
       }
     });
@@ -576,19 +608,25 @@ export class WarehousesComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    if (!confirm('Etes-vous sur de vouloir supprimer cet emplacement ?')) return;
-
-    this.warehouseService.deleteLocation(id).subscribe({
-      next: () => {
-        this.successMessage = 'Emplacement supprimé !';
-        this.loadLocations();
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Supprimer l\'emplacement',
+      'Etes-vous sur de vouloir supprimer cet emplacement ?',
+      () => {
+        this.warehouseService.deleteLocation(id).subscribe({
+          next: () => {
+            this.successMessage = 'Emplacement supprime !';
+            this.loadLocations();
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cet emplacement.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cet emplacement.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   resetLocationForm(): void {
@@ -618,11 +656,12 @@ export class WarehousesComponent implements OnInit {
 
   openAddCabinetModal(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Veuillez sélectionner une salle d\'abord.';
+      this.errorMessage = 'Veuillez selectionner une salle d\'abord.';
       return;
     }
     this.resetCabinetForm();
     this.editingCabinetId = null;
+    this.cabinetModalError = '';
     this.showCabinetModal = true;
   }
 
@@ -633,26 +672,30 @@ export class WarehousesComponent implements OnInit {
       name: cabinet.name || '',
       capacity_units: cabinet.capacity_units || null
     };
+    this.cabinetModalError = '';
     this.showCabinetModal = true;
   }
 
   closeCabinetModal(): void {
     this.showCabinetModal = false;
+    this.cabinetModalError = '';
     this.resetCabinetForm();
   }
 
   saveCabinet(): void {
     if (!this.selectedRoom) {
-      this.errorMessage = 'Salle non sélectionnée.';
+      this.cabinetModalError = 'Salle non selectionnee. Veuillez fermer et selectionner une salle.';
+      this.cdr.detectChanges();
       return;
     }
 
-    if (!this.cabinetForm.name) {
-      this.errorMessage = 'Le nom de l\'armoire est obligatoire.';
+    if (!this.cabinetForm.name || !this.cabinetForm.name.trim()) {
+      this.cabinetModalError = 'Le nom de l\'armoire est obligatoire.';
+      this.cdr.detectChanges();
       return;
     }
 
-    this.errorMessage = '';
+    this.cabinetModalError = '';
 
     const payload = {
       room_id: this.selectedRoom?.id,
@@ -665,13 +708,13 @@ export class WarehousesComponent implements OnInit {
 
     req$.subscribe({
       next: () => {
-        this.successMessage = this.editingCabinetId ? 'Armoire mise é jour !' : 'Armoire créée !';
+        this.successMessage = this.editingCabinetId ? 'Armoire mise a jour avec succes !' : 'Armoire creee avec succes !';
         this.closeCabinetModal();
         this.loadCabinets();
         setTimeout(() => this.successMessage = '', 3000);
       },
       error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur de sauvegarde.');
+        this.cabinetModalError = this.api.extractErrorMessage(err, 'Erreur lors de la sauvegarde de l\'armoire.');
         this.cdr.detectChanges();
       }
     });
@@ -684,19 +727,25 @@ export class WarehousesComponent implements OnInit {
       this.cdr.detectChanges();
       return;
     }
-    if (!confirm('Etes-vous sur de vouloir supprimer cette armoire ?')) return;
-
-    this.warehouseService.deleteCabinet(id).subscribe({
-      next: () => {
-        this.successMessage = 'Armoire supprimée !';
-        this.loadCabinets();
-        setTimeout(() => this.successMessage = '', 3000);
+    this.openConfirmModal(
+      'Supprimer l\'armoire',
+      'Etes-vous sur de vouloir supprimer cette armoire ?',
+      () => {
+        this.warehouseService.deleteCabinet(id).subscribe({
+          next: () => {
+            this.successMessage = 'Armoire supprimee !';
+            this.loadCabinets();
+            setTimeout(() => this.successMessage = '', 3000);
+          },
+          error: (err) => {
+            this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette armoire.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err) => {
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de supprimer cette armoire.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer'
+    );
   }
 
   resetCabinetForm(): void {
@@ -758,5 +807,45 @@ export class WarehousesComponent implements OnInit {
   canDeleteCabinet(item: any): boolean {
     return Number(item?.current_units ?? item?.currentUnits ?? 0) === 0;
   }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = true;
+    this.pendingAction = null;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
 }
 

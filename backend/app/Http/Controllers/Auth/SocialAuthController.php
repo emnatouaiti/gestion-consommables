@@ -12,14 +12,11 @@ class SocialAuthController extends Controller
 {
     public function redirectToGoogle()
     {
-        $url = Socialite::driver('google')->stateless()->redirect()->getTargetUrl();
-
-        // Add prompt=select_account to force account selection every time
-        // This ensures users can switch between Google accounts
-        $separator = strpos($url, '?') !== false ? '&' : '?';
-        $url .= $separator . http_build_query([
-            'prompt' => 'select_account',
-        ]);
+        $url = Socialite::driver('google')
+            ->stateless()
+            ->with(['prompt' => 'select_account'])
+            ->redirect()
+            ->getTargetUrl();
 
         return response()->json([
             'url' => $url,
@@ -57,9 +54,13 @@ class SocialAuthController extends Controller
                         'siege' => 'Non defini',
                     ]);
 
-                    $user->assignRole('Utilisateur');
                     AuditService::log($user, 'REGISTER_GOOGLE', 'User registered via Google');
                 }
+            }
+
+            // Check if the user has a role assigned
+            if (!$user->role_id) {
+                return redirect('http://localhost:4200/login?error=' . urlencode('Votre compte est en attente de validation. Veuillez patienter jusqu\'a ce qu\'un administrateur vous assigne un role pour vous connecter.'));
             }
 
             $token = $user->createToken('auth_token')->plainTextToken;

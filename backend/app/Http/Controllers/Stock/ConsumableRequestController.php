@@ -222,8 +222,8 @@ class ConsumableRequestController extends Controller
         }
 
         $currentStatus = Str::lower((string) $consumableRequest->status);
-        if (!in_array($currentStatus, ['pending', 'draft'], true)) {
-            return response()->json(['message' => 'Only pending or draft requests can be modified.'], 422);
+        if (!in_array($currentStatus, ['draft'], true)) {
+            return response()->json(['message' => 'Only draft requests can be modified.'], 422);
         }
 
         $hasPayloadFields = $request->has('requested_quantity') || $request->has('item_name') || $request->has('product_id') || $request->has('items');
@@ -312,6 +312,23 @@ class ConsumableRequestController extends Controller
                 ->update($payload);
         }
 
+        try {
+            $batch = $consumableRequest->batch_code
+                ? ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->get()
+                : collect([$consumableRequest]);
+            
+            $pdfPath = $this->generateAndSavePdf($consumableRequest->user, $batch->all(), $consumableRequest->batch_code);
+            if ($pdfPath) {
+                if ($consumableRequest->batch_code) {
+                    ConsumableRequest::where('batch_code', $consumableRequest->batch_code)->update(['pdf_path' => $pdfPath]);
+                } else {
+                    $consumableRequest->update(['pdf_path' => $pdfPath]);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::error('PDF Regeneration failed in update payload', ['error' => $e->getMessage()]);
+        }
+
         return response()->json([
             'message' => 'Request updated successfully.',
             'request' => $consumableRequest->fresh(['user.role', 'product']),
@@ -329,8 +346,8 @@ class ConsumableRequestController extends Controller
         }
 
         $currentStatus = Str::lower((string) $consumableRequest->status);
-        if (!in_array($currentStatus, ['pending', 'draft'], true)) {
-            return response()->json(['message' => 'Only pending or draft requests can be deleted.'], 422);
+        if (!in_array($currentStatus, ['draft'], true)) {
+            return response()->json(['message' => 'Only draft requests can be deleted.'], 422);
         }
 
         $consumableRequest->delete();

@@ -1,8 +1,8 @@
-﻿<div class="movements-container">
+<div class="movements-container">
   <header class="page-header">
     <div class="header-content">
       <h1>Mouvements de Stock</h1>
-      <p class="subtitle">Traçabilité des entrées, sorties et transferts physiques</p>
+      <p class="subtitle">Tracabilite des entrees, sorties et transferts physiques</p>
     </div>
     <div class="header-actions">
       <button class="btn btn-primary" (click)="openCreate()">
@@ -19,7 +19,7 @@
   <section class="filters-card">
     <div class="filter-row">
       <div class="filter-group">
-        <label>Référence</label>
+        <label>Reference</label>
         <div class="search-input">
           <input type="text" [(ngModel)]="filters.reference" placeholder="Ex: SMV-2026..." (keyup.enter)="applyFilters()">
         </div>
@@ -28,7 +28,7 @@
         <label>Type</label>
         <select [(ngModel)]="filters.movement_type" (change)="applyFilters()">
           <option value="">Tous les types</option>
-          <option value="in">Entrées</option>
+          <option value="in">Entrees</option>
           <option value="out">Sorties</option>
           <option value="transfer">Transferts</option>
         </select>
@@ -38,8 +38,8 @@
         <select [(ngModel)]="filters.status" (change)="applyFilters()">
           <option value="">Tous les statuts</option>
           <option value="pending_validation">En attente de validation</option>
-          <option value="executed">Exécuté (Final)</option>
-          <option value="cancelled">Annulé</option>
+          <option value="executed">Execute (Final)</option>
+          <option value="cancelled">Annule</option>
         </select>
       </div>
       <div class="filter-actions">
@@ -60,7 +60,7 @@
     <table *ngIf="movements.length > 0; else noData">
       <thead>
         <tr>
-          <th>Référence / Date</th>
+          <th>Reference / Date</th>
           <th>Type</th>
           <th>Contenu (Produits)</th>
           <th>Source / Destination</th>
@@ -86,15 +86,22 @@
           </td>
           <td>
             <div class="location-flow">
+              <!-- Source -->
               <span *ngIf="m.source_warehouse_location || m.source_cabinet" class="location-tag source">
                 {{ locationLabel(m.source_warehouse_location || m.source_cabinet) }}
               </span>
-              <i *ngIf="(m.source_warehouse_location || m.source_cabinet) && (m.destination_warehouse_location || m.destination_cabinet)" class="icon-arrow-right"></i>
+
+              <i *ngIf="m.source_warehouse_location || m.source_cabinet" class="icon-arrow-right"></i>
+
+              <!-- Destination -->
               <span *ngIf="m.destination_warehouse_location || m.destination_cabinet" class="location-tag dest">
                 {{ locationLabel(m.destination_warehouse_location || m.destination_cabinet) }}
               </span>
-              <span *ngIf="!m.destination_warehouse_location && !m.destination_cabinet && m.destination_text" class="location-text">
-                → {{ m.destination_text }}
+              <span *ngIf="m.destination_siege" class="location-tag dest">
+                {{ m.destination_siege }} <small *ngIf="m.destination_user">({{ m.destination_user.nomprenom }})</small>
+              </span>
+              <span *ngIf="!m.destination_warehouse_location && !m.destination_cabinet && !m.destination_siege && m.destination_text" class="location-text">
+                {{ m.destination_text }}
               </span>
             </div>
           </td>
@@ -105,7 +112,7 @@
           </td>
           <td class="text-right">
             <div class="actions-group">
-              <button class="btn-icon" (click)="$event.stopPropagation(); openDetails(m)" title="Détails">
+              <button class="btn-icon" (click)="$event.stopPropagation(); openDetails(m)" title="Details">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                   <circle cx="12" cy="12" r="3"></circle>
@@ -116,7 +123,7 @@
                  [href]="getDocumentUrl(m.response_pdf_path)"
                  target="_blank"
                  (click)="$event.stopPropagation()"
-                 title="PDF décision">
+                 title="PDF decision">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -153,8 +160,8 @@
     <ng-template #noData>
       <div class="empty-state" *ngIf="!loading">
         <i class="icon-package-x"></i>
-        <h3>Aucun mouvement trouvé</h3>
-        <p>Ajustez vos filtres ou créez une nouvelle opération.</p>
+        <h3>Aucun mouvement trouve</h3>
+        <p>Ajustez vos filtres ou creez une nouvelle operation.</p>
       </div>
     </ng-template>
 
@@ -166,7 +173,7 @@
           <option *ngFor="let opt of perPageOptions" [ngValue]="opt">{{ opt }}</option>
         </select>
       </div>
-      <button (click)="prevPage()" [disabled]="page === 1" class="btn-nav">Précédent</button>
+      <button (click)="prevPage()" [disabled]="page === 1" class="btn-nav">Precedent</button>
       <span class="page-info">Page {{ page }} sur {{ lastPage }}</span>
       <button (click)="nextPage()" [disabled]="page === lastPage" class="btn-nav">Suivant</button>
     </footer>
@@ -190,13 +197,13 @@
 
         <!-- STEP 1: TYPE & INFOS GENERALES -->
         <div class="form-section">
-          <h3>Informations Générales</h3>
+          <h3>Informations Generales</h3>
           <div class="type-selector">
             <button type="button" class="type-btn" [class.active]="newMovement.movement_type === 'in'" (click)="changeMovementType('in')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
                 <path d="M12 19V5M5 12l7-7 7 7"/>
               </svg>
-              Entrée
+              Entree
             </button>
             <button type="button" class="type-btn" [class.active]="newMovement.movement_type === 'out'" (click)="changeMovementType('out')">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24">
@@ -214,7 +221,7 @@
 
           <div class="grid-2">
             <div class="field">
-              <label>Référence (Auto si vide)</label>
+              <label>Reference (Auto si vide)</label>
               <input type="text" [(ngModel)]="newMovement.reference" name="ref" placeholder="SMV-REF-001">
             </div>
             <div class="field">
@@ -223,24 +230,9 @@
             </div>
           </div>
 
-          <div class="grid-2">
+          <div class="grid-1">
             <div class="field">
-              <label>Motif du mouvement</label>
-              <select [(ngModel)]="newMovement.motif" name="motif" *ngIf="newMovement.movement_type === 'in'">
-                <option value="">Choisir un motif...</option>
-                <option *ngFor="let mot of motifsIn" [value]="mot">{{ mot }}</option>
-              </select>
-              <select [(ngModel)]="newMovement.motif" name="motif" *ngIf="newMovement.movement_type === 'out'">
-                <option value="">Choisir un motif...</option>
-                <option *ngFor="let mot of motifsOut" [value]="mot">{{ mot }}</option>
-              </select>
-              <select [(ngModel)]="newMovement.motif" name="motif" *ngIf="newMovement.movement_type === 'transfer'">
-                <option value="">Choisir un motif...</option>
-                <option *ngFor="let mot of motifsTransfer" [value]="mot">{{ mot }}</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Document associé (Bon de livraison, etc.)</label>
+              <label>Document associe (Bon de livraison, etc.)</label>
               <div class="file-upload-wrapper">
                 <div class="file-upload">
                   <input type="file" (change)="onDocumentChange($event)" id="doc-upload">
@@ -266,15 +258,20 @@
           <div class="grid-2">
             <div class="field">
               <label>Fournisseur</label>
-              <select [(ngModel)]="newMovement.supplier_id" name="supp" (change)="onSupplierChange()">
-                <option [value]="null">Sélectionner un fournisseur...</option>
-                <option *ngFor="let s of suppliers" [value]="s.id">{{ s.name }}</option>
+              <select [(ngModel)]="newMovement.supplier_id" name="supp" (change)="onSupplierChange()" [disabled]="availableSuppliers.length === 0">
+                <option [value]="null">
+                  {{ availableSuppliers.length === 0 ? 'Veuillez d\'abord choisir un produit' : 'Selectionner un fournisseur...' }}
+                </option>
+                <option *ngFor="let s of availableSuppliers" [value]="s.id">{{ s.name }}</option>
               </select>
+              <small class="text-muted" *ngIf="availableSuppliers.length === 0 && newMovement.lines[0]?.product_id" style="color: var(--bad-text); font-size: 11px; margin-top: 4px; display: block;">
+                Aucun fournisseur n'est associe a ce produit.
+              </small>
             </div>
             <div class="field">
               <label>Contact Fournisseur</label>
               <select [(ngModel)]="newMovement.supplier_contact_id" name="contact">
-                <option [value]="null">Sélectionner un contact...</option>
+                <option [value]="null">Selectionner un contact...</option>
                 <option *ngFor="let c of supplierContacts" [value]="c.id">{{ c.name }}</option>
               </select>
             </div>
@@ -285,51 +282,14 @@
         <div class="form-section">
           <h3>Logistique & Emplacements</h3>
 
-          <!-- SOURCE (OUT or TRANSFER) -->
-          <div class="location-box source" *ngIf="newMovement.movement_type !== 'in'">
-            <label class="section-label">Source du stock</label>
-            <div class="grid-3">
-              <div class="field">
-                <label>Dépôt</label>
-                <select [(ngModel)]="newMovement.source_warehouse_id" name="swh" (change)="onSourceWarehouseChange()" [disabled]="isSourceDepotLocked">
-                  <option [value]="null">Choisir...</option>
-                  <option *ngFor="let w of warehouses" [value]="w.id">{{ w.name }}</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Salle / Local</label>
-                <select [(ngModel)]="newMovement.source_room_id" name="srm" (change)="onSourceRoomChange()">
-                  <option [value]="null">Choisir...</option>
-                  <option *ngFor="let r of sourceRooms" [value]="r.id">{{ r.name }}</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Armoire / Emplacement</label>
-                <select (change)="onSourceSelectionChange($event)" name="sloc">
-                  <option [value]="null">Choisir...</option>
-                  <optgroup label="Emplacements" *ngIf="sourceLocations.length > 0">
-                    <option *ngFor="let l of sourceLocations" [value]="'location:' + l.id"
-                            [selected]="l.id === newMovement.source_warehouse_location_id">
-                       {{ l.name }}{{ (l.capacity_units > 0 && l.current_units >= l.capacity_units) ? ' (PLEIN)' : '' }}
-                    </option>
-                  </optgroup>
-                  <optgroup label="Armoires" *ngIf="sourceCabinets.length > 0">
-                    <option *ngFor="let c of sourceCabinets" [value]="'cabinet:' + c.id"
-                            [selected]="c.id === newMovement.source_cabinet_id">
-                      ️ {{ c.name }}{{ (c.capacity_units > 0 && c.current_units >= c.capacity_units) ? ' (PLEIN)' : '' }}
-                    </option>
-                  </optgroup>
-                </select>
-              </div>
-            </div>
-          </div>
+          <!-- SOURCE (OUT or TRANSFER) IS NOW SELECTED PER LINE -->
 
           <!-- DESTINATION (IN or TRANSFER) -->
           <div class="location-box destination" *ngIf="newMovement.movement_type !== 'out'">
             <label class="section-label">Destination du stock</label>
             <div class="grid-3">
               <div class="field">
-                <label>Dépôt</label>
+                <label>Depot</label>
                 <select [(ngModel)]="newMovement.destination_warehouse_id" name="dwh" (change)="onDestWarehouseChange()" [disabled]="isDestDepotLocked">
                   <option [value]="null">Choisir...</option>
                   <option *ngFor="let w of destinationWarehouses" [value]="w.id">{{ w.name }}</option>
@@ -367,19 +327,19 @@
 
           <!-- DESTINATION (OUT ONLY: SIEGE & USER) -->
           <div class="location-box destination" *ngIf="newMovement.movement_type === 'out'">
-            <label class="section-label">Destination (Siège & Utilisateur)</label>
+            <label class="section-label">Destination (Siege & Utilisateur)</label>
             <div class="grid-2">
               <div class="field">
-                <label>Siège</label>
+                <label>Siege</label>
                 <select [(ngModel)]="newMovement.destination_siege" name="dsiege" (change)="onSiegeChange()">
-                  <option value="">Sélectionner un siège...</option>
+                  <option value="">Selectionner un siege...</option>
                   <option *ngFor="let s of siegeOptions" [value]="s">{{ s }}</option>
                 </select>
               </div>
               <div class="field">
                 <label>Utilisateur</label>
                 <select [(ngModel)]="newMovement.destination_user_id" name="duser">
-                  <option [value]="null">Sélectionner un utilisateur...</option>
+                  <option [value]="null">Selectionner un utilisateur...</option>
                   <option *ngFor="let u of filteredUsers" [value]="u.id">{{ u.nomprenom }} ({{ u.email }})</option>
                 </select>
               </div>
@@ -390,20 +350,26 @@
         <!-- STEP 4: PRODUITS -->
         <div class="form-section">
           <div class="section-header">
-            <h3>Produits & Quantités</h3>
+            <h3>Produits & Quantites</h3>
             <button type="button" class="btn-text" (click)="addLine()">+ Ajouter un produit</button>
           </div>
 
           <div class="lines-list">
             <div *ngFor="let line of newMovement.lines; let i = index" class="line-row">
               <div class="field flex-grow">
-                <select [(ngModel)]="line.product_id" [name]="'prod_'+i">
-                  <option [value]="null">Sélectionner un produit...</option>
+                <select [(ngModel)]="line.product_id" [name]="'prod_'+i" (change)="onProductChange(line)">
+                  <option [value]="null">Selectionner un produit...</option>
                   <option *ngFor="let p of products" [value]="p.id">{{ p.title }} ({{ p.reference }})</option>
                 </select>
               </div>
+              <div class="field flex-grow" *ngIf="newMovement.movement_type === 'out' || newMovement.movement_type === 'transfer'">
+                <select [(ngModel)]="line.source_location_val" [name]="'sloc_'+i" [disabled]="!line.product_id">
+                  <option [value]="null">Emplacement source...</option>
+                  <option *ngFor="let opt of line.stockOptions" [value]="opt.val">{{ opt.label }}</option>
+                </select>
+              </div>
               <div class="field qty-field">
-                <input type="number" [(ngModel)]="line.quantity" [name]="'qty_'+i" min="1" placeholder="Qté">
+                <input type="number" [(ngModel)]="line.quantity" [name]="'qty_'+i" min="1" placeholder="Qte">
               </div>
               <button type="button" class="btn-icon danger" (click)="removeLine(i)" *ngIf="newMovement.lines.length > 1">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
@@ -419,13 +385,13 @@
         </div>
 
         <div class="field">
-          <label>Notes complémentaires</label>
+          <label>Notes complementaires</label>
           <textarea [(ngModel)]="newMovement.notes" name="notes" rows="2"></textarea>
         </div>
 
         <div class="modal-footer">
           <button type="button" class="btn btn-neutral" (click)="closeCreate()">Annuler</button>
-          <button type="submit" class="btn btn-primary" [disabled]="loading">Créer le mouvement</button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading">Creer le mouvement</button>
         </div>
       </form>
     </div>
@@ -435,7 +401,7 @@
   <div class="modal-overlay" *ngIf="selectedMovement">
     <div class="modal-card details-view">
       <header class="modal-header">
-        <h2>Opération {{ selectedMovement.reference }}</h2>
+        <h2>Operation {{ selectedMovement.reference }}</h2>
         <button class="close-btn" (click)="closeDetails()">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -450,23 +416,19 @@
 
         <!-- 2. Main Details Grid -->
         <div class="details-grid-premium">
-          <div class="info-block">
-            <span class="block-label">Motif</span>
-            <p class="block-val">{{ selectedMovement.motif || '—' }}</p>
-          </div>
           <div class="info-block" *ngIf="selectedMovement.supplier">
             <span class="block-label">Fournisseur</span>
             <p class="block-val">{{ selectedMovement.supplier.name }}</p>
           </div>
           <div class="info-block" *ngIf="selectedMovement.creator">
-            <span class="block-label">Créé par</span>
+            <span class="block-label">Cree par</span>
             <p class="block-val">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               {{ selectedMovement.creator.nomprenom || selectedMovement.creator.name }}
             </p>
           </div>
           <div class="info-block" *ngIf="selectedMovement.validator">
-            <span class="block-label">Validé par</span>
+            <span class="block-label">Valide par</span>
             <p class="block-val">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               {{ selectedMovement.validator.nomprenom || selectedMovement.validator.name }}
@@ -515,11 +477,11 @@
 
         <!-- 4. Documents Section -->
         <div class="documents-section" *ngIf="selectedMovement.in_image_path || selectedMovement.out_image_path || selectedMovement.document">
-          <h3>Documents associés</h3>
+          <h3>Documents associes</h3>
           <div class="docs-list">
             <a *ngIf="selectedMovement.in_image_path" [href]="getDocumentUrl(selectedMovement.in_image_path)" target="_blank" class="doc-chip">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
-              Bon d'entrée / Justificatif
+              Bon d'entree / Justificatif
             </a>
             <a *ngIf="selectedMovement.out_image_path" [href]="getDocumentUrl(selectedMovement.out_image_path)" target="_blank" class="doc-chip">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
@@ -531,20 +493,20 @@
             </a>
             <a *ngIf="selectedMovement.response_pdf_path" [href]="getDocumentUrl(selectedMovement.response_pdf_path)" target="_blank" class="doc-chip decision">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-              Décision (PDF)
+              Decision (PDF)
             </a>
           </div>
         </div>
 
         <!-- 5. Articles -->
         <div class="articles-section">
-          <h3>Détail des articles ({{ selectedMovement.lines?.length || 0 }})</h3>
+          <h3>Detail des articles ({{ selectedMovement.lines?.length || 0 }})</h3>
           <table class="premium-mini-table">
             <thead>
               <tr>
-                <th>Produit / Référence</th>
+                <th>Produit / Reference</th>
                 <th>Emplacement</th>
-                <th class="text-right">Quantité</th>
+                <th class="text-right">Quantite</th>
               </tr>
             </thead>
             <tbody>
@@ -636,7 +598,7 @@
           <label class="required-label" *ngIf="rejectionMode">Motif du rejet (Obligatoire)</label>
           <label *ngIf="!rejectionMode">Commentaires / Instructions (Optionnel)</label>
           <textarea [(ngModel)]="responseNotes" name="notes" rows="4"
-                    [placeholder]="rejectionMode ? 'Expliquez pourquoi ce mouvement est refusé...' : 'Ajoutez des précisions qui apparaîtront sur le PDF...'"
+                    [placeholder]="rejectionMode ? 'Expliquez pourquoi ce mouvement est refuse...' : 'Ajoutez des precisions qui apparaitront sur le PDF...'"
                     class="decision-textarea"></textarea>
         </div>
 
@@ -646,7 +608,7 @@
             <line x1="12" y1="9" x2="12" y2="13"></line>
             <line x1="12" y1="17" x2="12.01" y2="17"></line>
           </svg>
-          <p><strong>Action irréversible :</strong> Le stock sera mis à jour dès la validation.</p>
+          <p><strong>Action irreversible :</strong> Le stock sera mis a jour des la validation.</p>
         </div>
       </div>
 
@@ -698,7 +660,7 @@
                     [disabled]="confirmationInProgress"></textarea>
         </div>
 
-        <!-- Détails du mouvement -->
+        <!-- Details du mouvement -->
         <div class="confirmation-details">
           <div class="detail-item">
             <span class="label">Type:</span>
@@ -711,7 +673,7 @@
             <strong>{{ confirmationModal.movement.lines?.length || 0 }} produit(s)</strong>
           </div>
           <div class="detail-item">
-            <span class="label">Quantité totale:</span>
+            <span class="label">Quantite totale:</span>
             <strong>{{ getTotalQuantity(confirmationModal.movement.lines) }}</strong>
           </div>
         </div>
@@ -733,3 +695,5 @@
     </div>
   </div>
 </div>
+
+

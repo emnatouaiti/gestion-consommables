@@ -3,11 +3,12 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AdminRefService } from '../../core/services/admin-ref.service';
 import { ApiService } from '../../core/services/api.service';
+import { ConfirmModalComponent } from '../../shared/confirm-modal/confirm-modal.component';
 
 @Component({
   selector: 'app-references',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, ConfirmModalComponent],
   templateUrl: './references.component.html',
   styleUrls: ['./references.component.css']
 })
@@ -71,12 +72,12 @@ export class ReferencesComponent implements OnInit {
 
   addModele(): void {
     if (!this.selectedMarque) {
-      alert('Veuillez sélectionner une marque d\'abord.');
+      this.showAlertModal('Attention', 'Veuillez selectionner une marque d\'abord.', 'warning');
       return;
     }
     this.modalType = 'modele';
     this.modalMode = 'add';
-    this.modalTitle = `Nouveau Modéle (${this.selectedMarque.name})`;
+    this.modalTitle = `Nouveau Modele (${this.selectedMarque.name})`;
     this.modalInput = '';
     this.editingItem = null;
     this.showModal = true;
@@ -85,7 +86,7 @@ export class ReferencesComponent implements OnInit {
   editModele(mo: any): void {
     this.modalType = 'modele';
     this.modalMode = 'edit';
-    this.modalTitle = 'Modifier le Modéle';
+    this.modalTitle = 'Modifier le Modele';
     this.modalInput = mo.name;
     this.editingItem = mo;
     this.showModal = true;
@@ -117,7 +118,47 @@ export class ReferencesComponent implements OnInit {
     }
   }
 
-  deleteMarque(m: any): void { if (!confirm('Supprimer cette marque ?')) return; this.svc.deleteMarque(m.id).subscribe({ next: ()=> { this.loadMarques(); this.modeles = []; this.selectedMarque = null; }, error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
+  deleteMarque(m: any): void { this.openConfirmModal('Supprimer la marque', 'Supprimer cette marque ?', () => { this.svc.deleteMarque(m.id).subscribe({ next: ()=> { this.loadMarques(); this.modeles = []; this.selectedMarque = null; }, error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }, 'danger', 'Supprimer'); }
 
-  deleteModele(mo: any): void { if (!confirm('Supprimer ce modéle ?')) return; this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }
+  deleteModele(mo: any): void { this.openConfirmModal('Supprimer le modele', 'Supprimer ce modele ?', () => { this.svc.deleteModele(mo.id).subscribe({ next: ()=> this.loadModeles(), error: (err)=> this.error = this.api.extractErrorMessage(err, 'Erreur') }); }, 'danger', 'Supprimer'); }
+
+  /* --- Confirm Modal helpers --- */
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  private showAlertModal(title: string, message: string, type: 'danger' | 'warning' | 'info' = 'warning'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = true;
+    this.pendingAction = null;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
+  }
+
 }

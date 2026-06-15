@@ -28,7 +28,7 @@
 <body>
     <div class="sidebar" id="conversations"></div>
     <div class="chat">
-        <div class="messages" id="messages">Sélectionnez une conversation.</div>
+        <div class="messages" id="messages">Selectionnez une conversation.</div>
         <div class="composer">
             <textarea id="messageInput" placeholder="Votre message..."></textarea>
             <button id="sendBtn" disabled>Envoyer</button>
@@ -54,7 +54,7 @@
                 credentials: 'same-origin',
                 ...options,
             });
-            if (!res.ok) throw new Error('Erreur réseau');
+            if (!res.ok) throw new Error('Erreur reseau');
             return res.json();
         }
 
@@ -69,7 +69,7 @@
                     div.innerHTML = `
                         <div>
                             <div class="name">${conv.user.name}</div>
-                            <div class="meta">${conv.last_message || '—'}</div>
+                            <div class="meta">${conv.last_message || '-'}</div>
                         </div>
                         <div>
                             ${conv.unread ? `<span class="badge">${conv.unread}</span>` : ''}

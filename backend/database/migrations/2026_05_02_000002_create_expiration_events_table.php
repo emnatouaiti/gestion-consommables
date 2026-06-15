@@ -7,11 +7,11 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Migration: Créer une table d'historique des alertes d'expiration
+     * Migration: Creer une table d'historique des alertes d'expiration
      *
      * Contexte:
-     * - Chaque produit expiré génère des événements (alerte, blocage, suppression)
-     * - Permet de suivre les actions prises et d'auditer les décisions
+     * - Chaque produit expire genere des evenements (alerte, blocage, suppression)
+     * - Permet de suivre les actions prises et d'auditer les decisions
      * - Historique complet pour les rapports
      */
     public function up(): void
@@ -19,29 +19,29 @@ return new class extends Migration
         Schema::create('expiration_events', function (Blueprint $table) {
             $table->id();
 
-            // Références
+            // References
             $table->foreignId('product_id')->constrained('products')->cascadeOnDelete();
             $table->foreignId('product_stock_id')->constrained('product_stocks')->cascadeOnDelete();
 
-            // Détails du produit expiré
+            // Details du produit expire
             $table->string('batch_number')->nullable();
             $table->date('expiration_date');
             $table->unsignedInteger('quantity_affected');
 
-            // Type d'événement
+            // Type d'evenement
             $table->enum('event_type', [
                 'alert_7days',           // Alerte 7 jours avant expiration
                 'alert_expired',          // Alerte jour de l'expiration
-                'blocked_from_consumption', // Blocage après expiration
-                'marked_as_expired',      // Marqué comme expiré
-                'consumed_expired',       // Consommé après expiration (admin override)
-                'disposed'                // Jeté/Déchet
+                'blocked_from_consumption', // Blocage apres expiration
+                'marked_as_expired',      // Marque comme expire
+                'consumed_expired',       // Consomme apres expiration (admin override)
+                'disposed'                // Jete/Dechet
             ]);
 
             // Statut de l'alerte
             $table->enum('status', ['pending', 'acknowledged', 'resolved', 'ignored'])->default('pending');
 
-            // Détails de l'action
+            // Details de l'action
             $table->text('action_details')->nullable();
             $table->text('notes')->nullable();
 

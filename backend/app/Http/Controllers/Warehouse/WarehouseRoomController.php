@@ -40,7 +40,7 @@ class WarehouseRoomController extends Controller
         $warehouse = Warehouse::findOrFail($validated['warehouse_id']);
         if ($warehouse->max_rooms > 0 && $warehouse->rooms()->count() >= $warehouse->max_rooms) {
             return response()->json([
-                'message' => "Le dépôt '{$warehouse->name}' a atteint sa capacité maximale de {$warehouse->max_rooms} salles."
+                'message' => "Le depot '{$warehouse->name}' a atteint sa capacite maximale de {$warehouse->max_rooms} salles."
             ], 422);
         }
 

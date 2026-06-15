@@ -1,5 +1,5 @@
 /* ============================================================
-   PRODUITS — Thème ETAP
+   PRODUITS - Theme ETAP
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
@@ -31,14 +31,14 @@
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin   { to { transform: rotate(360deg); } }
 
-/* ── Page ─────────────────────────────────────────────────── */
+/* -- Page --------------------------------------------------- */
 .products-page {
   padding: 28px 32px;
   min-height: 100vh;
   background: var(--snow);
 }
 
-/* ── Header ───────────────────────────────────────────────── */
+/* -- Header ------------------------------------------------- */
 .page-header {
   display: flex;
   align-items: center;
@@ -77,7 +77,7 @@
   display: flex; align-items: center; gap: 10px;
 }
 
-/* ── Boutons ──────────────────────────────────────────────── */
+/* -- Boutons ------------------------------------------------ */
 .btn-primary, .btn-outline, .btn-cancel, .btn-save, .btn-text {
   display: inline-flex; align-items: center; gap: 7px;
   padding: 9px 20px; border-radius: 50px; border: none;
@@ -117,7 +117,7 @@
 }
 .btn-cancel:hover { background: var(--frost); }
 
-/* ── Toasts ───────────────────────────────────────────────── */
+/* -- Toasts ------------------------------------------------- */
 .toast {
   display: flex; align-items: center; gap: 10px;
   padding: 11px 16px; border-radius: var(--radius-md);
@@ -126,7 +126,7 @@
 .toast.success { background: var(--ok-bg);  border: 1px solid var(--ok-border);  color: var(--ok-text); }
 .toast.error   { background: var(--bad-bg); border: 1px solid var(--bad-border); color: var(--bad-text); }
 
-/* ── KPIs ─────────────────────────────────────────────────── */
+/* -- KPIs --------------------------------------------------- */
 .kpi-grid {
   display: grid;
   grid-template-columns: repeat(6, 1fr);
@@ -166,7 +166,7 @@
 .kpi-value.warn      { color: var(--warn-text); }
 .kpi-value.danger-val { color: var(--bad-text); }
 
-/* ── Filtres ──────────────────────────────────────────────── */
+/* -- Filtres ------------------------------------------------ */
 .filters-card {
   background: white; border: 1px solid var(--silver);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
@@ -211,7 +211,7 @@
   gap: 8px; margin-left: auto;
 }
 
-/* ── Table ────────────────────────────────────────────────── */
+/* -- Table -------------------------------------------------- */
 .table-card {
   background: white; border: 1px solid var(--silver);
   border-radius: var(--radius-lg); box-shadow: var(--shadow-card);
@@ -248,7 +248,7 @@ td {
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover { background: var(--e-25); }
 
-/* Colonnes gardées : Produit · Réf · Catégorie · Statut · Actions */
+/* Colonnes gardees : Produit · Ref · Categorie · Statut · Actions */
 
 .product-cell { display: flex; align-items: center; gap: 10px; }
 
@@ -279,7 +279,7 @@ tbody tr:hover { background: var(--e-25); }
 .status-badge.active   { background: var(--ok-bg);  color: var(--ok-text);  border: 1px solid var(--ok-border); }
 .status-badge.inactive { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 
-/* ── Actions (modifier + supprimer) ───── */
+/* -- Actions (modifier + supprimer) ----- */
 .table-actions { display: flex; align-items: center; gap: 5px; }
 
 .icon-btn {
@@ -296,7 +296,7 @@ tbody tr:hover { background: var(--e-25); }
 .icon-btn.danger   { background: var(--bad-bg);   color: var(--bad-text);  border-color: var(--bad-border); }
 .icon-btn.danger:hover   { background: #e11d48; color: white; border-color: #e11d48; }
 
-/* ── Pagination ───────────────────────────────────────────── */
+/* -- Pagination --------------------------------------------- */
 .pager {
   display: flex; align-items: center; justify-content: center; gap: 16px;
   padding: 16px 20px; border-top: 1px solid var(--border);
@@ -312,7 +312,7 @@ tbody tr:hover { background: var(--e-25); }
   border: 1px solid var(--e-100);
 }
 
-/* ── Empty / Loading ──────────────────────────────────────── */
+/* -- Empty / Loading ---------------------------------------- */
 .empty-state {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -330,7 +330,7 @@ tbody tr:hover { background: var(--e-25); }
   border-radius: 50%; animation: spin .7s linear infinite;
 }
 
-/* ── Modals (partagé) ─────────────────────────────────────── */
+/* -- Modals (partage) --------------------------------------- */
 .modal-backdrop {
   position: fixed; inset: 0;
   background: rgba(6,16,31,.65); backdrop-filter: blur(5px);
@@ -437,7 +437,7 @@ tbody tr:hover { background: var(--e-25); }
   border-radius: var(--radius-md); font-size: 13px;
 }
 
-/* ── Photo upload ─────────────────────────────────────────── */
+/* -- Photo upload ------------------------------------------- */
 .photo-upload { display: flex; flex-direction: column; gap: 10px; }
 .upload-label {
   display: inline-flex; align-items: center; gap: 7px;
@@ -450,7 +450,7 @@ tbody tr:hover { background: var(--e-25); }
 .photo-previews { display: flex; gap: 8px; flex-wrap: wrap; }
 .photo-preview { width: 64px; height: 64px; border-radius: 8px; object-fit: cover; border: 1px solid var(--silver); }
 
-/* ── Modal history tabs ───────────────────────────────────── */
+/* -- Modal history tabs ------------------------------------- */
 .history-tabs {
   display: flex; border-bottom: 1px solid var(--silver);
   padding: 0 24px; background: var(--snow);
@@ -468,7 +468,7 @@ tbody tr:hover { background: var(--e-25); }
   border-radius: 50px; margin-left: 6px;
 }
 
-/* ── Responsive ───────────────────────────────────────────── */
+/* -- Responsive --------------------------------------------- */
 @media (max-width: 1024px) {
   .kpi-grid { grid-template-columns: repeat(3, 1fr); }
 }

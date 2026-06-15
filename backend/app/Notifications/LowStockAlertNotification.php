@@ -28,8 +28,8 @@ class LowStockAlertNotification extends Notification
         $mail = (new MailMessage)
             ->subject("️ Alerte Stock Critique : $count produit(s) en rupture ou presque")
             ->greeting("Bonjour {$notifiable->nomprenom},")
-            ->line("Certains produits ont atteint leur seuil de stock minimum. Une commande de réapprovisionnement est probablement nécessaire.")
-            ->line("**Liste des produits concernés :**");
+            ->line("Certains produits ont atteint leur seuil de stock minimum. Une commande de reapprovisionnement est probablement necessaire.")
+            ->line("**Liste des produits concernes :**");
 
         foreach (array_slice($this->lowStockProducts, 0, 10) as $item) {
             $mail->line("- **{$item['title']}** : Stock actuel {$item['current']} (Seuil min: {$item['min']})");
@@ -40,8 +40,8 @@ class LowStockAlertNotification extends Notification
         }
 
         return $mail
-            ->action('Gérer le stock', url(config('app.frontend_url', 'http://localhost:4200') . '/gerer-produits'))
-            ->line('Merci de vérifier ces niveaux de stock rapidement.');
+            ->action('Gerer le stock', url(config('app.frontend_url', 'http://localhost:4200') . '/gerer-produits'))
+            ->line('Merci de verifier ces niveaux de stock rapidement.');
     }
 
     public function toArray(object $notifiable): array

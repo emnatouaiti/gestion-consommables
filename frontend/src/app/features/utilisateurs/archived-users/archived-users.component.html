@@ -1,6 +1,6 @@
-﻿<div class="page-header">
-  <h1 class="page-title">Utilisateurs archivés</h1>
-  <span class="page-count" *ngIf="!isLoading">{{ users.length }} archivé(s)</span>
+<div class="page-header">
+  <h1 class="page-title">Utilisateurs archives</h1>
+  <span class="page-count" *ngIf="!isLoading">{{ users.length }} archive(s)</span>
 </div>
 
 <div class="card">
@@ -15,7 +15,7 @@
         <input
           class="search"
           type="text"
-          placeholder="Rechercher un utilisateur archivé..."
+          placeholder="Rechercher un utilisateur archive..."
           [(ngModel)]="q"
           (keyup.enter)="search()"
         />
@@ -50,13 +50,13 @@
           <th>Photo</th>
           <th>Nom</th>
           <th>Email</th>
-          <th>Rôles</th>
+          <th>Roles</th>
           <th>Service</th>
           <th>Poste</th>
-          <th>Siège</th>
+          <th>Siege</th>
           <th>Adresse</th>
-          <th>Téléphone</th>
-          <th>Archivé le</th>
+          <th>Telephone</th>
+          <th>Archive le</th>
           <th class="actions">Actions</th>
         </tr>
       </thead>
@@ -75,20 +75,20 @@
             />
           </td>
           <td>
-            <div class="user-name">{{ u.nomprenom || '—' }}</div>
+            <div class="user-name">{{ u.nomprenom || '-' }}</div>
           </td>
           <td>{{ u.email }}</td>
           <td>
             <span class="role-badge"
               [class.admin]="roleNames(u).toLowerCase().includes('admin')">
-              {{ roleNames(u) || '—' }}
+              {{ roleNames(u) || '-' }}
             </span>
           </td>
-          <td>{{ u.service || '—' }}</td>
-          <td>{{ u.poste || '—' }}</td>
-          <td>{{ u.siege || '—' }}</td>
-          <td>{{ u.adresse || '—' }}</td>
-          <td>{{ u.telephone || '—' }}</td>
+          <td>{{ u.service || '-' }}</td>
+          <td>{{ u.poste || '-' }}</td>
+          <td>{{ u.siege || '-' }}</td>
+          <td>{{ u.adresse || '-' }}</td>
+          <td>{{ u.telephone || '-' }}</td>
           <td>
             <span class="archive-date">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
@@ -102,7 +102,7 @@
                 {{ u.deleted_at | date:'dd/MM/yyyy HH:mm' }}
               </span>
               <ng-template #noDate>
-                <span>—</span>
+                <span>-</span>
               </ng-template>
             </span>
           </td>
@@ -117,7 +117,7 @@
               </svg>
               Restaurer
             </button>
-            <button class="btn danger small" (click)="forceDelete(u.id)" title="Supprimer définitivement">
+            <button class="btn danger small" (click)="forceDelete(u.id)" title="Supprimer definitivement">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"/>
@@ -125,12 +125,12 @@
                 <line x1="10" y1="11" x2="10" y2="17"/>
                 <line x1="14" y1="11" x2="14" y2="17"/>
               </svg>
-              Supprimer définitivement
+              Supprimer definitivement
             </button>
           </td>
         </tr>
 
-        <!-- État vide -->
+        <!-- Etat vide -->
         <tr *ngIf="users.length === 0" class="state-row">
           <td colspan="11">
             <div class="empty-state">
@@ -142,7 +142,7 @@
                 <path d="M12 11v4"/>
                 <path d="M12 19v2"/>
               </svg>
-              <p>Aucun utilisateur archivé trouvé.</p>
+              <p>Aucun utilisateur archive trouve.</p>
             </div>
           </td>
         </tr>
@@ -163,3 +163,16 @@
     <div class="avatar-modal-name">{{ avatarModalName }}</div>
   </div>
 </div>
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

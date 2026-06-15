@@ -1,6 +1,6 @@
 ﻿<div class="login-stage">
 
-  <!-- ══ COLONNE GAUCHE — Brand ══ -->
+  <!-- == COLONNE GAUCHE - Brand == -->
   <div class="brand-immersion">
     <div class="brand-bg">
       <div class="bg-mesh"></div>
@@ -20,7 +20,7 @@
       </div>
 
       <div class="brand-tagline">
-        Entreprise Tunisienne<br />d'Activités Pétrolières
+        Entreprise Tunisienne<br />d'Activites Petrolieres
       </div>
 
       <div class="brand-divider"></div>
@@ -29,7 +29,7 @@
     </div>
   </div>
 
-  <!-- ══ COLONNE DROITE — Formulaire ══ -->
+  <!-- == COLONNE DROITE - Formulaire == -->
   <div class="login-arena">
     <div class="arena-inner">
 
@@ -41,7 +41,7 @@
           </svg>
         </div>
         <h1 class="login-title">Connexion</h1>
-        <p class="login-sub">Accédez à votre espace ETAP</p>
+        <p class="login-sub">Accedez a votre espace ETAP</p>
       </div>
 
       <form [formGroup]="loginForm" (ngSubmit)="onSubmit()" class="login-form" autocomplete="on">
@@ -70,7 +70,7 @@
         <div class="field-group">
           <div class="field-label-row">
             <label class="field-label" for="password">Mot de passe</label>
-            <a routerLink="/forgot-password" class="forgot-link">Oublié ?</a>
+            <a routerLink="/forgot-password" class="forgot-link">Oublie ?</a>
           </div>
           <div class="field-wrap"
             [class.is-error]="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
@@ -84,7 +84,7 @@
           </div>
           <p class="field-error-msg"
             *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched">
-            Minimum 6 caractères
+            Minimum 6 caracteres
           </p>
         </div>
 
@@ -106,7 +106,7 @@
             <polyline points="10 17 15 12 10 7"/>
             <line x1="15" y1="12" x2="3" y2="12"/>
           </svg>
-          {{ isLoading ? 'Connexion…' : 'Se connecter' }}
+          {{ isLoading ? 'Connexion...' : 'Se connecter' }}
         </button>
 
       </form>

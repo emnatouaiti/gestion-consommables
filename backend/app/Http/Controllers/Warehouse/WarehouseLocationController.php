@@ -39,7 +39,7 @@ class WarehouseLocationController extends Controller
         $room = WarehouseRoom::findOrFail($validated['room_id']);
         if ($room->max_locations > 0 && $room->locations()->count() >= $room->max_locations) {
             return response()->json([
-                'message' => "La salle '{$room->name}' a atteint sa capacité maximale de {$room->max_locations} emplacements."
+                'message' => "La salle '{$room->name}' a atteint sa capacite maximale de {$room->max_locations} emplacements."
             ], 422);
         }
 

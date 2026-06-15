@@ -38,7 +38,7 @@ class ConsumableRequestNotification extends Notification
         $isOwner = $notifiable->id === $firstRequest->user_id;
         $isStockManagerRecipient = $notifiable->hasAnyRole(['responsable de stock', 'responsable', 'agent de stock', 'agent']);
 
-        // Détecter si c'est une approbation partielle (mélange d'approuvés et de rejetés)
+        // Detecter si c'est une approbation partielle (melange d'approuves et de rejetes)
         $approvedCount = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']))->count();
         $rejectedCount = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected')->count();
         $isPartialApproval = $approvedCount > 0 && $rejectedCount > 0;
@@ -53,14 +53,14 @@ class ConsumableRequestNotification extends Notification
             ? $this->requests->count() . " articles"
             : ($firstRequest->item_name ?: 'Consommable');
 
-        $subject = "Mise à jour de votre demande : " . $itemTitle;
+        $subject = "Mise a jour de votre demande : " . $itemTitle;
         if ($isPartialApproval) {
-            $subject = $isOwner ? "Demande Partiellement Acceptée : " . $itemTitle : "Approbation Partielle : " . $itemTitle;
+            $subject = $isOwner ? "Demande Partiellement Acceptee : " . $itemTitle : "Approbation Partielle : " . $itemTitle;
         } elseif ($isApproval) {
-            $subject = $isOwner ? "Demande Approuvée : " . $itemTitle : "Ordre de sortie : " . $itemTitle;
+            $subject = $isOwner ? "Demande Approuvee : " . $itemTitle : "Ordre de sortie : " . $itemTitle;
         }
-        if ($isRejected) $subject = "Demande Refusée : " . $itemTitle;
-        if ($isPending && !$isOwner) $subject = "Nouvelle demande à valider : " . $itemTitle;
+        if ($isRejected) $subject = "Demande Refusee : " . $itemTitle;
+        if ($isPending && !$isOwner) $subject = "Nouvelle demande a valider : " . $itemTitle;
 
         $mail = (new MailMessage)
             ->subject($subject)
@@ -69,88 +69,88 @@ class ConsumableRequestNotification extends Notification
         if ($isApproval) {
             if ($isOwner) {
                 if ($isPartialApproval) {
-                    $mail->line("Votre demande de consommable a été traitée par le Directeur : certains articles ont été approuvés et d'autres refusés.");
+                    $mail->line("Votre demande de consommable a ete traitee par le Directeur : certains articles ont ete approuves et d'autres refuses.");
                     $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']));
                     if ($approvedReqs->count() > 0) {
-                        $mail->line("Articles approuvés :");
+                        $mail->line("Articles approuves :");
                         foreach ($approvedReqs as $req) {
-                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
                         }
                     }
                     $rejectedReqs = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected');
                     if ($rejectedReqs->count() > 0) {
-                        $mail->line("Articles refusés :");
+                        $mail->line("Articles refuses :");
                         foreach ($rejectedReqs as $req) {
-                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Raison : " . ($req->reject_reason ?: 'Non spécifiée') . ")");
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Raison : " . ($req->reject_reason ?: 'Non specifiee') . ")");
                         }
                     }
                 } else {
-                    $mail->line("Bonne nouvelle ! Votre demande de consommable a été approuvée par le Directeur.");
-                    $mail->line("Articles approuvés :");
+                    $mail->line("Bonne nouvelle ! Votre demande de consommable a ete approuvee par le Directeur.");
+                    $mail->line("Articles approuves :");
                     foreach ($this->requests as $req) {
-                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
                     }
                 }
                 $mail->line("Vous recevrez votre matÃriel prochainement aprÃ¨s confirmation du Responsable.")
                     ->action("Voir mes demandes", $frontendUrl);
             } else {
                 if ($isPartialApproval) {
-                    $mail->line("Une demande de consommable a été traitée par la Direction (approbation partielle) et attend votre confirmation de sortie pour les articles approuvés.")
+                    $mail->line("Une demande de consommable a ete traitee par la Direction (approbation partielle) et attend votre confirmation de sortie pour les articles approuves.")
                         ->line("Demandeur : {$user->nomprenom}");
                     $approvedReqs = $this->requests->filter(fn($r) => in_array(Str::lower($r->status), ['approved_pending_exit', 'validated_by_manager', 'approved']));
                     if ($approvedReqs->count() > 0) {
-                        $mail->line("Articles à sortir :");
+                        $mail->line("Articles a sortir :");
                         foreach ($approvedReqs as $req) {
-                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                            $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
                         }
                     }
                     $rejectedReqs = $this->requests->filter(fn($r) => Str::lower($r->status) === 'rejected');
                     if ($rejectedReqs->count() > 0) {
-                        $mail->line("Articles refusés :");
+                        $mail->line("Articles refuses :");
                         foreach ($rejectedReqs as $req) {
                             $mail->line("- " . ($req->item_name ?: 'Produit'));
                         }
                     }
                 } else {
-                    $mail->line("Une nouvelle demande de consommable a été approuvée par la Direction et attend votre confirmation de sortie.")
+                    $mail->line("Une nouvelle demande de consommable a ete approuvee par la Direction et attend votre confirmation de sortie.")
                         ->line("Demandeur : {$user->nomprenom}");
-                    $mail->line("Articles à sortir :");
+                    $mail->line("Articles a sortir :");
                     foreach ($this->requests as $req) {
-                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                        $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
                     }
                 }
                 $mail->line("Veuillez valider la sortie physique dans votre tableau de bord.")
                     ->action("GÃrer les sorties", "http://localhost:4200/validation-demandes");
             }
         } elseif ($status === 'approved') {
-                $mail->subject('Sortie de consommable confirmée - ' . $itemTitle)
-                ->line($isOwner ? 'Votre demande de consommable a été finalisée et la sortie physique a été enregistrée.' : 'La sortie physique pour la demande de ' . $user->nomprenom . ' a été confirmée.');
-            $mail->line("Articles livrés :");
+                $mail->subject('Sortie de consommable confirmee - ' . $itemTitle)
+                ->line($isOwner ? 'Votre demande de consommable a ete finalisee et la sortie physique a ete enregistree.' : 'La sortie physique pour la demande de ' . $user->nomprenom . ' a ete confirmee.');
+            $mail->line("Articles livres :");
             foreach ($this->requests as $req) {
-                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . ($req->approved_quantity ?: $req->requested_quantity) . ")");
             }
             $mail->action("Consulter la demande", $isOwner ? $frontendUrl : "http://localhost:4200/validation-demandes");
         } elseif ($isRejected) {
-            $reason = $firstRequest->reject_reason ?: 'Non spécifiée';
-            $mail->subject('Demande de consommable refusée - ' . $itemTitle)
-                ->line('Nous vous informons que votre demande de consommable a été refusée.');
-            $mail->line("Articles concernés :");
+            $reason = $firstRequest->reject_reason ?: 'Non specifiee';
+            $mail->subject('Demande de consommable refusee - ' . $itemTitle)
+                ->line('Nous vous informons que votre demande de consommable a ete refusee.');
+            $mail->line("Articles concernes :");
             foreach ($this->requests as $req) {
-                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . $req->requested_quantity . ")");
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . $req->requested_quantity . ")");
             }
             $mail->line('Raison du refus : ' . $reason)
                 ->action("Consulter la demande", $frontendUrl);
         } else {
             // Notification for Director / Manager (Validation)
-            $mail->line("Une nouvelle demande de consommable a été créée par {$user->nomprenom}.");
-            $mail->line("Liste des articles demandés :");
+            $mail->line("Une nouvelle demande de consommable a ete creee par {$user->nomprenom}.");
+            $mail->line("Liste des articles demandes :");
             foreach ($this->requests as $req) {
-                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantité: " . $req->requested_quantity . ")");
+                $mail->line("- " . ($req->item_name ?: 'Produit') . " (Quantite: " . $req->requested_quantity . ")");
             }
             $mail->action("Valider la demande", "http://localhost:4200/validation-demandes")
                 ->line("Merci d'approuver ou de rejeter cette demande.");
         }
-        $mail->salutation("Cordialement,\nL'équipe");
+        $mail->salutation("Cordialement,\nL'equipe");
 
         // Attach PDFs for partial approvals (approved and rejected items)
         $approvedRequests = $this->requests->filter(fn($r) => in_array($r->status, ['approved', 'approved_pending_exit', 'validated_by_manager']));

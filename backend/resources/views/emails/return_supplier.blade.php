@@ -19,11 +19,11 @@
         <div class="content">
             <p>Bonjour {{ $supplier->name }},</p>
             
-            <p>Nous vous informons par la présente du retour d'un lot de marchandises concernant le produit <strong>{{ $stock->product->title ?? 'Produit Inconnu' }}</strong> (Réf: {{ $stock->product->reference ?? 'N/A' }}).</p>
+            <p>Nous vous informons par la presente du retour d'un lot de marchandises concernant le produit <strong>{{ $stock->product->title ?? 'Produit Inconnu' }}</strong> (Ref: {{ $stock->product->reference ?? 'N/A' }}).</p>
             
-            <p><strong>Détails du lot :</strong></p>
+            <p><strong>Details du lot :</strong></p>
             <ul>
-                <li>Numéro de Lot : {{ $stock->batch_number }}</li>
+                <li>Numero de Lot : {{ $stock->batch_number }}</li>
                 <li>Date d'expiration : {{ $stock->expiration_date }}</li>
                 <li>Motif du retour : {{ $justification }}</li>
             </ul>
@@ -33,7 +33,7 @@
             <p>Merci de votre collaboration.</p>
         </div>
         <div class="footer">
-            <p>Ceci est un message automatique, merci de ne pas y répondre directement.</p>
+            <p>Ceci est un message automatique, merci de ne pas y repondre directement.</p>
         </div>
     </div>
 </body>

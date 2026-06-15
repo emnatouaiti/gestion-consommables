@@ -14,12 +14,22 @@ export class ArchivedUsersComponent implements OnInit {
   q: string = '';
   isLoading = false;
   errorMessage = '';
-  isBrowser: boolean;  // ← Ajout d'une propriété
+  isBrowser: boolean;  // ← Ajout d'une propriete
 
   // Avatar modal
   avatarModalOpen = false;
   avatarModalUrl = '';
   avatarModalName = '';
+
+  // Confirm modal
+  confirmModalVisible = false;
+  confirmModalTitle = '';
+  confirmModalMessage = '';
+  confirmModalConfirmText = 'Confirmer';
+  confirmModalCancelText = 'Annuler';
+  confirmModalType: 'danger' | 'warning' | 'info' = 'warning';
+  confirmModalAlertOnly = false;
+  private pendingAction: (() => void) | null = null;
 
   constructor(
     private svc: AdminUsersService,
@@ -27,12 +37,12 @@ export class ArchivedUsersComponent implements OnInit {
     private cdr: ChangeDetectorRef,
     @Inject(PLATFORM_ID) private platformId: Object
   ) {
-    // Déterminer si on est dans le navigateur
+    // Determiner si on est dans le navigateur
     this.isBrowser = isPlatformBrowser(this.platformId);
   }
 
   ngOnInit(): void {
-    // Si on est côté serveur, on initialise avec des valeurs par défaut
+    // Si on est cote serveur, on initialise avec des valeurs par defaut
     // mais on ne fait pas d'appel API
     if (!this.isBrowser) {
       this.isLoading = false;
@@ -40,26 +50,26 @@ export class ArchivedUsersComponent implements OnInit {
       return;
     }
 
-    // Côté navigateur seulement : charger les données
+    // Cote navigateur seulement : charger les donnees
     this.load();
   }
 
   load() {
-    if (!this.isBrowser) return; // Sécurité supplémentaire
+    if (!this.isBrowser) return; // Securite supplementaire
 
     this.isLoading = true;
     this.errorMessage = '';
 
-    // Forcer la détection de changements pour afficher le spinner
+    // Forcer la detection de changements pour afficher le spinner
     this.cdr.detectChanges();
 
     const searchTerm = this.q && this.q.trim() !== '' ? this.q.trim() : undefined;
 
     this.svc.listArchived(searchTerm).subscribe({
       next: (res: any) => {
-        console.log('Réponse API archives:', res); // Debug
+        console.log('Reponse API archives:', res); // Debug
 
-        // Gestion plus robuste de la réponse
+        // Gestion plus robuste de la reponse
         if (res?.data?.data) {
           // Format pagination Laravel standard
           this.users = res.data.data;
@@ -80,19 +90,19 @@ export class ArchivedUsersComponent implements OnInit {
         this.isLoading = false;
         this.errorMessage = '';
 
-        // Forcer la détection de changements
+        // Forcer la detection de changements
         this.cdr.detectChanges();
 
-        console.log('Utilisateurs archivés chargés:', this.users.length);
+        console.log('Utilisateurs archives charges:', this.users.length);
       },
       error: (err: any) => {
         console.error('Erreur chargement archives:', err);
 
         this.isLoading = false;
         this.users = [];
-        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de charger les utilisateurs archivés.');
+        this.errorMessage = this.api.extractErrorMessage(err, 'Impossible de charger les utilisateurs archives.');
 
-        // Forcer la détection de changements
+        // Forcer la detection de changements
         this.cdr.detectChanges();
       }
     });
@@ -111,34 +121,69 @@ export class ArchivedUsersComponent implements OnInit {
 
   restore(id: any) {
     if (!this.isBrowser) return;
-    if (!confirm('Restaurer cet utilisateur ?')) return;
 
-    this.svc.restore(id).subscribe({
-      next: () => {
-        this.load();
+    this.openConfirmModal(
+      'Restaurer l\'utilisateur',
+      'Etes-vous sur de vouloir restaurer cet utilisateur ?',
+      () => {
+        this.svc.restore(id).subscribe({
+          next: () => {
+            this.load();
+          },
+          error: (err: any) => {
+            console.error('Erreur restauration:', err);
+            this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la restauration.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err: any) => {
-        console.error('Erreur restauration:', err);
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la restauration.');
-        this.cdr.detectChanges();
-      }
-    });
+      'info',
+      'Restaurer'
+    );
   }
 
   forceDelete(id: any) {
     if (!this.isBrowser) return;
-    if (!confirm('Supprimer définitivement cet utilisateur ? Cette action est irréversible.')) return;
 
-    this.svc.forceDelete(id).subscribe({
-      next: () => {
-        this.load();
+    this.openConfirmModal(
+      'Supprimer definitivement',
+      'Supprimer definitivement cet utilisateur ? Cette action est irreversible.',
+      () => {
+        this.svc.forceDelete(id).subscribe({
+          next: () => {
+            this.load();
+          },
+          error: (err: any) => {
+            console.error('Erreur suppression definitive:', err);
+            this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la suppression.');
+            this.cdr.detectChanges();
+          }
+        });
       },
-      error: (err: any) => {
-        console.error('Erreur suppression définitive:', err);
-        this.errorMessage = this.api.extractErrorMessage(err, 'Erreur lors de la suppression.');
-        this.cdr.detectChanges();
-      }
-    });
+      'danger',
+      'Supprimer definitivement'
+    );
+  }
+
+  /* --- Confirm Modal helpers --- */
+
+  private openConfirmModal(title: string, message: string, action: () => void, type: 'danger' | 'warning' | 'info' = 'warning', confirmText = 'Confirmer'): void {
+    this.confirmModalTitle = title;
+    this.confirmModalMessage = message;
+    this.confirmModalConfirmText = confirmText;
+    this.confirmModalType = type;
+    this.confirmModalAlertOnly = false;
+    this.pendingAction = action;
+    this.confirmModalVisible = true;
+    this.cdr.detectChanges();
+  }
+
+  onConfirmModalConfirmed(): void {
+    this.confirmModalVisible = false;
+    if (this.pendingAction) {
+      this.pendingAction();
+      this.pendingAction = null;
+    }
   }
 
   roleNames(u: any): string {

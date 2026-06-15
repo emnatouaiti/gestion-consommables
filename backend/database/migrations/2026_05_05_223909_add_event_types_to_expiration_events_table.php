@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 return new class extends Migration
 {
     /**
-     * Ajoute les valeurs manquantes à l'enum event_type :
-     * - 'eliminated_batch'     : lot éliminé/détruit
-     * - 'returned_to_supplier' : lot retourné au fournisseur
+     * Ajoute les valeurs manquantes a l'enum event_type :
+     * - 'eliminated_batch'     : lot elimine/detruit
+     * - 'returned_to_supplier' : lot retourne au fournisseur
      */
     public function up(): void
     {
@@ -32,7 +32,7 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::getDriverName() === 'sqlite') { return; }
-        // Revenir à l'enum d'origine (sans les nouvelles valeurs)
+        // Revenir a l'enum d'origine (sans les nouvelles valeurs)
         DB::statement("
             ALTER TABLE expiration_events
             MODIFY COLUMN event_type ENUM(

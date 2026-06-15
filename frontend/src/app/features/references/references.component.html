@@ -6,8 +6,8 @@
       <i class="fas fa-tags"></i>
     </div>
     <div class="header-content">
-      <h2>Gestion des Références</h2>
-      <p>Configurez les marques et modèles disponibles pour vos consommables.</p>
+      <h2>Gestion des References</h2>
+      <p>Configurez les marques et modeles disponibles pour vos consommables.</p>
     </div>
   </header>
 
@@ -22,7 +22,7 @@
       
       <div class="card-body">
         <div class="empty-state" *ngIf="marques.length === 0">
-          Aucune marque enregistrée.
+          Aucune marque enregistree.
         </div>
         
         <ul class="ref-list" *ngIf="marques.length > 0">
@@ -40,10 +40,10 @@
       </div>
     </div>
 
-    <!-- SECTION MODÈLES -->
+    <!-- SECTION MODELES -->
     <div class="ref-card">
       <div class="card-header">
-        <h3>Modèles</h3>
+        <h3>Modeles</h3>
         <button class="btn-primary" (click)="addModele()">Ajouter</button>
       </div>
 
@@ -54,7 +54,7 @@
       
       <div class="card-body">
         <div class="empty-state" *ngIf="modeles.length === 0">
-          {{ selectedMarque ? 'Aucun modèle pour cette marque.' : 'Sélectionnez une marque pour voir ses modèles.' }}
+          {{ selectedMarque ? 'Aucun modele pour cette marque.' : 'Selectionnez une marque pour voir ses modeles.' }}
         </div>
         
         <ul class="ref-list" *ngIf="modeles.length > 0">
@@ -80,7 +80,7 @@
       </div>
       <div class="modal-body">
         <div class="field">
-          <label>Nom de {{ modalType === 'marque' ? 'la marque' : 'du modèle' }}</label>
+          <label>Nom de {{ modalType === 'marque' ? 'la marque' : 'du modele' }}</label>
           <input [(ngModel)]="modalInput" placeholder="Saisir le nom..." (keyup.enter)="saveModal()" autofocus />
         </div>
       </div>
@@ -96,3 +96,17 @@
   </div>
 
 </div>
+
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

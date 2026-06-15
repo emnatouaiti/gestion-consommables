@@ -49,7 +49,7 @@
         @method('patch')
 
         <div>
-            <x-input-label for="nomprenom" :value="__('Nom & Prénom')" />
+            <x-input-label for="nomprenom" :value="__('Nom & Prenom')" />
             <x-text-input id="nomprenom" name="nomprenom" type="text" class="mt-1 block w-full" :value="old('nomprenom', $user->nomprenom)" required autofocus autocomplete="name" />
             <x-input-error class="mt-2" :messages="$errors->get('nomprenom')" />
         </div>

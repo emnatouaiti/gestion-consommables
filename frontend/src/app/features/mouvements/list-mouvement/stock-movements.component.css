@@ -1,12 +1,12 @@
 /* ============================================================
-   MOUVEMENTS DE STOCK — Thème ETAP
+   MOUVEMENTS DE STOCK - Theme ETAP
    Compatible avec typeClass() → tag-success / tag-danger / tag-info / tag-warning / tag-neutral
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
 
 :host {
-  /* ── Palette ETAP ── */
+  /* -- Palette ETAP -- */
   --e-700: #0d2440;
   --e-600: #133060;
   --e-500: #1a4688;
@@ -52,9 +52,9 @@
 @keyframes modalIn { from { opacity:0; transform:scale(.95) translateY(16px) } to { opacity:1; transform:scale(1) translateY(0) } }
 @keyframes spin    { to { transform:rotate(360deg) } }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    CONTAINER
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .movements-container {
   padding: 28px 32px;
   min-height: 100vh;
@@ -62,9 +62,9 @@
   animation: fadeIn .4s var(--ease) both;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    PAGE HEADER
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .page-header {
   display: flex;
   align-items: center;
@@ -86,9 +86,9 @@
   margin-top: 3px;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    BOUTONS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -192,9 +192,9 @@
   &:disabled { opacity: .4; cursor: not-allowed; }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FILTRES — avec filtre DATE intégré
-══════════════════════════════════════════════════════════════ */
+/* ==============================================================
+   FILTRES - avec filtre DATE integre
+============================================================== */
 .filters-card {
   background: white;
   border: 1px solid var(--silver);
@@ -227,7 +227,7 @@
     letter-spacing: .06em;
   }
 
-  /* Champ date — style distinctif */
+  /* Champ date - style distinctif */
   &.date-group {
     min-width: 150px;
     max-width: 180px;
@@ -259,7 +259,7 @@
     }
   }
 
-  /* Séparateur entre date début et date fin */
+  /* Separateur entre date debut et date fin */
   &.date-sep {
     flex: 0;
     min-width: auto;
@@ -347,9 +347,9 @@
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    TABLE CONTAINER
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .table-container {
   background: white;
   border: 1px solid var(--silver);
@@ -359,9 +359,9 @@
   animation: fadeUp .4s var(--ease) .15s both;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    TABLE
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 table {
   width: 100%;
   border-collapse: collapse;
@@ -457,11 +457,11 @@ td {
   justify-content: flex-end;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   BADGES — compatibles avec typeClass() et statusClass() du TS
+/* ==============================================================
+   BADGES - compatibles avec typeClass() et statusClass() du TS
    typeClass  → tag-success | tag-danger | tag-info | tag-warning | tag-neutral
    statusClass→ tag-success | tag-danger | tag-warning | tag-info  | tag-neutral
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .badge {
   display: inline-flex;
   align-items: center;
@@ -472,13 +472,13 @@ td {
   white-space: nowrap;
 }
 
-/* tag-success → Entrée / Exécuté */
+/* tag-success → Entree / Execute */
 .tag-success { background: var(--ok-bg);   color: var(--ok-text);   border: 1px solid var(--ok-border); }
 
-/* tag-danger  → Sortie / Annulé */
+/* tag-danger  → Sortie / Annule */
 .tag-danger  { background: var(--bad-bg);  color: var(--bad-text);  border: 1px solid var(--bad-border); }
 
-/* tag-info    → Transfert / Approuvé */
+/* tag-info    → Transfert / Approuve */
 .tag-info    { background: var(--in-bg);   color: var(--in-text);   border: 1px solid var(--in-border); }
 
 /* tag-warning → En attente validation */
@@ -490,9 +490,9 @@ td {
 /* date chip dans le details modal */
 .badge.date { background: var(--frost); color: var(--mist); border: 1px solid var(--silver); }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    LOADING / EMPTY / ALERT
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .loading-overlay {
   display: flex;
   flex-direction: column;
@@ -550,9 +550,9 @@ td {
   margin: 16px;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    PAGINATION
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .pagination {
   display: flex;
   align-items: center;
@@ -573,9 +573,9 @@ td {
   border: 1px solid var(--e-100);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   MODAL — BASE
-══════════════════════════════════════════════════════════════ */
+/* ==============================================================
+   MODAL - BASE
+============================================================== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -610,7 +610,7 @@ td {
 .decision-modal    { width: min(480px, 96vw); }
 .confirmation-modal { width: min(460px, 96vw); }
 
-/* ── Modal header ── */
+/* -- Modal header -- */
 .modal-header {
   display: flex;
   align-items: center;
@@ -686,9 +686,9 @@ td {
   flex-shrink: 0;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FORM — CREATION MODAL
-══════════════════════════════════════════════════════════════ */
+/* ==============================================================
+   FORM - CREATION MODAL
+============================================================== */
 .form-section {
   border: 1px solid var(--silver);
   border-radius: var(--radius-md);
@@ -743,9 +743,16 @@ td {
 
     &:disabled { background: var(--frost); color: var(--mist); cursor: not-allowed; }
   }
+  
+  select {
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+    width: 100%;
+  }
 
   textarea { resize: vertical; }
-  &.flex-grow { flex: 1; }
+  &.flex-grow { flex: 1; min-width: 0; }
 }
 
 /* Type selector */
@@ -911,11 +918,13 @@ td {
   border: 1px solid var(--bad-border);
   font-size: 13px;
   font-weight: 500;
+  white-space: pre-line;
+  line-height: 1.5;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    DETAILS VIEW
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .header-tags {
   display: flex;
   align-items: center;
@@ -1071,9 +1080,9 @@ td {
   font-weight: 700;
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    DECISION MODAL
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .decision-summary {
   display: flex;
   gap: 20px;
@@ -1112,9 +1121,9 @@ td {
   p   { flex: 1; }
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    CONFIRMATION MODAL
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .icon-check { background: var(--ok-bg);  color: var(--ok-text);  }
 .icon-x     { background: var(--bad-bg); color: var(--bad-text); }
 
@@ -1139,9 +1148,9 @@ td {
   .label { color: var(--mist); font-weight: 600; }
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    RESPONSIVE
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 @media (max-width: 1024px) {
   .grid-3 { grid-template-columns: 1fr 1fr; }
 }

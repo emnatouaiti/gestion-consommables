@@ -55,9 +55,7 @@ export class AuthService {
     }
 
     login(credentials: { email: string; password: string }): Observable<any> {
-        // Pour Sanctum SPA : on récupère le cookie CSRF d'abord
-        return this.apiService.get('sanctum/csrf-cookie').pipe(
-            switchMap(() => this.apiService.post('login', credentials)),
+        return this.apiService.post('login', credentials).pipe(
             tap(response => {
                 this.setSession(response);
             })

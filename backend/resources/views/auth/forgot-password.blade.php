@@ -1,6 +1,6 @@
 <x-guest-layout>
     <div class="mb-4 text-sm text-gray-600">
-        Entrez votre adresse email et nous vous enverrons un code de vérification à 6 chiffres pour réinitialiser votre mot de passe.
+        Entrez votre adresse email et nous vous enverrons un code de verification a 6 chiffres pour reinitialiser votre mot de passe.
     </div>
 
     <!-- Session Status -->

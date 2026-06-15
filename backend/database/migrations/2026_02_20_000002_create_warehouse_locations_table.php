@@ -14,7 +14,7 @@ return new class extends Migration
             $table->string('code')->unique();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->string('type')->nullable()->comment('Etagère, Bac, Tiroir, etc.');
+            $table->string('type')->nullable()->comment('Etagere, Bac, Tiroir, etc.');
             $table->decimal('capacity_units', 12, 2)->nullable();
             $table->unsignedInteger('current_units')->default(0);
             $table->string('status')->default('active');

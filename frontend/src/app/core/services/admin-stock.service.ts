@@ -12,7 +12,7 @@ export class AdminStockService {
     private readonly http: HttpClient
   ) { }
 
-  /* ─── Categories ─── */
+  /* --- Categories --- */
   listCategories(params?: { tree?: boolean; status?: string; q?: string }): Observable<any[]> {
     let path = 'categories';
     const query: string[] = [];
@@ -27,7 +27,7 @@ export class AdminStockService {
   updateCategory(id: number, payload: any): Observable<any> { return this.api.put(`categories/${id}`, payload); }
   deleteCategory(id: number): Observable<any> { return this.api.delete(`categories/${id}`); }
 
-  /* ─── Products ─── */
+  /* --- Products --- */
   listProducts(params?: any): Observable<any> {
     let path = 'products';
     const query: string[] = [];
@@ -58,7 +58,7 @@ export class AdminStockService {
   getDashboardStats(): Observable<any> { return this.api.get('dashboard'); }
   getRecommendations(): Observable<any> { return this.api.get('recommendations'); }
 
-  downloadReport(type: 'stock' | 'movements'): Observable<Blob> { return this.http.get(`${this.apiBase}/reports/${type}`, { responseType: 'blob' }); }
+  downloadReport(type: 'stock' | 'movements'): Observable<Blob> { return this.api.getBlob(`reports/${type}`); }
   activateProduct(id: number): Observable<any> { return this.api.put(`products/${id}/activate`, {}); }
 
   getProductHistory(productId: number, params?: { page?: number; per_page?: number; date_start?: string; date_end?: string }): Observable<any> {

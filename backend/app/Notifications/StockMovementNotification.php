@@ -24,20 +24,20 @@ class StockMovementNotification extends Notification
 
     public function toMail(object $notifiable): MailMessage
     {
-        $statusLabel = $this->movement->status === 'pending_validation' ? 'EN ATTENTE DE VALIDATION' : 'EXÉCUTÉ';
+        $statusLabel = $this->movement->status === 'pending_validation' ? 'EN ATTENTE DE VALIDATION' : 'EXECUTE';
         $typeLabel = strtoupper($this->movement->movement_type);
         $creator = $this->movement->creator->nomprenom ?? 'Un agent';
 
         $mail = (new MailMessage)
             ->subject("[$statusLabel] Mouvement de stock : {$this->movement->reference}")
             ->greeting("Bonjour {$notifiable->nomprenom},")
-            ->line("Un nouveau mouvement de stock a été enregistré par **$creator**.")
-            ->line("**Référence :** {$this->movement->reference}")
+            ->line("Un nouveau mouvement de stock a ete enregistre par **$creator**.")
+            ->line("**Reference :** {$this->movement->reference}")
             ->line("**Type :** $typeLabel")
             ->line("**Statut actuel :** $statusLabel");
 
         if ($this->movement->status === 'pending_validation') {
-            $mail->line("Ce mouvement nécessite votre validation pour impacter les stocks physiques.")
+            $mail->line("Ce mouvement necessite votre validation pour impacter les stocks physiques.")
                 ->action('Valider le mouvement', url(config('app.frontend_url', 'http://localhost:4200') . '/validation-mouvements'));
         } else {
             $mail->action('Consulter le mouvement', url(config('app.frontend_url', 'http://localhost:4200') . '/mouvements-stock'));

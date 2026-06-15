@@ -1,5 +1,5 @@
 /* ============================================================
-   DOCUMENTS OCR — Thème ETAP (complet)
+   DOCUMENTS OCR - Theme ETAP (complet)
    ============================================================ */
 
 :host {
@@ -39,9 +39,9 @@
 @keyframes spin      { to { transform: rotate(360deg); } }
 @keyframes pulse     { 0%,100% { opacity: 1; } 50% { opacity: .5; } }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    PAGE
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .documents-page {
   padding: 32px 36px;
   min-height: 100vh;
@@ -59,9 +59,9 @@
 }
 .page-subtitle { font-size: 13.5px; color: var(--text-muted); margin: 0; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    STATS ROW
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .stats-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -122,9 +122,9 @@
 }
 .stat-badge.pending { background: #d97706; color: white; animation: pulse 1.8s ease infinite; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    CARDS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .card {
   background: white;
   border: 1px solid var(--border);
@@ -160,7 +160,7 @@
   align-items: start;
 }
 
-/* ── Drop zone ──────────────────────────────────────────────── */
+/* -- Drop zone ------------------------------------------------ */
 .file-drop-zone {
   border: 2px dashed var(--border);
   border-radius: var(--radius-md);
@@ -182,9 +182,9 @@
 
 .upload-action { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    FILTRES ACTIFS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .active-filters {
   display: flex; align-items: center; gap: 8px;
   margin-bottom: 16px; flex-wrap: wrap;
@@ -199,9 +199,9 @@
 .filter-chip button { background: none; border: none; cursor: pointer; color: var(--etap-400); font-size: 12px; padding: 0; line-height: 1; transition: color .15s; }
 .filter-chip button:hover { color: #e11d48; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    CHAMPS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .field { display: flex; flex-direction: column; gap: 6px; }
 .field label { font-size: 12.5px; font-weight: 600; color: var(--text-mid); text-transform: uppercase; letter-spacing: .05em; }
 .field input,
@@ -238,9 +238,9 @@
   .form-row.triple { grid-template-columns: 1fr; }
 }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    BOUTONS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
   gap: 7px; padding: 10px 20px;
@@ -260,9 +260,9 @@
 .btn.ghost:hover { background: var(--bg-soft); color: var(--text-dark); }
 .btn.sm { padding: 6px 14px; font-size: 12px; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    MESSAGES
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .msg { display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--radius-md); font-size: 13.5px; font-weight: 500; }
 .msg.success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #15803d; }
 .msg.error   { background: #fff1f2; border: 1px solid #fecdd3; color: #be123c; }
@@ -274,9 +274,9 @@
 .empty svg { opacity: .25; }
 .empty p { margin: 0; font-style: italic; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    PAGINATION
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .pagination-controls { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
 .per-page-selector { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-light); font-weight: 500; }
 .page-size-btn { width: 38px; height: 32px; border-radius: 50px; border: 1.5px solid var(--border); background: white; font-size: 12.5px; font-weight: 700; font-family: 'Inter', sans-serif; color: var(--text-mid); cursor: pointer; transition: all .2s var(--ease-out); }
@@ -292,9 +292,9 @@
 .page-btn:disabled { opacity: .35; cursor: not-allowed; }
 .page-ellipsis { font-size: 15px; color: var(--text-muted); padding: 0 4px; user-select: none; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    DOCUMENTS LIST
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .documents-list { display: flex; flex-direction: column; gap: 10px; }
 
 .document-item { border: 1.5px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: white; transition: border-color .22s var(--ease-out), box-shadow .22s var(--ease-out); }
@@ -362,9 +362,9 @@
 .section-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 22px; background: var(--bg-soft); border-top: 1px solid var(--border); flex-wrap: wrap; }
 .applied-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: #16a34a; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 6px 14px; border-radius: 50px; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    MODALS
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 9999; padding: 20px; animation: fadeIn .2s ease both; }
 
 .modal-panel { background: white; border-radius: var(--radius-lg); width: 90%; max-width: 800px; /* enlarged from 520px */ max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,.25); animation: modalZoom .3s var(--ease-out) both; padding: 28px; display: flex; flex-direction: column; gap: 18px; }
@@ -412,9 +412,9 @@
 .suggested-fields { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .suggested-item hr { display: none; }
 
-/* ══════════════════════════════════════════════════════════════
+/* ==============================================================
    RESPONSIVE
-══════════════════════════════════════════════════════════════ */
+============================================================== */
 @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 768px) {
   .documents-page { padding: 20px 16px; }
@@ -435,7 +435,7 @@
   .page-btn { min-width: 32px; height: 32px; font-size: 12px; }
 }
 
-/* ── Disabled Options (Capacity) ─────────────────────────── */
+/* -- Disabled Options (Capacity) --------------------------- */
 select option:disabled {
   color: var(--text-muted);
   background-color: var(--bg-soft);

@@ -1,5 +1,5 @@
 /* ============================================================
-   UNITÉS — Thème ETAP
+   UNITES - Theme ETAP
    ============================================================ */
 
 @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&display=swap');
@@ -44,14 +44,14 @@
 @keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes spin   { to { transform: rotate(360deg); } }
 
-/* ── Page ─────────────────────────────────────────────────── */
+/* -- Page --------------------------------------------------- */
 .units-page {
   padding: 28px 32px;
   min-height: 100vh;
   background: var(--snow);
 }
 
-/* ── Header ───────────────────────────────────────────────── */
+/* -- Header ------------------------------------------------- */
 .header {
   display: flex;
   align-items: flex-start;
@@ -75,7 +75,7 @@
   margin-top: 4px;
 }
 
-/* ── Boutons ──────────────────────────────────────────────── */
+/* -- Boutons ------------------------------------------------ */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -133,7 +133,7 @@
   box-shadow: 0 6px 18px rgba(22,163,74,.4);
 }
 
-/* ── Alertes ──────────────────────────────────────────────── */
+/* -- Alertes ------------------------------------------------ */
 .alert {
   display: flex;
   align-items: center;
@@ -148,7 +148,7 @@
 .alert.error   { background: var(--bad-bg);  border: 1px solid var(--bad-border);  color: var(--bad-text);  }
 .alert.success { background: var(--ok-bg);   border: 1px solid var(--ok-border);   color: var(--ok-text);  }
 
-/* ── Card ─────────────────────────────────────────────────── */
+/* -- Card --------------------------------------------------- */
 .card {
   background: white;
   border: 1px solid var(--silver);
@@ -184,7 +184,7 @@
   border: 1px solid var(--e-200);
 }
 
-/* ── Table ────────────────────────────────────────────────── */
+/* -- Table -------------------------------------------------- */
 .table-wrap { overflow-x: auto; }
 
 table { width: 100%; border-collapse: collapse; }
@@ -221,7 +221,7 @@ td.actions {
   align-items: center;
 }
 
-/* ── Empty / Loading ──────────────────────────────────────── */
+/* -- Empty / Loading ---------------------------------------- */
 .empty {
   display: flex;
   flex-direction: column;
@@ -252,7 +252,7 @@ td.actions {
   animation: spin .7s linear infinite;
 }
 
-/* ── Modal ────────────────────────────────────────────────── */
+/* -- Modal -------------------------------------------------- */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -354,7 +354,7 @@ td.actions {
   background: var(--snow);
 }
 
-/* ── Responsive ───────────────────────────────────────────── */
+/* -- Responsive --------------------------------------------- */
 @media (max-width: 768px) {
   .units-page { padding: 18px 16px; }
   .header { flex-direction: column; }

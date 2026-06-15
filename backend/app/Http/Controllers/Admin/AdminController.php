@@ -73,8 +73,23 @@ class AdminController extends Controller
 
         // Pending validations for directors/managers
         $pendingValidations = 0;
-        if ($isDirector || $isManager) {
-            $pendingValidations = \App\Models\ConsumableRequest::whereIn('status', ['pending', 'validated_by_manager'])->count();
+        if ($isDirector) {
+            $pendingValidations = \App\Models\ConsumableRequest::whereIn('status', ['pending', 'validated_by_manager'])
+                ->whereHas('user', function ($q) use ($user) {
+                    $q->where('service', $user->service)
+                      ->where('siege', $user->siege);
+                })->get()->groupBy(function($req) { return $req->batch_code ?: $req->id; })->count();
+        } elseif ($isManager) {
+            $query = \App\Models\ConsumableRequest::where('status', 'pending');
+            if ($user->depot_id) {
+                $query->where(function ($q) use ($user) {
+                    $q->where('depot_id', $user->depot_id)
+                      ->orWhereNull('depot_id');
+                });
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+            $pendingValidations = $query->get()->groupBy(function($req) { return $req->batch_code ?: $req->id; })->count();
         }
 
         // Pending stock movements for managers

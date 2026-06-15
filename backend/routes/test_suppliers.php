@@ -12,8 +12,8 @@
 echo "=== Test Suppliers API ===\n";
 
 // VÃrifier la structure de la table
-DB::statement('DESCRIBE supplier_reviews') ? print "âœ“ Table supplier_reviews OK\n" : print "âœ— Table supplier_reviews manquante\n";
-DB::statement('DESCRIBE product_supplier') ? print "âœ“ Table product_supplier OK\n" : print "âœ— Table product_supplier manquante\n";
+DB::statement('DESCRIBE supplier_reviews') ? print "aœ" Table supplier_reviews OK\n" : print "aœ- Table supplier_reviews manquante\n";
+DB::statement('DESCRIBE product_supplier') ? print "aœ" Table product_supplier OK\n" : print "aœ- Table product_supplier manquante\n";
 
 // Test des relations
 $supplier = \App\Models\Supplier::first();
@@ -22,31 +22,31 @@ if ($supplier) {
 
     // Test products relation
     $products = $supplier->products;
-    echo "âœ“ Products count: " . count($products) . "\n";
+    echo "aœ" Products count: " . count($products) . "\n";
 
     // Test reviews relation
     $reviews = $supplier->reviews;
-    echo "âœ“ Reviews count: " . count($reviews) . "\n";
+    echo "aœ" Reviews count: " . count($reviews) . "\n";
 
     if (count($reviews) > 0) {
         $review = $reviews->first();
         echo "  - Review User: " . $review->user?->name ?? 'null' . "\n";
     }
 } else {
-    echo "âœ— Aucun fournisseur trouvÃ\n";
+    echo "aœ- Aucun fournisseur trouvÃ\n";
 }
 
 echo "\n=== Test Produit avec Suppliers ===\n";
 $product = \App\Models\Product::first();
 if ($product) {
-    echo "âœ“ Product: {$product->title}\n";
+    echo "aœ" Product: {$product->title}\n";
     $suppliers = $product->suppliers;
-    echo "âœ“ Suppliers count: " . count($suppliers) . "\n";
+    echo "aœ" Suppliers count: " . count($suppliers) . "\n";
     foreach ($suppliers as $s) {
         echo "  - {$s->name}\n";
     }
 } else {
-    echo "âœ— Aucun produit trouvÃ\n";
+    echo "aœ- Aucun produit trouvÃ\n";
 }
 
-echo "\nâœ“ Tests complÃtÃs\n";
+echo "\naœ" Tests complÃtÃs\n";

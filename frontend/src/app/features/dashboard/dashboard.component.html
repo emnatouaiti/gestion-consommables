@@ -60,11 +60,11 @@
 
     <div class="main-layout">
       <div class="monitoring-column">
-        <!-- Section spécifique pour l'admin -->
+        <!-- Section specifique pour l'admin -->
         <section class="glass-card" *ngIf="isAdmin">
           <div class="section-header">
-            <h3>Statistiques des rôles</h3>
-            <span class="badge ghost">{{ roles.length }} rôles</span>
+            <h3>Statistiques des roles</h3>
+            <span class="badge ghost">{{ roles.length }} roles</span>
           </div>
           <div class="roles-grid">
             <div class="role-entry" *ngFor="let role of roles">
@@ -80,13 +80,13 @@
           </div>
         </section>
 
-        <!-- Section pour les autres rôles -->
+        <!-- Section pour les autres roles -->
         <section class="glass-card" *ngIf="!isAdmin && !isDirector">
           <div class="section-header">
-            <h3>Flux d'activités</h3>
+            <h3>Flux d'activites</h3>
             <div class="header-actions-inline">
-              <span class="badge ghost">Temps réel</span>
-              <button class="btn-mini" (click)="refreshData()" title="Rafraîchir">
+              <span class="badge ghost">Temps reel</span>
+              <button class="btn-mini" (click)="refreshData()" title="Rafraichir">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
@@ -136,8 +136,8 @@
 
           <div class="glass-card compact">
             <div class="section-header">
-              <h3>Top catégories</h3>
-              <span class="badge ghost">{{ categoryStock.length }} catégories</span>
+              <h3>Top categories</h3>
+              <span class="badge ghost">{{ categoryStock.length }} categories</span>
             </div>
             <div class="cat-list" *ngIf="categoryStock.length > 0">
               <div class="cat-item" *ngFor="let cat of categoryStock; let i = index" [style.animation-delay]="i * 0.1 + 's'">
@@ -151,24 +151,24 @@
               </div>
             </div>
             <div class="empty-state" *ngIf="categoryStock.length === 0">
-              <p>Aucune catégorie disponible</p>
+              <p>Aucune categorie disponible</p>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="side-column" *ngIf="!isDirector">
+      <div class="side-column">
 
-        <section class="glass-card" *ngIf="isAdmin" style="margin-bottom: 2rem;">
+        <section class="glass-card" [style.margin-bottom]="'2rem'" *ngIf="isAdmin || isDirector || isManager">
           <div class="section-header">
             <h3>Rapports & Exports</h3>
           </div>
           <div style="display: flex; flex-direction: column; gap: 10px;">
             <button class="btn-confirm" (click)="downloadReport('stock')" [disabled]="isDownloadingReport">
-              {{ isDownloadingReport ? 'Génération...' : 'État du Stock (CSV)' }}
+              {{ isDownloadingReport ? 'Generation...' : 'Etat du Stock (CSV)' }}
             </button>
             <button class="btn-confirm" (click)="downloadReport('movements')" [disabled]="isDownloadingReport">
-              {{ isDownloadingReport ? 'Génération...' : 'Mouvements (CSV)' }}
+              {{ isDownloadingReport ? 'Generation...' : 'Mouvements (CSV)' }}
             </button>
           </div>
         </section>
@@ -199,22 +199,22 @@
 
               <a class="mini-user-item" *ngIf="isDirector" routerLink="/validation-demandes">
                 <div class="mu-info">
-                  <span class="mu-name">Demandes à valider</span>
-                  <span class="mu-email">Accéder aux validations sans passer par la connexion</span>
+                  <span class="mu-name">Demandes a valider</span>
+                  <span class="mu-email">Acceder aux validations sans passer par la connexion</span>
                 </div>
               </a>
 
               <a class="mini-user-item" *ngIf="isManager" routerLink="/mouvements-stock">
                 <div class="mu-info">
                   <span class="mu-name">Mouvements de stock</span>
-                  <span class="mu-email">Suivre les entrées, sorties et transferts</span>
+                  <span class="mu-email">Suivre les entrees, sorties et transferts</span>
                 </div>
               </a>
 
               <a class="mini-user-item" *ngIf="!isAdmin" routerLink="/chat">
                 <div class="mu-info">
                   <span class="mu-name">Chat interne</span>
-                  <span class="mu-email">Contacter rapidement votre équipe</span>
+                  <span class="mu-email">Contacter rapidement votre equipe</span>
                 </div>
               </a>
 
@@ -227,6 +227,20 @@
 
   <div class="loading-overlay" *ngIf="isLoading">
     <div class="loading-spinner"></div>
-    <p>Synchronisation des données...</p>
+    <p>Synchronisation des donnees...</p>
   </div>
 </div>
+
+
+<!-- --- Confirm Modal -------------------------------------------------- -->
+<app-confirm-modal
+  [visible]="confirmModalVisible"
+  [title]="confirmModalTitle"
+  [message]="confirmModalMessage"
+  [confirmText]="confirmModalConfirmText"
+  [cancelText]="confirmModalCancelText"
+  [type]="confirmModalType"
+  [alertOnly]="confirmModalAlertOnly"
+  (confirmed)="onConfirmModalConfirmed()"
+  (cancelled)="confirmModalVisible = false"
+></app-confirm-modal>

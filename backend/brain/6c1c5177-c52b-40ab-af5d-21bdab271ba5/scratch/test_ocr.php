@@ -29,7 +29,7 @@ function parseLines($text) {
         $qty      = null;
         $ordered  = null;
 
-        // 1. Détection de la quantité en partant de la fin
+        // 1. Detection de la quantite en partant de la fin
         for ($i = count($tokens) - 1; $i >= 0; $i--) {
             $rawTok = $tokens[$i];
             $tok = trim($rawTok, ',.;:+-()[] '); 
@@ -62,7 +62,7 @@ function parseLines($text) {
             }
         }
 
-        // 2. Extraction de la référence
+        // 2. Extraction de la reference
         $ref = null;
         foreach ($tokens as $i => $tok) {
             $lowTok = strtolower($tok);
@@ -115,7 +115,7 @@ INV-000 Odinateur Portable Del Latitude 5420, ule
 INV-0002    ar sans fil fil Logitech M185,  Logitech
 EOD;
 
-echo "--- Test avec le texte problématique ---\n";
+echo "--- Test avec le texte problematique ---\n";
 $result = parseLines($ocrText);
 print_r($result);
 
@@ -124,6 +124,6 @@ INV-0001 Ordinateur Portable Dell Latitude 5420 l0
 INV-0002 Souris sans fil Logitech M185 25
 EOD;
 
-echo "\n--- Test avec des erreurs OCR simulées (l0 -> 10) ---\n";
+echo "\n--- Test avec des erreurs OCR simulees (l0 -> 10) ---\n";
 $result2 = parseLines($ocrText2);
 print_r($result2);

@@ -7,7 +7,7 @@
 
   <!-- Liste des batches -->
   <div *ngIf="batches.length > 0">
-    <!-- Tabs pour les différents batches -->
+    <!-- Tabs pour les differents batches -->
     <div class="batch-tabs mb-4">
       <div class="batch-tabs-header">
         <h5 class="mb-3">
@@ -39,16 +39,16 @@
               <ng-template #noDateTab><small>Aucune date</small></ng-template>
             </span>
 
-            <!-- Quantité -->
+            <!-- Quantite -->
             <span class="batch-quantity">
-              <strong>{{ batch.quantity }}</strong> unités
+              <strong>{{ batch.quantity }}</strong> unites
             </span>
           </button>
         </div>
       </div>
     </div>
 
-    <!-- Détail du batch sélectionné -->
+    <!-- Detail du batch selectionne -->
     <div *ngIf="selectedBatch" class="batch-detail">
       <!-- Header avec statut -->
       <div class="batch-header">
@@ -67,14 +67,14 @@
             <span *ngIf="selectedBatch.expiration_date && selectedBatch.expiration_date !== 'null'; else noDateInfo">
               {{ selectedBatch.expiration_date | date:'dd/MM/yyyy' }}
             </span>
-            <ng-template #noDateInfo>Non renseignée</ng-template>
+            <ng-template #noDateInfo>Non renseignee</ng-template>
           </div>
           <div class="info-item">
             <strong>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
-              Quantité totale:
+              Quantite totale:
             </strong>
-            {{ selectedBatch.quantity }} unités
+            {{ selectedBatch.quantity }} unites
           </div>
           <div class="info-item">
             <strong>
@@ -86,7 +86,7 @@
                 Pas de date d'expiration
               </ng-container>
               <ng-template #dateLeft>
-                {{ selectedBatch.daysLeft > 0 ? selectedBatch.daysLeft + ' jour(s)' : 'EXPIRÉ' }}
+                {{ selectedBatch.daysLeft > 0 ? selectedBatch.daysLeft + ' jour(s)' : 'EXPIRE' }}
               </ng-template>
             </span>
           </div>
@@ -143,8 +143,8 @@
             <span class="location-icon">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
             </span>
-            <span class="location-name">{{ stock.warehouse_location?.name || stock.cabinet_id || 'Non spécifié' }}</span>
-            <span class="location-quantity badge badge-info">{{ stock.quantity }} unités</span>
+            <span class="location-name">{{ stock.warehouse_location?.name || stock.cabinet_id || 'Non specifie' }}</span>
+            <span class="location-quantity badge badge-info">{{ stock.quantity }} unites</span>
           </div>
         </div>
       </div>
@@ -169,11 +169,11 @@
       </div>
     </div>
 
-    <!-- Résumé des batches -->
+    <!-- Resume des batches -->
     <div class="batch-summary mt-5">
       <h6>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 8px;"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
-        Résumé
+        Resume
       </h6>
       <div class="summary-grid">
         <div class="summary-item">
@@ -193,7 +193,7 @@
           {{ getWarningBatchesCount() }}
         </div>
         <div class="summary-item">
-          <strong>Expirés (
+          <strong>Expires (
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="vertical-align: middle;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           ):</strong>
           {{ getExpiredBatchesCount() }}

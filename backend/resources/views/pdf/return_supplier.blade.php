@@ -24,7 +24,7 @@
 <body>
     <div class="header">
         <h1>BON DE RETOUR FOURNISSEUR</h1>
-        <p>Date d'édition : {{ date('d/m/Y') }}</p>
+        <p>Date d'edition : {{ date('d/m/Y') }}</p>
     </div>
 
     <div class="info-section">
@@ -32,12 +32,12 @@
             <h3>Informations Fournisseur</h3>
             <p><strong>Nom :</strong> {{ $supplier->name ?? 'N/A' }}</p>
             <p><strong>Email :</strong> {{ $supplier->email ?? 'N/A' }}</p>
-            <p><strong>Téléphone :</strong> {{ $supplier->phone ?? 'N/A' }}</p>
+            <p><strong>Telephone :</strong> {{ $supplier->phone ?? 'N/A' }}</p>
         </div>
         <div style="display: table-cell; width: 2%;"></div>
         <div class="info-block">
             <h3>Informations Retour</h3>
-            <p><strong>Référence :</strong> RET-{{ $stock->id }}-{{ date('Ymd') }}</p>
+            <p><strong>Reference :</strong> RET-{{ $stock->id }}-{{ date('Ymd') }}</p>
             <p><strong>Date de retour :</strong> {{ date('d/m/Y') }}</p>
             <p><strong>Justification :</strong> {{ $justification }}</p>
         </div>
@@ -47,10 +47,10 @@
         <thead>
             <tr>
                 <th>Produit</th>
-                <th>Référence</th>
-                <th>Numéro de Lot</th>
+                <th>Reference</th>
+                <th>Numero de Lot</th>
                 <th>Date d'expiration</th>
-                <th>Quantité Retournée</th>
+                <th>Quantite Retournee</th>
             </tr>
         </thead>
         <tbody>
@@ -59,7 +59,7 @@
                 <td>{{ $stock->product->reference ?? 'N/A' }}</td>
                 <td>{{ $stock->batch_number }}</td>
                 <td>{{ $stock->expiration_date }}</td>
-                <td><strong>{{ $quantity }} {{ $stock->product->unit->code ?? 'unité(s)' }}</strong></td>
+                <td><strong>{{ $quantity }} {{ $stock->product->unit->code ?? 'unite(s)' }}</strong></td>
             </tr>
         </tbody>
     </table>
@@ -67,7 +67,7 @@
 
 
     <div class="footer">
-        <p>Document généré automatiquement par le système de gestion des stocks.</p>
+        <p>Document genere automatiquement par le systeme de gestion des stocks.</p>
     </div>
 </body>
 </html>
