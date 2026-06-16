@@ -18,6 +18,9 @@ export class AuthService {
         @Inject(PLATFORM_ID) private platformId: Object
     ) {
         if (isPlatformBrowser(this.platformId)) {
+            // One-time cleanup of localStorage to prevent session conflicts
+            localStorage.clear();
+
             const cachedUser = sessionStorage.getItem(this.USER_CACHE_KEY);
             if (cachedUser) {
                 try { this.currentUser.set(JSON.parse(cachedUser)); } catch {}
@@ -197,8 +200,8 @@ export class AuthService {
 
     private purgeAuth() {
         if (isPlatformBrowser(this.platformId)) {
-            sessionStorage.removeItem(this.TOKEN_KEY);
-            sessionStorage.removeItem(this.USER_CACHE_KEY);
+            sessionStorage.clear();
+            localStorage.clear();
             try { console.debug('[AuthService] purgeAuth called, navigating to /login'); } catch (e) {}
         }
         this.currentUser.set(null);

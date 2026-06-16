@@ -15,13 +15,23 @@ class Product extends Model
     {
         static::creating(function ($product) {
             if (empty($product->reference)) {
-                $count = static::count() + 1;
-                $product->reference = 'PRD-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                $maxId = static::max('id') ?: 0;
+                $count = $maxId + 1;
+                do {
+                    $ref = 'PRD-' . date('Y') . '-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                    $count++;
+                } while (static::where('reference', $ref)->exists());
+                $product->reference = $ref;
             }
 
             if (empty($product->num_inventaire)) {
-                $invCount = static::count() + 1;
-                $product->num_inventaire = 'INV-' . str_pad($invCount, 4, '0', STR_PAD_LEFT);
+                $maxId = static::max('id') ?: 0;
+                $count = $maxId + 1;
+                do {
+                    $inv = 'INV-' . str_pad($count, 4, '0', STR_PAD_LEFT);
+                    $count++;
+                } while (static::where('num_inventaire', $inv)->exists());
+                $product->num_inventaire = $inv;
             }
         });
 

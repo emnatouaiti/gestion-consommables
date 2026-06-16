@@ -63,7 +63,7 @@ export class LoginComponent {
         // Clear local auth state before attempting Google login
         // to prevent being logged in with a previous session
         try {
-            localStorage.removeItem('auth_token');
+            sessionStorage.clear();
         } catch (e) {}
         this.authService.currentUser.set(null);
 

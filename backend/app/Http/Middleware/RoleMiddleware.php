@@ -27,7 +27,16 @@ class RoleMiddleware
             $user->loadMissing('role');
         }
 
+        if ($user && $user->hasRole('Responsable')) {
+            return $next($request);
+        }
+
         if (!$user || (count($roles) > 0 && !$user->hasAnyRole($roles))) {
+            \Log::warning('Access denied: User ' . ($user ? $user->email : 'Guest') . ' does not have roles: ' . implode(', ', $roles));
+            if ($user) {
+                $user->loadMissing('role');
+                \Log::warning('User role is: ' . ($user->role ? $user->role->name : 'No role assigned'));
+            }
             return response()->json(['message' => 'Access denied'], 403);
         }
 

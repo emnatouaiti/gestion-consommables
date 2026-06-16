@@ -1,0 +1,47 @@
+﻿[
+    {
+        "id": 1,
+        "name": "Administrateur",
+        "hex": "41646d696e697374726174657572"
+    },
+    {
+        "id": 2,
+        "name": "Responsable",
+        "hex": "526573706f6e7361626c65"
+    },
+    {
+        "id": 3,
+        "name": "Responsable de stock",
+        "hex": "526573706f6e7361626c652064652073746f636b"
+    },
+    {
+        "id": 4,
+        "name": "Gestionnaire",
+        "hex": "47657374696f6e6e61697265"
+    },
+    {
+        "id": 5,
+        "name": "Validateur",
+        "hex": "56616c69646174657572"
+    },
+    {
+        "id": 6,
+        "name": "Utilisateur",
+        "hex": "5574696c69736174657572"
+    },
+    {
+        "id": 7,
+        "name": "Agent",
+        "hex": "4167656e74"
+    },
+    {
+        "id": 8,
+        "name": "Agent de stock",
+        "hex": "4167656e742064652073746f636b"
+    },
+    {
+        "id": 9,
+        "name": "Directeur",
+        "hex": "446972656374657572"
+    }
+]

@@ -414,23 +414,11 @@ export class ProductsComponent implements OnInit {
   }
 
   save(): void {
-    if (this.productForm.invalid || !this.selectedMarqueId) {
+    const marqueValue = this.productForm.get('marque')?.value;
+    if (this.productForm.invalid || (!this.selectedMarqueId && !marqueValue)) {
       this.productForm.markAllAsTouched();
-      const errors: string[] = [];
-      const c = this.productForm.controls;
-      
-      if (c['title']?.invalid) errors.push('• Le nom du produit est obligatoire (min 2 caracteres).');
-      if (c['categorie_id']?.invalid) errors.push('• La categorie est obligatoire.');
-      if (c['seuil_min']?.invalid) errors.push('• Le seuil minimum est obligatoire et doit etre ≥ 0.');
-      if (c['seuil_max']?.invalid && !this.productForm.hasError('thresholdError')) errors.push('• Le seuil maximum est obligatoire.');
-      if (this.productForm.hasError('thresholdError')) errors.push('• Le seuil maximum doit etre superieur au seuil minimum.');
-      if (c['marque']?.invalid || !this.selectedMarqueId) errors.push('• La marque est obligatoire.');
-      if (c['model']?.invalid) errors.push('• Le modele est obligatoire.');
-      if (c['num_serie']?.invalid) errors.push('• Le numero de serie est obligatoire.');
-      
-      this.errorMessage = errors.length > 0 ? errors.join('\n') : 'Veuillez corriger les erreurs dans le formulaire.';
+      this.errorMessage = 'Veuillez remplir tous les champs obligatoires.';
       this.cdr.detectChanges();
-      // Scroll to error message inside modal
       setTimeout(() => {
         const errEl = document.querySelector('.modal-body .modal-error');
         if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -487,13 +475,19 @@ export class ProductsComponent implements OnInit {
         setTimeout(() => this.successMessage = '', 5000);
       },
       error: (err: any) => {
-        if (err?.existing_product) {
-          this.reactivateProduct = err.existing_product;
+        const existingData = err?.error?.existing_product || err?.existing_product;
+        if (existingData) {
+          this.reactivateProduct = existingData;
           this.showReactivateModal = true;
           this.errorMessage = '';
           this.cdr.detectChanges();
         } else {
           this.errorMessage = this.extractApiError(err, 'Impossible de sauvegarder le produit.');
+          this.cdr.detectChanges();
+          setTimeout(() => {
+            const errEl = document.querySelector('.modal-body .modal-error');
+            if (errEl) errEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }, 50);
         }
       }
     });
@@ -530,6 +524,8 @@ export class ProductsComponent implements OnInit {
       error: (err: any) => {
         this.errorMessage = this.extractApiError(err, 'Suppression impossible.');
         this.cancelDeleteProduct();
+        this.cdr.detectChanges();
+        setTimeout(() => (this.errorMessage = ''), 5000);
       }
     });
   }

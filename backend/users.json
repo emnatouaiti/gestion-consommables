@@ -1,0 +1,86 @@
+﻿[
+    {
+        "id": 2,
+        "nomprenom": "Emna Touaiti",
+        "email": "admin@example.com",
+        "role": "Administrateur",
+        "role_id": 1
+    },
+    {
+        "id": 5,
+        "nomprenom": "emna touaiti",
+        "email": "emnatouaiti56@gmail.com",
+        "role": "Responsable",
+        "role_id": 2
+    },
+    {
+        "id": 6,
+        "nomprenom": "lll",
+        "email": "eyamajoul8@gmail.com",
+        "role": "Responsable de stock",
+        "role_id": 3
+    },
+    {
+        "id": 7,
+        "nomprenom": "hjnk",
+        "email": "eyama641@gmail.com",
+        "role": "Utilisateur",
+        "role_id": 6
+    },
+    {
+        "id": 8,
+        "nomprenom": "zied",
+        "email": "zied.sabri1920@gmail.com",
+        "role": "Utilisateur",
+        "role_id": 6
+    },
+    {
+        "id": 9,
+        "nomprenom": "zied",
+        "email": "ziedsabri4@gmail.com",
+        "role": "Responsable de stock",
+        "role_id": 3
+    },
+    {
+        "id": 10,
+        "nomprenom": "nonou",
+        "email": "nousaibagriri70@gmail.com",
+        "role": "Agent de stock",
+        "role_id": 8
+    },
+    {
+        "id": 11,
+        "nomprenom": "emna touaiti",
+        "email": "emnatouaiti@gmail.com",
+        "role": "Directeur",
+        "role_id": 9
+    },
+    {
+        "id": 12,
+        "nomprenom": "emna touaiti",
+        "email": "emnatouaiti5@gmail.com",
+        "role": "Agent de stock",
+        "role_id": 8
+    },
+    {
+        "id": 13,
+        "nomprenom": "asma",
+        "email": "assmaattia93@gmail.com",
+        "role": "Directeur",
+        "role_id": 9
+    },
+    {
+        "id": 14,
+        "nomprenom": "ee",
+        "email": "emnae932@gmail.com",
+        "role": "Directeur",
+        "role_id": 9
+    },
+    {
+        "id": 15,
+        "nomprenom": "e",
+        "email": "touaitiemna0@gmail.com",
+        "role": "Utilisateur",
+        "role_id": 6
+    }
+]

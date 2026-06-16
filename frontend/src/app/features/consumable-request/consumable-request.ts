@@ -539,8 +539,8 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (this.requestModalEditMode && this.editingRequestId && !this.currentBatchCode) {
-      // Edit a single old request (no batch_code)
+    if (this.requestModalEditMode && this.editingRequestId && !this.currentBatchCode && validLines.length === 1) {
+      // Edit a single old request (no batch_code) and no new products added
       const l = validLines[0];
       const p = this.products.find(prod => prod.id === l.product_id);
       request$ = this.consumableRequestService.updateRequest(this.editingRequestId, {
@@ -549,9 +549,10 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
         requested_quantity: l.requested_quantity
       });
     } else {
-      // Create new request or edit a batch request (which will replace the batch via createRequest)
+      // Create new request or edit a batch request (which will replace the batch/single via createRequest)
       const payload: any = {
         batch_code: this.currentBatchCode,
+        replace_id: (!this.currentBatchCode && this.editingRequestId) ? this.editingRequestId : null,
         items: validLines.map(l => {
           const p = this.products.find(prod => prod.id === l.product_id);
           return {
@@ -564,12 +565,13 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
       request$ = this.consumableRequestService.createRequest(payload);
     }
 
+    const isEditMode = this.requestModalEditMode;
     this.loading = true;
     this.closeRequestModal(); // Fermer la modal immediatement
 
     request$.subscribe({
       next: () => {
-        this.message = this.requestModalEditMode ? 'Demande modifiee avec succes.' : 'demande ajouter avec succes non traite';
+        this.message = isEditMode ? 'Demande modifiée avec succès' : 'Demande ajoutée avec succès';
         this.cdr.detectChanges();
         this.currentBatchCode = null;
         this.loading = false;
@@ -769,14 +771,20 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     // Valider les quantites des produits approuves
     for (const item of approvedItems) {
       const qty = Number(this.itemApprovedQuantities[item.id]);
-      const maxStock = Number(item.available_stock ?? item.requested_quantity ?? 0);
+      const availableStock = Number(item.available_stock ?? 0);
+      
+      if (availableStock <= 0) {
+        this.message = `Rupture de stock pour : ${item.item_name}. Vous ne pouvez pas approuver ce produit.`;
+        this.approving = false;
+        return;
+      }
       if (!Number.isFinite(qty) || qty <= 0) {
         this.message = `Quantite invalide pour le produit : ${item.item_name}`;
         this.approving = false;
         return;
       }
-      if (qty > maxStock) {
-        this.message = `Quantite trop elevee pour : ${item.item_name} (max: ${maxStock})`;
+      if (qty > availableStock) {
+        this.message = `Quantite trop elevee pour : ${item.item_name} (Stock dispo: ${availableStock})`;
         this.approving = false;
         return;
       }
@@ -861,14 +869,19 @@ export class ConsumableRequestComponent implements OnInit, OnDestroy {
     if (!this.canApprove || !this.selectedRequestForApproval || this.approving) return;
     const request = this.selectedRequestForApproval;
 
-    const maxAllowed = Number(request?.available_stock ?? request?.requested_quantity ?? 0);
+    const availableStock = Number(request?.available_stock ?? 0);
     const approvedQuantity = Number(this.modalApprovedQuantity);
+    
+    if (availableStock <= 0) {
+      this.approveModalErrorMessage = `Le produit est en rupture de stock. Vous ne pouvez pas valider cette demande.`;
+      return;
+    }
     if (!Number.isFinite(approvedQuantity) || approvedQuantity < 0) {
       this.approveModalErrorMessage = 'Quantite approuvee invalide.';
       return;
     }
-    if (approvedQuantity > maxAllowed) {
-      this.approveModalErrorMessage = `La quantite approuvee ne doit pas depasser ${maxAllowed}.`;
+    if (approvedQuantity > availableStock) {
+      this.approveModalErrorMessage = `La quantite approuvee (${approvedQuantity}) depasse le stock disponible (${availableStock}).`;
       return;
     }
 

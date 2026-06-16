@@ -152,20 +152,22 @@ export class DashboardComponent implements OnInit {
       });
     }
 
-    if (this.stats.pendingValidations > 5) {
+    if (this.stats.pendingValidations > 0) {
       this.criticalAlerts.push({
         type: 'validation',
-        message: `${this.stats.pendingValidations} demandes en attente de validation`,
+        message: this.isDirector 
+          ? `Vous avez ${this.stats.pendingValidations} demandes en attente de votre validation.`
+          : `Il y a ${this.stats.pendingValidations} demandes nécessitant une validation.`,
         severity: 'medium',
         icon: 'fas fa-info-circle',
         route: '/validation-demandes'
       });
     }
 
-    if (this.stats.pendingStockMovements > 3) {
+    if (this.stats.pendingStockMovements > 0) {
       this.criticalAlerts.push({
         type: 'movements',
-        message: `${this.stats.pendingStockMovements} mouvements en attente`,
+        message: `Il y a ${this.stats.pendingStockMovements} mouvements de stock en attente de traitement.`,
         severity: 'medium',
         icon: 'fas fa-info-circle',
         route: '/mouvements-stock'
@@ -281,7 +283,7 @@ export class DashboardComponent implements OnInit {
       // Directeur voit SEULEMENT les demandes
       this.dashboardCards = [
         {
-          label: 'Mes demandes',
+          label: 'Mes demandes personnelles',
           value: this.stats.myRequests,
           icon: 'fas fa-file-alt',
           color: 'blue',
@@ -290,14 +292,14 @@ export class DashboardComponent implements OnInit {
           trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
         },
         {
-          label: 'Demandes a valider',
+          label: 'Demandes en attente de validation',
           value: this.stats.pendingValidations,
           icon: 'fas fa-clipboard-check',
           color: 'yellow',
           route: '/validation-demandes',
           critical: this.stats.pendingValidations > 0,
           trend: this.trends.requestsTrend,
-          trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
+          trendLabel: `Action requise`
         },
       ];
 
@@ -319,7 +321,7 @@ export class DashboardComponent implements OnInit {
         { label: 'Categories', value: this.stats.totalCategories, icon: 'fas fa-tags', color: 'purple', route: '/gerer-categories' },
         { label: 'Depots', value: this.stats.totalWarehouses, icon: 'fas fa-warehouse', color: 'green', route: '/gerer-depots' },
         {
-          label: 'Mouvements en attente',
+          label: 'Mouvements de stock à traiter',
           value: this.stats.pendingStockMovements,
           icon: 'fas fa-exchange-alt',
           color: 'yellow',
@@ -347,7 +349,7 @@ export class DashboardComponent implements OnInit {
     // Default (Utilisateur standard)
     this.dashboardCards = [
       {
-        label: 'Mes demandes',
+        label: 'Toutes mes demandes',
         value: this.stats.myRequests,
         icon: 'fas fa-file-alt',
         color: 'blue',
@@ -356,15 +358,15 @@ export class DashboardComponent implements OnInit {
         trendLabel: `${this.trends.requestsTrend.toFixed(1)}% en attente`
       },
       {
-        label: 'Demandes en attente',
+        label: 'Demandes en cours de traitement',
         value: this.stats.myPendingRequests,
         icon: 'fas fa-clock',
         color: 'yellow',
         route: '/demandes-consommables',
         critical: this.stats.myPendingRequests > 0
       },
-      { label: 'Demandes approuvees', value: this.stats.myApprovedRequests, icon: 'fas fa-check-circle', color: 'green', route: '/demandes-consommables' },
-      { label: 'Demandes rejetees', value: this.stats.myRejectedRequests, icon: 'fas fa-times-circle', color: 'red', route: '/demandes-consommables' },
+      { label: 'Demandes déjà approuvées', value: this.stats.myApprovedRequests, icon: 'fas fa-check-circle', color: 'green', route: '/demandes-consommables' },
+      { label: 'Demandes ayant été refusées', value: this.stats.myRejectedRequests, icon: 'fas fa-times-circle', color: 'red', route: '/demandes-consommables' },
     ];
     this.quickLinks = [
       { label: 'Mon profil', route: '/profile', icon: '' },
@@ -407,16 +409,30 @@ export class DashboardComponent implements OnInit {
         window.URL.revokeObjectURL(url);
         this.isDownloadingReport = false;
       },
-      error: (err: any) => {
-        console.error('Erreur tel', err);
+      error: async (err: any) => {
         this.isDownloadingReport = false;
-        const status = Number(err?.status || 0);
+        console.error('Erreur tel', err);
+        
+        // If error is a Blob, we need to parse it to see the actual message from the backend
+        let errorData = err;
+        if (err.error instanceof Blob) {
+           try {
+             const text = await err.error.text();
+             errorData = JSON.parse(text);
+           } catch (e) {
+             console.error('Failed to parse error blob', e);
+           }
+        }
+
+        const status = Number(err?.status || errorData?.status || 0);
+        const message = errorData?.message || "Erreur lors du telechargement du rapport.";
+
         if (status === 403) {
-          this.showAlertModal('Acces refuse', "Vous n'avez pas les droits necessaires pour telecharger ce rapport.", 'danger');
+          this.showAlertModal('Acces refuse', message || "Vous n'avez pas les droits necessaires pour telecharger ce rapport.", 'danger');
         } else if (status === 401) {
           this.showAlertModal('Authentification requise', 'Veuillez vous reconnecter pour telecharger le rapport.', 'danger');
         } else {
-          this.showAlertModal('Erreur', 'Erreur lors du telechargement du rapport.', 'danger');
+          this.showAlertModal('Erreur', message, 'danger');
         }
       }
     });

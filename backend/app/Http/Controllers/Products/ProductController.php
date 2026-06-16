@@ -125,6 +125,15 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Sanitize fields that should be auto-generated: strip nullish strings from FormData
+        foreach (['reference', 'num_inventaire'] as $field) {
+            $val = $request->input($field);
+            if (in_array((string)$val, ['', 'null', 'undefined', '0'], true)) {
+                $request->request->remove($field);
+                $request->query->remove($field);
+            }
+        }
+
         $validator = Validator::make($request->all(), [
             'status' => 'required|in:active,inactive',
             'title' => 'required|string|max:255',
@@ -150,6 +159,10 @@ class ProductController extends Controller
         ]);
 
         if ($validator->fails()) {
+            \Illuminate\Support\Facades\Log::error('Product store validation failed', [
+                'errors' => $validator->errors()->toArray(),
+                'input' => $request->except(['photo', 'photos']),
+            ]);
             return response()->json([
                 'message' => 'Donnees invalides pour la creation du produit.',
                 'errors' => $validator->errors(),
@@ -158,59 +171,49 @@ class ProductController extends Controller
 
         $data = $validator->validated();
 
-        // If the user tries to create a product that already exists but is inactive,
-        // return it and suggest re-activating instead of creating a duplicate.
-        $incomingTitle = trim((string) ($data['title'] ?? ''));
-        if ($incomingTitle !== '') {
-            $existingInactive = Product::query()
-                ->select(['id', 'title', 'reference', 'status'])
-                ->where('status', 'inactive')
-                ->whereRaw('LOWER(title) = ?', [Str::lower($incomingTitle)])
-                ->first();
-
-            if ($existingInactive) {
-                $activatePath = '/api/products/' . $existingInactive->id . '/activate';
-                return response()->json([
-                    'message' => 'Ce produit existe deja mais il est inactif. Voulez-vous le reactiver (status=active) ?',
-                    'errors' => [
-                        'status' => ["Produit inactif: activez-le au lieu de creer un doublon (PUT {$activatePath})."],
-                    ],
-                    'existing_product' => $existingInactive,
-                    'suggested_update' => [
-                        'method' => 'PUT',
-                        'path' => $activatePath,
-                        'body' => [],
-                    ],
-                ], 422);
-            }
-        }
-
-        // 1) Duplication check by title + marque + model (Strict)
+        // 1) Duplication check by title + marque + model (Strict, case-insensitive)
         if (!empty($data['title'])) {
-            $query = Product::where('title', $data['title']);
-            
-            if (empty($data['marque'])) {
+            $query = Product::whereRaw('LOWER(title) = ?', [mb_strtolower(trim($data['title']))]);
+
+            $marqueVal = trim((string)($data['marque'] ?? ''));
+            if ($marqueVal === '') {
                 $query->whereNull('marque');
             } else {
-                $query->where('marque', $data['marque']);
+                $query->whereRaw('LOWER(marque) = ?', [mb_strtolower($marqueVal)]);
             }
-            
-            if (empty($data['model'])) {
+
+            $modelVal = trim((string)($data['model'] ?? ''));
+            if ($modelVal === '') {
                 $query->whereNull('model');
             } else {
-                $query->where('model', $data['model']);
+                $query->whereRaw('LOWER(model) = ?', [mb_strtolower($modelVal)]);
             }
 
             $existingDuplicate = $query->first();
 
             if ($existingDuplicate) {
-                return response()->json([
-                    'message' => 'Ce produit (Titre + Marque + ModÃ¨le) existe dÃjÃ .',
-                    'errors' => [
-                        'title' => ['Un produit identique est dÃjÃ  enregistrÃ.'],
-                    ],
-                    'existing_product' => $existingDuplicate,
-                ], 422);
+                if ($existingDuplicate->status === 'inactive') {
+                    $activatePath = '/api/products/' . $existingDuplicate->id . '/activate';
+                    return response()->json([
+                        'message' => 'Ce produit existe déjà mais il est inactif. Voulez-vous le réactiver ?',
+                        'errors' => [
+                            'status' => ["Produit inactif: activez-le au lieu de créer un doublon."],
+                        ],
+                        'existing_product' => $existingDuplicate,
+                        'suggested_update' => [
+                            'method' => 'PUT',
+                            'path' => $activatePath,
+                            'body' => [],
+                        ],
+                    ], 422);
+                } else {
+                    return response()->json([
+                        'message' => 'Impossible d\'ajouter, le produit existe déjà.',
+                        'errors' => [
+                            'title' => ['Un produit identique est déjà enregistré.'],
+                        ]
+                    ], 422);
+                }
             }
         }
 
@@ -262,7 +265,25 @@ class ProductController extends Controller
             $data['photo'] = $request->file('photo')->store('products', 'public');
         }
 
-        $product = Product::create($data);
+        $product = null;
+        $attempts = 0;
+        while ($attempts < 5) {
+            try {
+                $product = Product::create($data);
+                break;
+            } catch (\Illuminate\Database\QueryException $e) {
+                // If duplicate reference, clear it so the model generates a fresh unique one
+                if ($e->errorInfo[1] == 1062 && str_contains($e->getMessage(), 'reference')) {
+                    unset($data['reference']);
+                    $attempts++;
+                    continue;
+                }
+                throw $e;
+            }
+        }
+        if (!$product) {
+            return response()->json(['message' => 'Impossible de generer une reference unique. Veuillez reessayer.'], 500);
+        }
 
         // Sync suppliers
         if (!empty($supplierIds)) {
@@ -404,6 +425,16 @@ class ProductController extends Controller
     public function destroy(int $id)
     {
         $product = Product::findOrFail($id);
+
+        // Check for history/dependencies before deleting
+        $hasMovements = \App\Models\StockMovementLine::where('product_id', $id)->exists();
+        $hasRequests  = \App\Models\ConsumableRequest::where('product_id', $id)->exists();
+
+        if ($hasMovements || $hasRequests) {
+            return response()->json([
+                'message' => 'Impossible de supprimer ce produit car il possède un historique de mouvements ou de demandes.'
+            ], 422);
+        }
 
         if ($product->photo && Storage::disk('public')->exists($product->photo)) {
             Storage::disk('public')->delete($product->photo);

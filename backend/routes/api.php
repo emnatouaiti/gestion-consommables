@@ -242,11 +242,11 @@ Route::prefix('api')->group(function () {
             Route::get('roles', [UserManagementController::class, 'roles']);
         });
 
-        // Rapports : accessible a Administrateur, Directeur, Responsable de stock, Agent de stock
-        Route::middleware('role:Administrateur|Directeur|Responsable de stock|Responsable|Agent de stock|Agent')->group(function () {
+        // Rapports : accessible a Administrateur, Directeur, Responsable de stock, Responsable, Gestionnaire, Agent de stock, Agent, Validateur
+        // Route::middleware('role:Responsable|Responsable de stock|Administrateur|Directeur|Gestionnaire|Agent de stock|Agent|Validateur')->group(function () {
             Route::get('reports/stock', [ReportController::class, 'exportStock']);
             Route::get('reports/movements', [ReportController::class, 'exportMovements']);
-        });
+        // });
 
         // Le dashboard filtre lui-meme les donnees selon le role
         Route::get('dashboard', [AdminController::class, 'dashboard']);

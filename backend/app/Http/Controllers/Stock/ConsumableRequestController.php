@@ -130,11 +130,18 @@ class ConsumableRequestController extends Controller
         $payloads     = $this->buildCreateRequestPayloads($request);
         $createdRequests = [];
         $incomingBatch = $request->input('batch_code');
-        $batchCode     = $incomingBatch ?: (count($payloads) > 1 ? (string) Str::uuid() : null);
+        $replaceId = $request->input('replace_id');
+        $batchCode = $incomingBatch ?: (count($payloads) > 1 ? (string) Str::uuid() : null);
 
-        DB::transaction(function () use ($payloads, $user, $batchCode, $incomingBatch, &$createdRequests) {
+        DB::transaction(function () use ($payloads, $user, $batchCode, $incomingBatch, $replaceId, &$createdRequests) {
             if ($incomingBatch) {
                 ConsumableRequest::where('batch_code', $incomingBatch)
+                    ->whereIn('status', ['draft', 'pending'])
+                    ->delete();
+            }
+
+            if ($replaceId) {
+                ConsumableRequest::where('id', $replaceId)
                     ->whereIn('status', ['draft', 'pending'])
                     ->delete();
             }
@@ -453,6 +460,13 @@ class ConsumableRequestController extends Controller
                     $req->status            = 'rejected';
                     $req->reject_reason     = (string) $rejectionMap->get((string) $req->id);
                 } else {
+                    if ($availableStock <= 0) {
+                        abort(422, "Le produit '{$req->item_name}' est en rupture de stock. Vous ne pouvez pas l'approuver.");
+                    }
+                    if ($approvedQty > $availableStock) {
+                        abort(422, "La quantite approuvee pour '{$req->item_name}' ({$approvedQty}) depasse le stock disponible ({$availableStock}).");
+                    }
+
                     $req->approved_quantity = max(0, $approvedQty);
                     $req->status            = $nextStatus;
 
@@ -1135,11 +1149,18 @@ class ConsumableRequestController extends Controller
         if (is_array($items) && count($items) > 0) {
             $request->validate([
                 'items'                      => 'required|array|min:1',
-                'items.*.product_id'         => 'required|exists:products,id',
+                'items.*.product_id'         => 'nullable|exists:products,id',
+                'items.*.item_name'          => 'nullable|string|max:255',
                 'items.*.requested_quantity' => 'required|integer|min:1',
             ]);
 
-            $productIds = collect($items)->pluck('product_id')->map(fn($v) => (int) $v)->unique()->values()->all();
+            $productIds = collect($items)
+                ->pluck('product_id')
+                ->filter()
+                ->map(fn($v) => (int) $v)
+                ->unique()
+                ->values()
+                ->all();
             $inactive   = Product::query()
                 ->whereIn('id', $productIds)
                 ->where('status', '!=', 'active')
@@ -1157,9 +1178,15 @@ class ConsumableRequestController extends Controller
             $payloads = [];
 
             foreach ($items as $item) {
-                $productId    = (int) ($item['product_id'] ?? 0);
+                $productId    = isset($item['product_id']) ? (int) $item['product_id'] : null;
                 $qty          = (int) ($item['requested_quantity'] ?? 0);
-                $productTitle = (string) (Product::query()->whereKey($productId)->value('title') ?? '');
+                $productTitle = '';
+
+                if ($productId) {
+                    $productTitle = (string) (Product::query()->whereKey($productId)->value('title') ?? '');
+                } else {
+                    $productTitle = trim((string) ($item['item_name'] ?? ''));
+                }
 
                 if ($productTitle === '') continue;
 
